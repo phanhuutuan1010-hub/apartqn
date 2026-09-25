@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { getBuilding, getBuildings, getListing, getListings } from '@/lib/repo';
 import { codeSlug, dFull, F, m2, mil, money, total, UNIT_AM } from '@/lib/format';
+import { listingDescription } from '@/lib/summary';
 import { alternates, OG_LOCALE } from '@/lib/seo';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -56,6 +57,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
   const cap = (v: string) => (l === 'ru' ? v[0].toUpperCase() + v.slice(1) : v);
   const title = F.bedsLong(x.beds, l) + ' · ' + t(`v_${x.view}`);
   const bById = new Map(buildings.map((y) => [y.id, y]));
+  const desc = listingDescription(x, b.name, l, t as unknown as Parameters<typeof listingDescription>[3]);
 
   const facts: [string, string][] = [
     [t('area'), `${x.area} ${m2(l)}`], [t('bedrooms'), String(x.beds)], [t('baths'), String(x.baths)], [t('floor'), String(x.floor)],
@@ -112,6 +114,14 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
                 <div className={styles.est}>{t('estMonthly')}: <b>{m(total(x))}</b></div>
               </div>
             </div>
+
+            {desc.text && (
+              <section className={styles.sec}>
+                <h2 className={`h2s ${styles.h2}`}>{t('descTitle')}</h2>
+                <p className={styles.desc} lang={l}>{desc.text}</p>
+                {desc.generated && <p className={styles.descNote}>{t('sumNote')}</p>}
+              </section>
+            )}
 
             <section className={styles.sec}>
               <h2 className={`h2s ${styles.h2}`}>{t('keyFacts')}</h2>

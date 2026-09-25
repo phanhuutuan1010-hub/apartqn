@@ -215,5 +215,16 @@
   "nfTitle": "Page not found",
   "nfBack": "Back to home",
   "mapLoading": "Loading map…",
-  "photoOf": "Photo"
+  "photoOf": "Photo",
+  "descTitle": "About this apartment",
+  "bldDescTitle": "About the building",
+  "sumUnit": "{kind} at {building}, floor {floor}, {area}.",
+  "sumKindBeds": "Apartment with {beds}",
+  "sumKindStudio": "Studio apartment",
+  "sumView": "{view}, facing {dir}.",
+  "sumFurn": "Furnishing: {furn}.",
+  "sumTerms": "Minimum lease {minTerm}; available from {moveIn}.",
+  "sumPets": "Pets allowed.",
+  "sumCost": "Estimated total about {total} per month, excluding electricity and water.",
+  "sumNote": "Summary generated from the listing details."
 }

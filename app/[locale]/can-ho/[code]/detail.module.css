@@ -67,3 +67,6 @@
   .cards > :nth-child(3) { display: flex; }
   .bar { display: none; }
 }
+
+.desc { margin: 0; font-size: 16px; line-height: 1.65; color: var(--gray-700); white-space: pre-line; max-width: 68ch; }
+.descNote { margin: 10px 0 0; font-size: 12px; color: var(--gray-500); }

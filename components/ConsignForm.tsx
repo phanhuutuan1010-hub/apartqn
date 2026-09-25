@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { upload } from '@vercel/blob/client';
 import { compressImage } from '@/lib/compressImage';
 import { F, m2 } from '@/lib/format';
 import styles from './Forms.module.css';
@@ -33,24 +32,35 @@ export function ConsignForm({ buildings }: Props) {
     setFiles(imgs.slice(0, MAX));
   };
 
+  /** compress → ask the server for one-time signed URLs (private consign-inbox bucket) → PUT each file */
   const uploadAll = async (): Promise<{ urls: string[]; failed: number }> => {
+    const OK = ['image/jpeg', 'image/png', 'image/webp'];
+    const blobs = (await Promise.all(files.map((f) => compressImage(f)))).filter((b) => OK.includes(b.type));
+    let failed = files.length - blobs.length;
+    if (!blobs.length) return { urls: [], failed };
+    const r = await fetch('/api/consign/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: blobs.map((b) => b.type) }),
+    });
+    if (!r.ok) return { urls: [], failed: files.length };
+    const { uploads } = (await r.json()) as { uploads: { path: string; url: string }[] };
     const urls: string[] = [];
-    let failed = 0;
     // 3 at a time
-    for (let i = 0; i < files.length; i += 3) {
-      const batch = files.slice(i, i + 3);
+    for (let i = 0; i < blobs.length; i += 3) {
       const res = await Promise.allSettled(
-        batch.map(async (f, k) => {
-          const blob = await compressImage(f);
-          const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
-          const r = await upload(`consign/${Date.now()}-${i + k + 1}.${ext}`, blob, { access: 'public', handleUploadUrl: '/api/upload', contentType: blob.type || 'image/jpeg' });
-          return r.url;
+        blobs.slice(i, i + 3).map(async (b, k) => {
+          const u = uploads[i + k];
+          const put = await fetch(u.url, { method: 'PUT', headers: { 'Content-Type': b.type }, body: b });
+          if (!put.ok) throw new Error(String(put.status));
+          return u.path;
         }),
       );
-      res.forEach((r) => (r.status === 'fulfilled' ? urls.push(r.value) : failed++));
+      res.forEach((x) => (x.status === 'fulfilled' ? urls.push(x.value) : failed++));
     }
     return { urls, failed };
   };
+
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

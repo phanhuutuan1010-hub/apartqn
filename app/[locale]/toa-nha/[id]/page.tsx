@@ -103,6 +103,12 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
 
         <div className={styles.body}>
           <main className={styles.main}>
+            {b.desc[l] && (
+              <section className={styles.sec}>
+                <h2 className={styles.h2}>{t('bldDescTitle')}</h2>
+                <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: 'var(--gray-700)', whiteSpace: 'pre-line', maxWidth: '68ch' }} lang={l}>{b.desc[l]}</p>
+              </section>
+            )}
             <section className={styles.sec} style={{ paddingTop: 24, paddingBottom: 32 }}>
               <h2 className={styles.h2} style={{ marginBottom: 20 }}>{t('bldUnits')}</h2>
               {avail.length ? (

@@ -215,5 +215,16 @@
   "nfTitle": "Страница не найдена",
   "nfBack": "На главную",
   "mapLoading": "Загрузка карты…",
-  "photoOf": "Фото"
+  "photoOf": "Фото",
+  "descTitle": "О квартире",
+  "bldDescTitle": "О комплексе",
+  "sumUnit": "{kind} в {building}, {floor} этаж, площадь {area}.",
+  "sumKindBeds": "Квартира: {beds}",
+  "sumKindStudio": "Квартира-студия",
+  "sumView": "{view}, окна выходят на {dir}.",
+  "sumFurn": "Мебель: {furn}.",
+  "sumTerms": "Минимальный срок — {minTerm}, заезд с {moveIn}.",
+  "sumPets": "Можно с животными.",
+  "sumCost": "Итого примерно {total} в месяц без учёта электричества и воды.",
+  "sumNote": "Краткое описание составлено по данным объявления."
 }

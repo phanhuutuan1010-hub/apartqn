@@ -31,9 +31,11 @@ export const consignSchema = z.object({
   rent: z.string().trim().min(1).max(30),
   owner: name,
   phone,
+  // storage paths in the private consign-inbox bucket issued by /api/consign/upload: <uploadId>/<n>.<ext>
   photos: z
-    .array(z.string().url().max(500).refine((u) => /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i.test(u), 'not a Vercel Blob URL'))
+    .array(z.string().regex(/^[0-9a-f-]{36}\/\d{1,2}\.(jpg|png|webp)$/))
     .max(MAX_PHOTOS)
+    .refine((ps) => new Set(ps.map((x) => x.split('/')[0])).size <= 1, 'photos from one upload only')
     .optional()
     .default([]),
   photosFailed: z.number().int().min(0).max(MAX_PHOTOS).optional().default(0),

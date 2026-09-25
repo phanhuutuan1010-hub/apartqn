@@ -44,10 +44,10 @@ export function AdminNav({ items, me }: { items: NavItem[]; me: { name: string; 
         </nav>
         <div className={styles.foot}>
           <a href="/" target="_blank" rel="noopener" className={styles.item}><ExternalLink size={18} aria-hidden /><span className={styles.label}>Xem website</span></a>
-          <div className={styles.me}>
+          <Link href="/admin/tai-khoan" className={`${styles.me} ${active('/admin/tai-khoan') ? styles.on : ''}`} title="Tài khoản của tôi">
             <span className={styles.meName}>{me.name}</span>
-            <span className={styles.meRole}>{me.role}</span>
-          </div>
+            <span className={styles.meRole}>{me.role} · Tài khoản</span>
+          </Link>
           <form action={signOut}>
             <button className={styles.item} style={{ width: '100%' }}><LogOut size={18} aria-hidden /><span className={styles.label}>Đăng xuất</span></button>
           </form>

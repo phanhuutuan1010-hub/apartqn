@@ -215,5 +215,16 @@
   "nfTitle": "Không tìm thấy trang",
   "nfBack": "Về trang chủ",
   "mapLoading": "Đang tải bản đồ…",
-  "photoOf": "Ảnh"
+  "photoOf": "Ảnh",
+  "descTitle": "Mô tả",
+  "bldDescTitle": "Giới thiệu",
+  "sumUnit": "{kind} tại {building}, tầng {floor}, diện tích {area}.",
+  "sumKindBeds": "Căn {beds}",
+  "sumKindStudio": "Căn studio",
+  "sumView": "{view}, hướng {dir}.",
+  "sumFurn": "Nội thất: {furn}.",
+  "sumTerms": "Thuê tối thiểu {minTerm}, dọn vào từ {moveIn}.",
+  "sumPets": "Cho nuôi thú cưng.",
+  "sumCost": "Tổng chi phí ước tính khoảng {total}/tháng, chưa gồm điện nước.",
+  "sumNote": "Tóm tắt tự động từ thông tin căn hộ."
 }
