@@ -1,0 +1,9 @@
+/* 44px hit area around a 32px visual circle */
+.arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 44px; height: 44px; border: 0; background: none; padding: 0; display: flex; align-items: center; justify-content: center; }
+.arrow span { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.94); box-shadow: 0 1px 4px rgba(16,24,40,.18); font-size: 20px; line-height: 30px; color: var(--ink-900); text-align: center; }
+.arrow:hover span { background: var(--white); }
+.prev { left: 2px; }
+.next { right: 2px; }
+.dots { position: absolute; bottom: 10px; left: 0; right: 0; z-index: 2; display: flex; justify-content: center; gap: 5px; pointer-events: none; }
+.dots span { width: 6px; height: 6px; border-radius: 3px; background: var(--white); opacity: .6; box-shadow: 0 0 2px rgba(0,0,0,.25); transition: width .15s; }
+.dots .on { width: 16px; opacity: 1; }

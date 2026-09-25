@@ -1,0 +1,4 @@
+.root { position: fixed; inset: 0; z-index: 90; }
+.backdrop { position: absolute; inset: 0; background: rgba(11,21,48,.45); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; margin: 0 auto; width: 100%; max-width: 480px; animation: up .2s ease-out; }
+@keyframes up { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }

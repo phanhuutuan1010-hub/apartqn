@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script><style>body{margin:0;background:#FFFFFF}a{color:#0039A6}a:hover{color:#002F8A}</style></helmet>
+<div ref="{{ rootRef }}" data-screen-label="Home" style="position:relative;container-type:inline-size;overflow-x:clip;background:#FFFFFF;font-family:'Noto Sans',system-ui,sans-serif;color:#141821;font-size:16px;line-height:1.6">
+  <dc-import name="SiteHeader" locale="{{ locale }}" on-locale="{{ setLocale }}" hint-size="100%,72px"></dc-import>
+  <section style="max-width:1200px;margin:0 auto;padding:clamp(24px,4cqw,56px) {{ L.px }} 0">
+    <div style="display:grid;grid-template-columns:{{ heroCols }};grid-template-areas:{{ heroAreas }};column-gap:48px;row-gap:{{ heroGap }};align-items:center">
+      <div style="grid-area:text;display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <span style="display:inline-flex;align-items:center;min-height:28px;padding:0 12px;border-radius:999px;background:#EEF3FC;color:#0039A6;font-size:13px;font-weight:600;line-height:1.3">{{ s.heroEyebrow }}</span>
+          <span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;border:1px dashed #8A5200;color:#8A5200;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.06em;white-space:nowrap">{{ s.demo }}</span>
+        </div>
+        <h1 style="margin:0;padding-top:.08em;font-size:clamp(30px,4.5cqw,56px);line-height:1.15;font-weight:800;letter-spacing:-0.025em;max-width:20ch;text-wrap:balance;color:#0B1530">{{ s.heroTitle }}</h1>
+        <p style="margin:0;font-size:clamp(16px,1.4cqw,18px);line-height:1.6;color:#3A404C;max-width:52ch;text-wrap:pretty">{{ s.heroSub }}</p>
+      </div>
+      <div style="grid-area:img;aspect-ratio:{{ heroRatio }};min-width:0;border-radius:clamp(16px,2cqw,24px);background:repeating-linear-gradient(135deg,#DCE4F2 0 14px,#E8EEF7 14px 28px);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box">
+        <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;line-height:1.4;color:#4A5160;background:rgba(255,255,255,.9);padding:6px 10px;border-radius:6px;text-align:center">hero photo · Quy Nhon bay & city-centre towers</span>
+      </div>
+      <div style="grid-area:search;min-width:0">
+        <dc-import name="SearchBar" locale="{{ locale }}" bp="{{ L.bp }}" on-filters="{{ openDrawer }}" hint-size="100%,88px"></dc-import>
+      </div>
+    </div>
+  </section>
+  <section style="max-width:1200px;margin:0 auto;padding:clamp(48px,7cqw,96px) {{ L.px }} 0">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;margin-bottom:24px">
+      <h2 style="margin:0;font-size:clamp(24px,3cqw,36px);line-height:1.2;font-weight:800;letter-spacing:-0.02em">{{ s.featured }}</h2>
+      <a href="{{ allHref }}" style="display:flex;align-items:center;min-height:44px;font-size:15px;font-weight:600;color:#0039A6;text-decoration:none;white-space:nowrap">{{ s.seeAll }} →</a>
+    </div>
+    <div style="display:grid;grid-template-columns:{{ cardCols }};gap:36px 24px">
+      <sc-for list="{{ featured }}" as="f" hint-placeholder-count="6">
+        <a href="{{ f.href }}" style="display:flex;flex-direction:column;gap:12px;text-decoration:none;color:#141821;min-width:0">
+          <div style="position:relative;aspect-ratio:4/3;border-radius:12px;background:repeating-linear-gradient(135deg,#E8ECF2 0 12px,#F1F4F8 12px 24px);box-shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06);display:flex;align-items:center;justify-content:center">
+            <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5A6272;background:rgba(255,255,255,.88);padding:4px 8px;border-radius:6px">photo · {{ f.code }}</span>
+            <div style="position:absolute;top:10px;left:10px;right:10px;display:flex;flex-wrap:wrap;gap:6px">
+              <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;line-height:1;white-space:nowrap;background:{{ f.stBg }};color:{{ f.stFg }}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>{{ f.status }}</span>
+              <sc-if value="{{ f.verified }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;line-height:1;white-space:nowrap;background:#FFFFFF;color:#0039A6">✓ {{ f.verifiedLabel }}</span></sc-if>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;padding:0 2px;line-height:1.45">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+              <div style="display:flex;align-items:baseline;gap:2px;white-space:nowrap;min-width:0"><span style="font-size:19px;font-weight:800;color:#D52B1E;letter-spacing:-0.01em">{{ f.rent }}</span><span style="font-size:13px;color:#687080">{{ f.per }}</span></div>
+              <span style="flex:0 0 auto;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#687080">{{ f.code }}</span>
+            </div>
+            <div style="font-size:13px;color:#3A404C">{{ f.estLabel }}: <b style="font-weight:600;color:#141821;white-space:nowrap">{{ f.est }}</b></div>
+            <div style="font-size:14px;font-weight:600;margin-top:2px">{{ f.meta }}</div>
+            <div style="font-size:14px;color:#3A404C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ f.bname }}</div>
+            <div style="font-size:13px;color:#687080">{{ f.moveIn }}</div>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+  <section id="buildings" style="margin-top:clamp(48px,7cqw,96px);background:#F7F8FA">
+    <div style="max-width:1200px;margin:0 auto;padding:clamp(40px,6cqw,80px) {{ L.px }}">
+      <h2 style="margin:0 0 8px;font-size:clamp(24px,3cqw,36px);line-height:1.2;font-weight:800;letter-spacing:-0.02em">{{ s.bldTitle }}</h2>
+      <p style="margin:0 0 28px;font-size:16px;line-height:1.6;color:#3A404C;max-width:60ch;text-wrap:pretty">{{ s.bldSub }}</p>
+      <div style="display:grid;grid-template-columns:{{ bldCols }};gap:28px 16px">
+        <sc-for list="{{ buildings }}" as="b" hint-placeholder-count="8">
+          <a href="{{ b.href }}" style="display:flex;flex-direction:column;gap:10px;text-decoration:none;color:#141821;min-width:0">
+            <div style="aspect-ratio:4/3;border-radius:12px;background:repeating-linear-gradient(135deg,#E3E9F3 0 12px,#EEF2F8 12px 24px);box-shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06)"></div>
+            <div style="display:flex;flex-direction:column;gap:3px;padding:0 2px;line-height:1.35">
+              <div style="font-size:15px;font-weight:700;text-wrap:pretty;overflow-wrap:anywhere">{{ b.name }}</div>
+              <div style="font-size:13px;color:#687080">{{ b.street }}</div>
+              <div style="font-size:13px;font-weight:600;color:#0039A6;margin-top:2px">{{ b.units }}</div>
+              <div style="font-size:13px;color:#3A404C">{{ b.fromLine }}</div>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+  <section style="max-width:1200px;margin:0 auto;padding:clamp(48px,7cqw,96px) {{ L.px }} 0">
+    <h2 style="margin:0 0 28px;font-size:clamp(24px,3cqw,36px);line-height:1.2;font-weight:800;letter-spacing:-0.02em">{{ s.whyTitle }}</h2>
+    <div style="display:grid;grid-template-columns:{{ whyCols }};gap:32px">
+      <sc-for list="{{ why }}" as="w" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:10px;padding-top:20px;border-top:2px solid #0039A6">
+          <span style="font-size:20px;font-weight:700;line-height:1.3">{{ w.t }}</span>
+          <span style="font-size:16px;line-height:1.6;color:#3A404C;text-wrap:pretty">{{ w.d }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+  <section style="max-width:1200px;margin:0 auto;padding:clamp(48px,7cqw,96px) {{ L.px }}">
+    <div style="display:flex;flex-direction:column;align-items:flex-start;gap:14px;padding:clamp(24px,4cqw,48px);border-radius:20px;background:#EEF3FC">
+      <h2 style="margin:0;font-size:clamp(24px,3cqw,36px);line-height:1.2;font-weight:800;letter-spacing:-0.02em;color:#0B1530;text-wrap:balance">{{ s.consignTitle }}</h2>
+      <p style="margin:0;font-size:16px;line-height:1.6;color:#3A404C;max-width:52ch">{{ s.consignSub }}</p>
+      <a href="{{ consignHref }}" style="margin-top:6px;min-height:52px;padding:0 24px;display:inline-flex;align-items:center;border-radius:10px;background:#D52B1E;color:#FFFFFF;font-size:16px;font-weight:700;text-decoration:none" style-hover="background:#B82217;color:#FFFFFF">{{ s.consignBtn }}</a>
+    </div>
+  </section>
+  <dc-import name="SiteFooter" locale="{{ locale }}" hint-size="100%,340px"></dc-import>
+  <sc-if value="{{ drawer }}">
+    <div onClick="{{ closeDrawer }}" style="position:absolute;inset:0;z-index:60;background:rgba(11,21,48,.45)"></div>
+    <div style="position:absolute;left:{{ dPos.left }};right:{{ dPos.right }};top:{{ dPos.top }};z-index:61">
+      <dc-import name="FilterDrawer" locale="{{ locale }}" on-close="{{ closeDrawer }}" on-apply="{{ applyDrawer }}" hint-size="100%,700px"></dc-import>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;device&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;mobile&quot;,&quot;tablet&quot;,&quot;desktop&quot;],&quot;tsType&quot;:&quot;'mobile' | 'tablet' | 'desktop'&quot;}}">
+class Component extends DCLogic {
+  state = { loc: null, drawer: false, top: 64, w: null };
+  _measure = () => { const el = this._el; if (!el) return; const w = Math.round(el.getBoundingClientRect().width); if (w && w !== this.state.w) this.setState({ w }); };
+  rootRef = (el) => { if (!el || el === this._el) return; this._ro && this._ro.disconnect(); this._el = el; this._measure(); requestAnimationFrame(this._measure); if (!this._rs) { this._rs = true; window.addEventListener('resize', this._measure); } try { this._ro = new ResizeObserver(this._measure); this._ro.observe(el); } catch (_) {} };
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); this._watch(); }
+  componentWillUnmount() { window.removeEventListener('resize', this._measure); clearInterval(this._p); this._ro && this._ro.disconnect(); }
+  componentDidUpdate(pp) { this._watch(); if (pp.locale !== this.props.locale) this.setState({ loc: null }); }
+  _watch() { const el = this._el; if (!el || this._ro) return; this._ro = new ResizeObserver((es) => { const w = Math.round(es[0].contentRect.width); if (w && w !== this.state.w) this.setState({ w }); }); this._ro.observe(el); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.state.loc || this.props.locale || A.qp('l') || 'vi';
+    const L = A.layout(this.state.w || A.initW(this.props));
+    const s = {}; ['heroEyebrow', 'demo', 'heroTitle', 'heroSub', 'featured', 'seeAll', 'bldTitle', 'bldSub', 'whyTitle', 'consignTitle', 'consignSub', 'consignBtn'].forEach((k) => (s[k] = A.t(k, l)));
+    const n = L.lg ? 6 : L.md ? 4 : 3;
+    const featured = A.L.filter((x) => x.status !== 'rented').slice(0, n).map((x) => Object.assign(A.card(x, l), { href: A.link('listing', { code: x.code }, l) }));
+    return {
+      locale: l, L, s, rootRef: this.rootRef,
+      setLocale: (x) => this.setState({ loc: x }),
+      heroCols: L.lg ? 'minmax(0,680px) minmax(0,1fr)' : 'minmax(0,1fr)',
+      heroAreas: L.lg ? '"text img" "search search"' : '"text" "search" "img"',
+      heroGap: L.lg ? '40px' : '20px', heroRatio: L.lg ? '4 / 3' : L.md ? '16 / 9' : '4 / 3',
+      cardCols: 'repeat(' + L.cols + ',minmax(0,1fr))',
+      bldCols: 'repeat(' + (L.lg ? 4 : L.md ? 3 : 2) + ',minmax(0,1fr))',
+      whyCols: L.sm ? 'minmax(0,1fr)' : 'repeat(3,minmax(0,1fr))',
+      featured,
+      buildings: A.B.map((b) => { const ls = A.L.filter((x) => x.b === b.id && x.status !== 'rented'), min = ls.length ? Math.min(...ls.map((x) => x.rent)) : 0;
+        return { name: b.name, street: b.street, href: A.link('building', { id: b.id }, l), units: A.F.units(ls.length, l), fromLine: min ? A.t('from', l) + ' ' + A.mil(min, l) + A.t('perMonth', l) : '' }; }),
+      why: [1, 2, 3].map((i) => ({ t: A.t('why' + i + 't', l), d: A.t('why' + i + 'd', l) })),
+      drawer: this.state.drawer,
+      dPos: L.sm ? { left: '8px', right: '8px', top: this.state.top + 'px' } : { left: 'calc(50% - 240px)', right: 'calc(50% - 240px)', top: this.state.top + 'px' },
+      openDrawer: (e) => {
+        let top = 64;
+        try { const r = this._el.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); top = Math.max(64, b.top - r.top - 420); } catch (_) {}
+        this.setState({ drawer: true, top });
+      },
+      closeDrawer: () => this.setState({ drawer: false }),
+      applyDrawer: (f) => { location.href = A.link('results', f, l); },
+      allHref: A.link('results', {}, l), consignHref: A.link('consign', {}, l)
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+.logo { line-height: 1; letter-spacing: -0.035em; color: var(--blue-500); white-space: nowrap; }
+.a { font-weight: 800; }
+.qn { font-weight: 500; }
+.white { color: var(--white); }
+.white .qn { color: var(--blue-200); }

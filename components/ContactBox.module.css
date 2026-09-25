@@ -1,0 +1,25 @@
+.box { display: flex; flex-direction: column; gap: 14px; color: var(--ink-900); }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.code { font-family: var(--mono); font-size: 12px; color: var(--gray-500); }
+.priceBlock { display: flex; flex-direction: column; gap: 4px; }
+.price { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+.rent { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; color: var(--red-500); line-height: 1.2; }
+.per { font-size: 15px; color: var(--gray-500); }
+.line { font-size: 14px; color: var(--gray-700); }
+.line b { font-weight: 700; color: var(--ink-900); white-space: nowrap; }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btns a { height: 48px; font-size: 15px; padding: 0 8px; }
+.msg { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--gray-50); }
+.msgLabel { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-500); }
+.msgText { font-size: 13px; line-height: 1.45; color: var(--gray-700); }
+
+.bar { display: grid; grid-template-columns: 64px 64px minmax(0, 1fr); align-items: center; gap: 8px; padding: 10px var(--px) calc(10px + env(safe-area-inset-bottom)); background: var(--white); border-top: 1px solid var(--gray-200); box-shadow: 0 -6px 20px rgba(16,24,40,.08); color: var(--ink-900); }
+.icoBtn { height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: var(--r-card); color: var(--blue-500); text-decoration: none; }
+.icoBtn:active { background: var(--blue-50); }
+.icoBtn span { font-size: 13px; font-weight: 600; line-height: 1; color: var(--gray-700); white-space: nowrap; }
+.cta { min-width: 0; height: 60px; padding: 0 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 14px; background: var(--red-500); color: var(--white); text-decoration: none; box-shadow: 0 6px 18px rgba(213,43,30,.28); }
+.cta:active { background: var(--red-700); }
+.forRent { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; line-height: 1.2; opacity: .92; white-space: nowrap; }
+.ctaPrice { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; line-height: 1.2; }
+.ctaPrice b { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
+.ctaPrice span { font-size: 14px; font-weight: 600; }

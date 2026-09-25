@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Inter:wght@400;700&family=Montserrat:wght@400;700&display=swap"><script src="apartqn-data.js"></script><style>body{margin:0;background:#FFFFFF}a{color:#0039A6}a:hover{color:#002F8A}</style></helmet>
+<div data-screen-label="Design system" style="background:#FFFFFF;font-family:'Noto Sans',system-ui,sans-serif;color:#141821;padding:56px 64px 80px;display:flex;flex-direction:column;gap:64px;box-sizing:border-box">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;padding-bottom:28px;border-bottom:1px solid #E3E6EB">
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#687080">ApartQN · Design system v0.2 · responsive</span>
+      <span style="font-size:44px;font-weight:800;letter-spacing:-0.03em">Foundations & components</span>
+    </div>
+    <span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:999px;border:1px dashed #8A5200;white-space:nowrap;color:#8A5200;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.06em">DEMO DATA</span>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">00 — Breakpoints · container · responsive rules</span>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+      <sc-for list="{{ bps }}" as="b" hint-placeholder-count="4">
+        <div style="display:flex;flex-direction:column;gap:8px;padding:18px;border-radius:12px;border:1px solid #E3E6EB;background:{{ b.bg }}">
+          <span style="font-size:28px;font-weight:800;letter-spacing:-0.02em;color:#0039A6">{{ b.w }}</span>
+          <span style="font-size:14px;font-weight:700">{{ b.name }}</span>
+          <span style="font-size:13px;line-height:1.5;color:#3A404C">{{ b.note }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+      <div style="display:flex;flex-direction:column;border:1px solid #E3E6EB;border-radius:12px;overflow:hidden">
+        <sc-for list="{{ rules }}" as="r" hint-placeholder-count="8">
+          <div style="display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);gap:12px;padding:10px 16px;border-bottom:1px solid #EEF0F3;font-size:13px;line-height:1.45;background:{{ r.bg }}">
+            <b style="font-weight:700">{{ r.k }}</b><span>{{ r.sm }}</span><span>{{ r.md }}</span><span>{{ r.lg }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding:20px;border-radius:12px;background:#F7F8FA;font-size:14px;line-height:1.6;color:#3A404C">
+        <b style="font-size:15px;color:#141821">Rules</b>
+        <span>Container: content max 1200px, centred, side padding 16 / 24 / 32. Zero horizontal scroll at every width — carousels scroll inside their own track only.</span>
+        <span>Layout switches on measured page width (no device sniffing), so the same file renders correctly at 360, 390, 768, 1024, 1280.</span>
+        <span>Tap targets ≥ 44px (buttons, chips, pills, nav rows, footer links). Inputs 16px to avoid iOS zoom. Body 16/1.6.</span>
+        <span>Headings: line-height ≥ 1.15 + 0.08em top padding so stacked Vietnamese diacritics (ề ể ố ộ ữ) never clip. Key phrases joined with no-break spaces: dài hạn · trung tâm · Quy Nhơn.</span>
+        <span>ContactBox: sticky right column ≥ 1024; below that a sticky bottom bar (2 locale contacts + red “Hẹn xem căn”) with safe-area inset.</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">01 — Logo lockup</span>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      <div style="height:180px;border:1px solid #E3E6EB;border-radius:12px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;padding:0 36px">
+        <span style="font-size:44px;line-height:1;letter-spacing:-0.035em;color:#0039A6"><span style="font-weight:800">Apart</span><span style="font-weight:500">QN</span></span>
+        <span style="font-size:14px;color:#687080">Apartments for rent · Quy Nhon</span>
+      </div>
+      <div style="height:180px;border-radius:12px;background:#0039A6;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;padding:0 36px">
+        <span style="font-size:44px;line-height:1;letter-spacing:-0.035em;color:#FFFFFF"><span style="font-weight:800">Apart</span><span style="font-weight:500;color:#D9E4F7">QN</span></span>
+        <span style="font-size:14px;color:#D9E4F7">Căn hộ cho thuê · Quy Nhơn</span>
+      </div>
+      <div style="height:180px;border-radius:12px;background:#001A4D;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;padding:0 36px">
+        <span style="font-size:44px;line-height:1;letter-spacing:-0.035em;color:#FFFFFF"><span style="font-weight:800">Apart</span><span style="font-weight:500;color:#B3C8EF">QN</span></span>
+        <span style="font-size:14px;color:#B3C8EF">Аренда квартир · Куинён</span>
+      </div>
+    </div>
+    <span style="font-size:14px;color:#687080">Wordmark: Noto Sans 800 + 500, tracking −3.5%. Tagline localised. No flag imagery, no red in the mark — red is reserved for CTA + price.</span>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">02 — Colour</span>
+    <sc-for list="{{ palettes }}" as="p" hint-placeholder-count="4">
+      <div style="display:grid;grid-template-columns:160px 1fr;gap:20px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:4px;padding-top:8px"><span style="font-size:15px;font-weight:700">{{ p.name }}</span><span style="font-size:13px;color:#687080;line-height:1.4">{{ p.note }}</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px">
+          <sc-for list="{{ p.sw }}" as="c">
+            <div style="display:flex;flex-direction:column;border-radius:12px;overflow:hidden;border:1px solid #E3E6EB">
+              <div style="height:64px;background:{{ c.hex }}"></div>
+              <div style="padding:8px 10px;display:flex;flex-direction:column;gap:2px"><span style="font-size:12px;font-weight:700">{{ c.name }}</span><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#687080">{{ c.hex }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">03 — Typeface verification</span>
+    <div style="display:flex;flex-direction:column;border:1px solid #E3E6EB;border-radius:12px;overflow:hidden">
+      <sc-for list="{{ fonts }}" as="f" hint-placeholder-count="3">
+        <div style="display:grid;grid-template-columns:220px 1fr;gap:24px;padding:22px 24px;border-bottom:1px solid #E3E6EB;background:{{ f.bg }}">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:16px;font-weight:700">{{ f.name }}</span>
+            <span style="font-size:13px;color:#3A404C;line-height:1.45">{{ f.note }}</span>
+            <sc-if value="{{ f.pick }}"><span style="align-self:flex-start;height:24px;padding:0 10px;display:inline-flex;align-items:center;border-radius:999px;background:#0039A6;color:#FFFFFF;font-size:12px;font-weight:700">✓ Selected</span></sc-if>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;font-family:{{ f.stack }}">
+            <span style="font-size:34px;font-weight:700;letter-spacing:-0.02em;line-height:1.2">Chiếc ghế đỏ ữ ể ộ</span>
+            <span style="font-size:34px;font-weight:700;letter-spacing:-0.02em;line-height:1.2">Аренда квартиры в Куинёне</span>
+            <span style="font-size:16px;font-weight:400;color:#3A404C">Căn hộ 2 phòng ngủ, view biển · Квартира с видом на море, 68 м² · 13.500.000 ₫</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+      <div style="display:flex;flex-direction:column;gap:14px;padding:24px;border-radius:12px;background:#F7F8FA">
+        <sc-for list="{{ scale }}" as="t" hint-placeholder-count="7">
+          <div style="display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:baseline">
+            <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.4;color:#687080">{{ t.spec }}</span>
+            <span style="font-size:{{ t.size }};font-weight:{{ t.w }};letter-spacing:{{ t.ls }};line-height:1.2;padding-top:.08em">{{ t.sample }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding:24px;border-radius:12px;border:1px solid #E3E6EB">
+        <span style="font-size:15px;font-weight:700">Russian length rule (+30%)</span>
+        <span style="font-size:14px;line-height:1.55;color:#3A404C">No fixed widths on text boxes. Buttons grow with label, labels wrap before truncating, card meta may wrap to 2 lines. Test strings below at the same 360px width.</span>
+        <div style="display:flex;flex-direction:column;gap:8px;width:360px">
+          <span style="height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#D52B1E;color:#FFFFFF;font-weight:700;font-size:15px">Gửi yêu cầu</span>
+          <span style="height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#D52B1E;color:#FFFFFF;font-weight:700;font-size:15px">Отправить заявку</span>
+          <span style="font-size:14px;color:#3A404C">Помощь с временной регистрацией — <b>Да</b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">04 — Radius · shadow · spacing</span>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      <div style="height:120px;border-radius:12px;background:#FFFFFF;box-shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06);display:flex;flex-direction:column;justify-content:flex-end;padding:14px;gap:2px"><b style="font-size:13px">Card · r12 · shadow-sm</b><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#687080">0 1 2 /.06, 0 4 16 /.06</span></div>
+      <div style="height:120px;border-radius:16px;background:#FFFFFF;box-shadow:0 8px 32px rgba(16,24,40,.08);border:1px solid #E3E6EB;display:flex;flex-direction:column;justify-content:flex-end;padding:14px;gap:2px"><b style="font-size:13px">Panel · r16 · shadow-md</b><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#687080">0 8 32 /.08</span></div>
+      <div style="height:120px;border-radius:16px;background:#FFFFFF;box-shadow:0 12px 40px rgba(16,24,40,.14),0 1px 3px rgba(16,24,40,.08);display:flex;flex-direction:column;justify-content:flex-end;padding:14px;gap:2px"><b style="font-size:13px">Search · r16 · shadow-lg</b><span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#687080">0 12 40 /.14</span></div>
+      <div style="height:120px;border-radius:12px;background:#F7F8FA;display:flex;flex-direction:column;justify-content:space-between;padding:14px">
+        <div style="display:flex;align-items:flex-end;gap:6px"><span style="width:4px;height:4px;background:#0039A6"></span><span style="width:8px;height:8px;background:#0039A6"></span><span style="width:12px;height:12px;background:#0039A6"></span><span style="width:16px;height:16px;background:#0039A6"></span><span style="width:24px;height:24px;background:#0039A6"></span><span style="width:32px;height:32px;background:#0039A6"></span></div>
+        <b style="font-size:13px">Spacing 4 · 8 · 12 · 16 · 24 · 32 · 48</b>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">05 — Buttons, badges, contact by locale</span>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+      <div style="display:flex;flex-direction:column;gap:12px;padding:20px;border:1px solid #E3E6EB;border-radius:12px">
+        <span style="font-size:12px;font-weight:700;color:#687080">PRIMARY CTA (red) — default / hover / press</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="height:48px;padding:0 20px;display:inline-flex;align-items:center;border-radius:10px;background:#D52B1E;color:#FFFFFF;font-weight:700;font-size:15px">Tìm căn hộ</span>
+          <span style="height:48px;padding:0 20px;display:inline-flex;align-items:center;border-radius:10px;background:#B82217;color:#FFFFFF;font-weight:700;font-size:15px">Найти</span>
+          <span style="height:48px;padding:0 20px;display:inline-flex;align-items:center;border-radius:10px;background:#9C1C12;color:#FFFFFF;font-weight:700;font-size:15px">Search</span>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:#687080;margin-top:6px">SECONDARY (blue) — solid / outline / ghost</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="height:48px;padding:0 20px;display:inline-flex;align-items:center;border-radius:10px;background:#0039A6;color:#FFFFFF;font-weight:700;font-size:15px">Zalo</span>
+          <span style="height:48px;padding:0 20px;display:inline-flex;align-items:center;border-radius:10px;border:1.5px solid #0039A6;color:#0039A6;font-weight:700;font-size:15px;box-sizing:border-box">Gọi điện</span>
+          <span style="height:48px;padding:0 12px;display:inline-flex;align-items:center;border-radius:10px;color:#0039A6;font-weight:600;font-size:15px">Xem tất cả →</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;padding:20px;border:1px solid #E3E6EB;border-radius:12px">
+        <span style="font-size:12px;font-weight:700;color:#687080">STATUS + TRUST BADGES</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#E6F4EC;color:#1E7F4F"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Còn trống</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#FDF0D8;color:#8A5200"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Đã đặt cọc</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#EDEFF2;color:#4A5160"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Đã cho thuê</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#E6F4EC;color:#1E7F4F"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Свободна</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#FDF0D8;color:#8A5200"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Забронирована</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#EDEFF2;color:#4A5160"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Сдана</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#EEF3FC;color:#0039A6">✓ Đã xác minh</span>
+          <span style="display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#EEF3FC;color:#0039A6">✓ Проверено</span>
+          <span style="display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;border:1px dashed #8A5200;white-space:nowrap;color:#8A5200;font-family:ui-monospace,Menlo,monospace;font-size:11px">DEMO DATA</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;padding:20px;border:1px solid #E3E6EB;border-radius:12px">
+        <span style="font-size:12px;font-weight:700;color:#687080">CONTACT PAIR BY LOCALE (primary · secondary)</span>
+        <sc-for list="{{ contactRows }}" as="r" hint-placeholder-count="3">
+          <div style="display:grid;grid-template-columns:32px 1fr 1fr;gap:8px;align-items:center">
+            <span style="font-size:12px;font-weight:800;color:#687080">{{ r.loc }}</span>
+            <span style="height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#0039A6;color:#FFFFFF;font-weight:700;font-size:14px">{{ r.a }}</span>
+            <span style="height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1.5px solid #0039A6;color:#0039A6;font-weight:700;font-size:14px;box-sizing:border-box">{{ r.b }}</span>
+          </div>
+        </sc-for>
+        <span style="font-size:12px;color:#687080;line-height:1.45">Message prefilled with listing code, e.g. “Здравствуйте! Интересует квартира QN-001.” (Zalo/Call: shown as text to copy.)</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">06 — Inputs · List/Map toggle</span>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;align-items:end">
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#3A404C">Họ tên<span style="height:48px;padding:0 14px;display:flex;align-items:center;border:1px solid #C9CED6;border-radius:10px;font-size:15px;font-weight:400;color:#687080">Nguyễn Văn An</span></label>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#3A404C">Телефон · focus<span style="height:48px;padding:0 14px;display:flex;align-items:center;border:1px solid #0039A6;box-shadow:0 0 0 3px #D9E4F7;border-radius:10px;font-size:15px;font-weight:400;color:#141821">+84 912 345 678</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <span style="min-height:40px;padding:0 14px;display:inline-flex;align-items:center;border-radius:999px;background:#0039A6;color:#FFFFFF;font-size:14px;font-weight:600">2</span>
+        <span style="min-height:40px;padding:0 14px;display:inline-flex;align-items:center;border-radius:999px;border:1.5px solid #C9CED6;font-size:14px;font-weight:600;box-sizing:border-box">3+</span>
+        <span style="width:44px;height:26px;border-radius:13px;background:#0039A6;position:relative;align-self:center"><span style="position:absolute;top:2px;left:20px;width:22px;height:22px;border-radius:50%;background:#FFFFFF"></span></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:12px;font-weight:700;color:#687080">LIST / MAP TOGGLE</span>
+        <div style="display:flex;padding:4px;border-radius:999px;background:#F1F3F6;gap:4px;align-self:flex-start">
+          <sc-for list="{{ viewToggle }}" as="v" hint-placeholder-count="2"><button onClick="{{ v.on }}" style="height:36px;padding:0 16px;border:0;border-radius:999px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;background:{{ v.bg }};color:{{ v.fg }};box-shadow:{{ v.sh }}">{{ v.label }}</button></sc-for>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">07 — Header · SearchBar</span>
+    <div style="border:1px solid #E3E6EB;border-radius:12px;overflow:hidden"><dc-import name="SiteHeader" locale="vi" hint-size="100%,64px"></dc-import></div>
+    <div style="display:grid;grid-template-columns:390px 1fr;gap:24px;align-items:start">
+      <div style="border:1px solid #E3E6EB;border-radius:12px;overflow:hidden"><dc-import name="SiteHeader" locale="ru" mobile="{{ true }}" hint-size="100%,64px"></dc-import></div>
+      <div style="padding:24px;border-radius:12px;background:#F7F8FA"><dc-import name="SearchBar" locale="ru" hint-size="100%,88px"></dc-import></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">08 — ListingCard · BuildingCard</span>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr) 0.8fr;gap:24px;align-items:start">
+      <dc-import name="ListingCard" locale="vi" code="QN-001" hint-size="100%,420px"></dc-import>
+      <dc-import name="ListingCard" locale="ru" code="QN-003" hint-size="100%,420px"></dc-import>
+      <dc-import name="ListingCard" locale="vi" code="QN-008" hint-size="100%,420px"></dc-import>
+      <dc-import name="BuildingCard" locale="ru" id="flc" hint-size="100%,300px"></dc-import>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">09 — CostBreakdown · ContactBox · ViewingRequestForm</span>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <dc-import name="CostBreakdown" locale="vi" code="QN-001" hint-size="100%,320px"></dc-import>
+        <dc-import name="CostBreakdown" locale="ru" code="QN-002" hint-size="100%,320px"></dc-import>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="padding:24px;border:1px solid #E3E6EB;border-radius:16px;box-shadow:0 8px 32px rgba(16,24,40,.08)"><dc-import name="ContactBox" locale="ru" code="QN-001" hint-size="100%,300px"></dc-import></div>
+        <div style="border:1px solid #E3E6EB;border-radius:12px;overflow:hidden;width:390px;max-width:100%"><dc-import name="ContactBox" locale="vi" code="QN-001" variant="bar" hint-size="100%,112px"></dc-import></div>
+      </div>
+      <div style="padding:24px;border:1px solid #E3E6EB;border-radius:16px"><dc-import name="ViewingRequestForm" locale="ru" code="QN-001" hint-size="100%,460px"></dc-import></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">10 — FilterDrawer (mobile) · ConsignForm</span>
+    <div style="display:grid;grid-template-columns:390px 1fr;gap:24px;align-items:start">
+      <div style="padding:12px;border-radius:24px;background:#5B6478"><dc-import name="FilterDrawer" locale="ru" hint-size="100%,720px"></dc-import></div>
+      <div style="max-width:560px"><dc-import name="ConsignForm" locale="vi" hint-size="100%,900px"></dc-import></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">11 — Footer</span>
+    <div style="border-radius:12px;overflow:hidden"><dc-import name="SiteFooter" locale="ru" hint-size="100%,340px"></dc-import></div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { view: 'list' };
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); }
+  componentWillUnmount() { clearInterval(this._p); }
+  renderVals() {
+    const sw = (arr) => arr.map(([name, hex]) => ({ name, hex }));
+    const v = this.state.view;
+    return {
+      palettes: [
+        { name: 'Primary blue', note: 'Brand, links, secondary buttons, selection', sw: sw([['blue-50 tint', '#EEF3FC'], ['blue-100', '#D9E4F7'], ['blue-200', '#B3C8EF'], ['blue-500 base', '#0039A6'], ['blue-600 hover', '#002F8A'], ['blue-700 press', '#00256E'], ['blue-900 footer', '#001A4D']]) },
+        { name: 'Accent red', note: 'Primary CTA + price only (~5% of area)', sw: sw([['red-50', '#FCECEA'], ['red-500 base', '#D52B1E'], ['red-600 hover', '#B82217'], ['red-700 press', '#9C1C12']]) },
+        { name: 'Neutral', note: 'Text, borders, surfaces', sw: sw([['ink-900', '#141821'], ['gray-700', '#3A404C'], ['gray-500', '#687080'], ['gray-300', '#C9CED6'], ['gray-200', '#E3E6EB'], ['gray-100', '#F1F3F6'], ['gray-50', '#F7F8FA'], ['white', '#FFFFFF']]) },
+        { name: 'Status', note: 'Badges: available / reserved / rented', sw: sw([['success fg', '#1E7F4F'], ['success bg', '#E6F4EC'], ['warning fg', '#8A5200'], ['warning bg', '#FDF0D8'], ['muted fg', '#4A5160'], ['muted bg', '#EDEFF2']]) }
+      ],
+      fonts: [
+        { name: 'Noto Sans', pick: true, bg: '#F5F8FE', stack: "'Noto Sans',sans-serif", note: 'Full vi + Cyrillic incl. stacked diacritics (ữ ể ộ) and ё at 700/800. Moderate width — best for RU +30%.' },
+        { name: 'Inter', pick: false, bg: '#FFFFFF', stack: "'Inter',sans-serif", note: 'Supports both. Tight diacritic stacking at display sizes; very common look.' },
+        { name: 'Montserrat', pick: false, bg: '#FFFFFF', stack: "'Montserrat',sans-serif", note: 'Supports both. Wide geometric forms — Russian labels overflow first.' }
+      ],
+      scale: [
+        { spec: 'H1 clamp(30, 4.5vw, 56) / 800 / lh 1.15 / max 20ch', size: '56px', w: 800, ls: '-0.025em', sample: 'Thuê dài hạn ở Quy Nhơn' },
+        { spec: 'H2 clamp(24, 3vw, 36) / 800 / lh 1.2', size: '36px', w: 800, ls: '-0.02em', sample: 'Căn hộ nổi bật · Ưu tiên' },
+        { spec: 'H3 22 / 700', size: '22px', w: 700, ls: '0', sample: 'Условия аренды' },
+        { spec: 'Price 19/800 red', size: '19px', w: 800, ls: '-0.01em', sample: '13.500.000 ₫/tháng' },
+        { spec: 'Body 16/400 · lh 1.6', size: '16px', w: 400, ls: '0', sample: 'Chi phí minh bạch trước khi đi xem.' },
+        { spec: 'Caption 12/600', size: '12px', w: 600, ls: '0', sample: 'ОБНОВЛЕНО 21.09.2026' }
+      ],
+      bps: [
+        { w: '360', name: 'Small phone', note: 'Minimum supported. Pad 16. Tagline hidden < 400.', bg: '#FFFFFF' },
+        { w: '768', name: 'Tablet', note: 'Pad 24. 2-col cards. Header still compact (60px) + drawer.', bg: '#FFFFFF' },
+        { w: '1024', name: 'Desktop', note: 'Pad 32. Full header (72px), filter sidebar, sticky contact column.', bg: '#F5F8FE' },
+        { w: '1280', name: 'Wide', note: 'Container caps at 1200. Nothing grows further.', bg: '#FFFFFF' }
+      ],
+      rules: [['', '< 768', '768–1023', '≥ 1024'], ['Side padding', '16', '24', '32'], ['Header', '60 · logo · VI ▾ · ☰', '60 · logo+tagline · VI ▾ · ☰', '72 · logo · nav · VI ▾ · Ký gửi'], ['Hero', 'text → search → image', 'text → search → image', 'text | image, search below'], ['SearchBar', '3 fields stacked + full button', '2×2 fields + full button', 'one row'], ['Listing grid', '1 col', '2 col', '3 col'], ['Filters', 'bottom sheet', 'bottom sheet', 'sidebar 264'], ['Gallery', 'swipe carousel 1/12', '1 large + 4', '1 large + 4'], ['ContactBox', 'sticky bottom bar', 'sticky bottom bar', 'sticky right column 380']].map(([k, sm, md, lg], i) => ({ k, sm, md, lg, bg: i === 0 ? '#F1F3F6' : '#FFFFFF' })),
+      contactRows: [{ loc: 'VI', a: 'Zalo', b: 'Gọi điện' }, { loc: 'EN', a: 'WhatsApp', b: 'Telegram' }, { loc: 'RU', a: 'Telegram', b: 'WhatsApp' }],
+      viewToggle: [['list', 'Danh sách'], ['map', 'Bản đồ']].map(([k, label]) => ({ label, on: () => this.setState({ view: k }), bg: v === k ? '#FFFFFF' : 'transparent', fg: v === k ? '#0039A6' : '#3A404C', sh: v === k ? '0 1px 3px rgba(16,24,40,.15)' : 'none' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

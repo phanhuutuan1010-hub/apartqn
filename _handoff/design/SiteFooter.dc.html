@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script></helmet>
+<footer ref="{{ rootRef }}" id="contact" style="background:#001A4D;color:#FFFFFF;font-family:'Noto Sans',system-ui,sans-serif">
+  <div style="max-width:1200px;margin:0 auto;padding:48px {{ px }} calc(24px + {{ padB }});display:flex;flex-direction:column;gap:36px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:32px">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span style="font-size:26px;line-height:1;letter-spacing:-0.035em;color:#FFFFFF"><span style="font-weight:800">Apart</span><span style="font-weight:500;color:#B3C8EF">QN</span></span>
+          <span style="font-size:12px;color:#B3C8EF">{{ tagline }}</span>
+        </div>
+        <p style="margin:0;font-size:14px;line-height:1.55;color:#D9E4F7;max-width:36ch">{{ about }}</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B3C8EF;margin-bottom:4px">{{ explore }}</div>
+        <sc-for list="{{ nav }}" as="n" hint-placeholder-count="4"><a href="{{ n.href }}" style="display:flex;align-items:center;min-height:44px;font-size:15px;color:#FFFFFF;text-decoration:none" style-hover="text-decoration:underline">{{ n.label }}</a></sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B3C8EF;margin-bottom:4px">{{ contact }}</div>
+        <a href="tel:+84900000000" style="display:flex;align-items:center;min-height:44px;font-size:15px;color:#FFFFFF;text-decoration:none">+84 900 000 000</a>
+        <a href="mailto:hello@apartqn.vn" style="display:flex;align-items:center;min-height:44px;font-size:15px;color:#FFFFFF;text-decoration:none">hello@apartqn.vn</a>
+        <span style="font-size:14px;color:#D9E4F7">{{ hours }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#B3C8EF">{{ langT }}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ langs }}" as="g" hint-placeholder-count="3"><span style="height:32px;padding:0 12px;display:inline-flex;align-items:center;border-radius:999px;font-size:13px;font-weight:600;border:1px solid #3358A8;background:{{ g.bg }};color:#FFFFFF">{{ g.label }}</span></sc-for>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:20px;border-top:1px solid #1A3A78;font-size:13px;color:#B3C8EF">
+      <span>© 2026 ApartQN</span>
+      <span style="font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em">{{ demo }}</span>
+    </div>
+  </div>
+</footer>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:340},&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { w: null };
+  _measure = () => { const el = this._el; if (!el) return; const w = Math.round(el.getBoundingClientRect().width); if (w && w !== this.state.w) this.setState({ w }); };
+  rootRef = (el) => { if (!el || el === this._el) return; this._ro && this._ro.disconnect(); this._el = el; this._measure(); requestAnimationFrame(this._measure); if (!this._rs) { this._rs = true; window.addEventListener('resize', this._measure); } try { this._ro = new ResizeObserver(this._measure); this._ro.observe(el); } catch (_) {} };
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); this._watch(); }
+  componentDidUpdate() { this._watch(); }
+  componentWillUnmount() { window.removeEventListener('resize', this._measure); clearInterval(this._p); this._ro && this._ro.disconnect(); }
+  _watch() { const el = this._el; if (!el || this._ro) return; this._ro = new ResizeObserver((es) => { const w = Math.round(es[0].contentRect.width); if (w && w !== this.state.w) this.setState({ w }); }); this._ro.observe(el); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.props.locale || 'vi', t = (k) => A.t(k, l);
+    const L = A.layout(this.state.w || A.initW(this.props));
+    return {
+      rootRef: this.rootRef, px: L.px, padB: this.props.padBottom || '0px',
+      tagline: t('tagline'), about: t('fAbout'), explore: t('fExplore'), contact: t('navContact'), hours: t('fHours'), langT: t('fLang'), demo: t('demo'),
+      nav: A.navLinks(l),
+      langs: [['vi', 'Tiếng Việt'], ['en', 'English'], ['ru', 'Русский']].map(([k, v]) => ({ label: v, bg: k === l ? '#0039A6' : 'transparent' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

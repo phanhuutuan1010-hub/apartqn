@@ -1,0 +1,16 @@
+.burger { width: 44px; height: 44px; border: 1px solid var(--gray-200); border-radius: var(--r-md); background: var(--white); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0; }
+.burger span { width: 18px; height: 2px; border-radius: 1px; background: var(--ink-900); }
+@media (min-width: 1024px) { .burger { display: none; } }
+
+.drawer { position: fixed; inset: 0; z-index: 100; background: var(--white); display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+.top { flex: 0 0 auto; height: var(--hdr); padding: 0 var(--px); display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--gray-200); }
+.close { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--gray-100); font-size: 22px; line-height: 1; color: var(--ink-900); }
+.nav { display: flex; flex-direction: column; padding: 8px var(--px) 0; }
+.row { display: flex; align-items: center; min-height: 48px; padding: 4px 0; font-size: 18px; font-weight: 600; color: var(--gray-700); text-decoration: none; border-bottom: 1px solid var(--gray-150); }
+.rowActive { color: var(--blue-500); }
+.bottom { display: flex; flex-direction: column; gap: 12px; padding: 20px var(--px) calc(32px + env(safe-area-inset-bottom)); }
+.consign { height: 52px; width: 100%; }
+.contactLabel { margin-top: 12px; }
+.contacts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.contact { height: 48px; font-size: 15px; padding: 0 8px; }
+.hours { font-size: 14px; color: var(--gray-500); }

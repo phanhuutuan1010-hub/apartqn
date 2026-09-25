@@ -1,0 +1,27 @@
+.hero { background: var(--blue-50); }
+.heroInner { padding-top: clamp(28px, 5vw, 64px); padding-bottom: clamp(28px, 5vw, 64px); display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.text { min-width: 0; display: flex; flex-direction: column; gap: 16px; padding-top: clamp(0px, 2vw, 24px); }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.eyebrow { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: var(--r-pill); background: var(--white); color: var(--blue-500); font-size: 13px; font-weight: 600; }
+.h1 { font-size: clamp(30px, 4.4vw, 52px); letter-spacing: -0.028em; }
+.sub { margin: 0; font-size: clamp(16px, 1.5vw, 18px); line-height: 1.55; color: var(--gray-700); max-width: 48ch; text-wrap: pretty; }
+.steps { display: flex; flex-direction: column; margin-top: clamp(8px, 2vw, 24px); }
+.list { list-style: none; margin: 0; padding: 0; }
+.step { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 14px; padding: 14px 0; border-top: 1px solid #D3DDF0; }
+.num { width: 32px; height: 32px; border-radius: 50%; background: var(--blue-500); color: var(--white); font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.stepText { display: flex; flex-direction: column; gap: 3px; }
+.stepT { font-size: 16px; font-weight: 700; }
+.stepD { font-size: 14px; line-height: 1.55; color: var(--gray-700); text-wrap: pretty; }
+.form { min-width: 0; }
+.area { padding-top: clamp(40px, 6vw, 80px); padding-bottom: clamp(40px, 6vw, 80px); }
+.areaSub { margin: 8px 0 24px; font-size: 16px; line-height: 1.5; color: var(--gray-700); max-width: 60ch; }
+.blds { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.bld { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-height: 44px; padding: 14px 16px; border: 1px solid var(--gray-200); border-radius: var(--r-card); text-decoration: none; color: var(--ink-900); }
+.bld:hover { border-color: var(--blue-500); background: #F5F8FE; }
+.bName { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.bStreet { font-size: 13px; color: var(--gray-500); }
+@media (min-width: 768px) { .blds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) {
+  .heroInner { grid-template-columns: minmax(0, 1fr) minmax(0, 520px); }
+  .blds { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script></helmet>
+<div style="display:flex;flex-direction:column;max-height:{{ maxH }};background:#FFFFFF;border-radius:{{ radius }};border:{{ border }};box-shadow:{{ shadow }};overflow:hidden;font-family:'Noto Sans',system-ui,sans-serif;color:#141821">
+  <sc-if value="{{ sheet }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:0 0 auto;display:flex;justify-content:center;padding-top:8px"><span style="width:40px;height:4px;border-radius:2px;background:#C9CED6"></span></div>
+  </sc-if>
+  <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px 12px 20px;border-bottom:1px solid #EEF0F3">
+    <span style="font-size:18px;font-weight:700">{{ s.filters }}</span>
+    <sc-if value="{{ sheet }}" hint-placeholder-val="{{ true }}"><button onClick="{{ close }}" aria-label="{{ s.close }}" style="width:44px;height:44px;border:0;border-radius:50%;background:#F1F3F6;font-size:20px;line-height:1;color:#141821;cursor:pointer">×</button></sc-if>
+    <sc-if value="{{ side }}"><button onClick="{{ reset }}" style="min-height:44px;padding:0 8px;border:0;background:none;font:inherit;font-size:14px;font-weight:600;color:#141821;text-decoration:underline;cursor:pointer">{{ s.reset }}</button></sc-if>
+  </div>
+  <div style="flex:1 1 auto;overflow-y:auto;display:flex;flex-direction:column;gap:22px;padding:20px">
+    <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span style="font-size:14px;font-weight:700">{{ g.label }}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <sc-for list="{{ g.opts }}" as="o"><button onClick="{{ o.on }}" style="min-height:44px;padding:0 14px;border-radius:999px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;border:1.5px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</button></sc-for>
+        </div>
+      </div>
+    </sc-for>
+    <div style="display:flex;flex-direction:column;border-top:1px solid #EEF0F3">
+      <sc-for list="{{ toggles }}" as="tg" hint-placeholder-count="2">
+        <button onClick="{{ tg.on }}" style="display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:56px;padding:0;border:0;border-bottom:1px solid #EEF0F3;background:none;font:inherit;font-size:15px;font-weight:500;color:#141821;cursor:pointer;text-align:left">
+          <span>{{ tg.label }}</span>
+          <span style="flex:0 0 44px;height:26px;border-radius:13px;background:{{ tg.track }};position:relative;transition:background .15s"><span style="position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,.2);transform:translateX({{ tg.x }});transition:transform .15s"></span></span>
+        </button>
+      </sc-for>
+    </div>
+    <label style="display:flex;flex-direction:column;gap:8px;font-size:14px;font-weight:700">{{ s.moveIn }}
+      <input type="date" value="{{ date }}" onChange="{{ onDate }}" style="height:48px;padding:0 14px;border:1px solid #C9CED6;border-radius:10px;font:inherit;font-size:16px;font-weight:400;color:#141821;background:#FFFFFF;width:100%;box-sizing:border-box" style-focus="border-color:#0039A6;box-shadow:0 0 0 3px #D9E4F7;outline:none"></input>
+    </label>
+  </div>
+  <sc-if value="{{ sheet }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px calc(16px + env(safe-area-inset-bottom));border-top:1px solid #E3E6EB;background:#FFFFFF;box-shadow:0 -4px 16px rgba(16,24,40,.06)">
+      <button onClick="{{ reset }}" style="min-height:48px;padding:0 4px;border:0;background:none;font:inherit;font-size:15px;font-weight:600;color:#141821;text-decoration:underline;cursor:pointer">{{ s.reset }}</button>
+      <button onClick="{{ apply }}" style="flex:1 1 auto;max-width:260px;height:52px;padding:0 20px;border:0;border-radius:10px;background:#D52B1E;color:#FFFFFF;font:inherit;font-size:16px;font-weight:700;cursor:pointer" style-active="background:#9C1C12">{{ showN }}</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:720},&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sheet&quot;,&quot;sidebar&quot;],&quot;default&quot;:&quot;sheet&quot;,&quot;tsType&quot;:&quot;'sheet' | 'sidebar'&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;onApply&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(f) =&gt; void&quot;},&quot;value&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;object&quot;}}">
+class Component extends DCLogic {
+  state = this.fromProps();
+  fromProps() { const v = this.props.value || {}; return { beds: v.beds || '', rent: v.rent || '', furn: v.furn || '', pets: !!v.pets, car: false, date: v.date || '' }; }
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); }
+  componentWillUnmount() { clearInterval(this._p); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.props.locale || 'vi', t = (k) => A.t(k, l), side = this.props.variant === 'sidebar';
+    // sidebar = controlled by props.value (applies instantly); sheet = local draft until Apply
+    const st = side ? Object.assign(this.fromProps(), { car: this.state.car }) : this.state;
+    const upd = (patch) => {
+      if (!side) return this.setState(patch);
+      if ('car' in patch) this.setState({ car: patch.car });
+      if (this.props.onApply) this.props.onApply(Object.assign({}, A.EMPTY, this.props.value || {}, patch));
+    };
+    const chip = (key, v, label) => { const on = st[key] === v; return { label, on: () => upd({ [key]: on ? '' : v }), bd: on ? '#0039A6' : '#C9CED6', bg: on ? '#0039A6' : '#FFFFFF', fg: on ? '#FFFFFF' : '#141821' }; };
+    const tog = (key, label) => ({ label, on: () => upd({ [key]: !st[key] }), track: st[key] ? '#0039A6' : '#C9CED6', x: st[key] ? '18px' : '0px' });
+    const f = Object.assign({}, A.EMPTY, this.props.value || {}, { beds: st.beds, rent: st.rent, furn: st.furn, pets: st.pets, date: st.date });
+    const n = A.L.filter((x) => A.match(x, f)).length;
+    return {
+      sheet: !side, side,
+      maxH: side ? 'none' : (this.props.maxHeight || 'min(85vh, 760px)'), radius: side ? '16px' : '20px', border: side ? '1px solid #E3E6EB' : '0', shadow: side ? 'none' : '0 24px 60px rgba(11,21,48,.28)',
+      s: { filters: t('filters'), close: t('close'), moveIn: t('moveIn'), reset: t('reset') },
+      groups: [
+        { label: t('sBeds'), opts: [chip('beds', '0', t('studio')), chip('beds', '1', '1'), chip('beds', '2', '2'), chip('beds', '3', '3+')] },
+        { label: t('sRent'), opts: [0, 1, 2, 3].map((i) => chip('rent', 'r' + i, t('rent' + i))) },
+        { label: t('sFurn'), opts: ['full', 'basic', 'empty'].map((k) => chip('furn', k, t('furn_' + k))) }
+      ],
+      toggles: [tog('pets', t('pets')), tog('car', t('carPark'))],
+      date: st.date, onDate: (e) => upd({ date: e.target.value }),
+      showN: A.F.showN(n, l),
+      reset: () => upd({ beds: '', rent: '', furn: '', pets: false, car: false, date: '' }),
+      close: () => this.props.onClose && this.props.onClose(),
+      apply: () => { if (this.props.onApply) this.props.onApply(f); else if (this.props.onClose) this.props.onClose(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

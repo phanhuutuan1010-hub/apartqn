@@ -1,0 +1,20 @@
+.card { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; color: var(--ink-900); }
+.dim { opacity: .72; }
+.photo { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-card); overflow: hidden; background: var(--placeholder); box-shadow: var(--sh-card); }
+.badges { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 6px; z-index: 2; pointer-events: none; }
+.body { display: flex; flex-direction: column; gap: 4px; padding: 0 2px; line-height: 1.45; min-width: 0; }
+.priceRow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.price { display: flex; align-items: baseline; gap: 2px; white-space: nowrap; min-width: 0; }
+.rent { font-size: 19px; font-weight: 800; color: var(--red-500); letter-spacing: -0.01em; }
+.per { font-size: 13px; color: var(--gray-500); }
+.code { flex: 0 0 auto; font-family: var(--mono); font-size: 11px; color: var(--gray-500); }
+.est { font-size: 13px; color: var(--gray-700); }
+.est b { font-weight: 600; color: var(--ink-900); white-space: nowrap; }
+/* Stretched link: the whole card is clickable; slider arrows sit above it (z-index 3) */
+.link { font-size: 14px; font-weight: 600; color: var(--ink-900); text-decoration: none; margin-top: 2px; }
+.link::after { content: ''; position: absolute; inset: 0; z-index: 1; border-radius: var(--r-card); }
+.link:focus-visible { outline: none; }
+.link:focus-visible::after { outline: 3px solid var(--blue-200); outline-offset: 4px; }
+.card:hover .link { color: var(--blue-500); }
+.bname { font-size: 14px; color: var(--gray-700); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.move { font-size: 13px; color: var(--gray-500); }

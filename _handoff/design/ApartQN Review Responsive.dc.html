@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><style>body{margin:0;background:#E6E9EE}a{color:#0039A6}a:hover{color:#002F8A}</style></helmet>
+<section style="display:flex;flex-direction:column;gap:72px;padding:64px;font-family:'Noto Sans',system-ui,sans-serif;color:#141821">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">Responsive pass · for review</span>
+    <span style="font-size:40px;font-weight:800;letter-spacing:-0.03em">Header, Home, Listing detail at 390 / 768 / 1280</span>
+    <span style="font-size:16px;color:#3A404C">Each frame lays itself out from its own measured width. VI and RU. See Design System §00 for the rules.</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <span style="font-size:24px;font-weight:800">Header</span>
+    <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+      <div id="4a" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">4a</span><span style="font-size:16px;font-weight:700">VI · 390</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="SiteHeader" locale="vi" hint-size="390px,60px"></dc-import></div>
+      </div>
+      <div id="4b" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">4b</span><span style="font-size:16px;font-weight:700">RU · 390 · menu open</span></div>
+        <div style="width:390px;height:720px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="SiteHeader" locale="ru" menu-open="{{ true }}" hint-size="390px,60px"></dc-import></div>
+      </div>
+      <div id="4c" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">4c</span><span style="font-size:16px;font-weight:700">RU · 768</span></div>
+        <div style="width:768px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="SiteHeader" locale="ru" hint-size="768px,60px"></dc-import></div>
+      </div>
+      <div id="4d" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">4d</span><span style="font-size:16px;font-weight:700">RU · 1280 · language open</span></div>
+        <div style="width:1280px;height:260px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="SiteHeader" locale="ru" active="results" lang-open="{{ true }}" hint-size="1280px,72px"></dc-import></div>
+      </div>
+      <div id="4e" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">4e</span><span style="font-size:16px;font-weight:700">VI · 1024</span></div>
+        <div style="width:1024px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="SiteHeader" locale="vi" active="results" hint-size="1024px,72px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <span style="font-size:24px;font-weight:800">Home</span>
+    <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+      <div id="5a" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">5a</span><span style="font-size:16px;font-weight:700">VI · 390</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Home" locale="vi" device="mobile" hint-size="390px,3600px"></dc-import></div>
+      </div>
+      <div id="5b" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">5b</span><span style="font-size:16px;font-weight:700">VI · 768</span></div>
+        <div style="width:768px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Home" locale="vi" device="tablet" hint-size="768px,3400px"></dc-import></div>
+      </div>
+      <div id="5c" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">5c</span><span style="font-size:16px;font-weight:700">VI · 1280</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Home" locale="vi" device="desktop" hint-size="1280px,2800px"></dc-import></div>
+      </div>
+      <div id="5d" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">5d</span><span style="font-size:16px;font-weight:700">RU · 390</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Home" locale="ru" device="mobile" hint-size="390px,3600px"></dc-import></div>
+      </div>
+      <div id="5e" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">5e</span><span style="font-size:16px;font-weight:700">RU · 768</span></div>
+        <div style="width:768px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Home" locale="ru" device="tablet" hint-size="768px,3400px"></dc-import></div>
+      </div>
+      <div id="5f" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">5f</span><span style="font-size:16px;font-weight:700">RU · 1280</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Home" locale="ru" device="desktop" hint-size="1280px,2800px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <span style="font-size:24px;font-weight:800">Listing detail · QN-001</span>
+    <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+      <div id="6a" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">6a</span><span style="font-size:16px;font-weight:700">VI · 390</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Listing Detail" locale="vi" device="mobile" hint-size="390px,5200px"></dc-import></div>
+      </div>
+      <div id="6b" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">6b</span><span style="font-size:16px;font-weight:700">VI · 768</span></div>
+        <div style="width:768px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Listing Detail" locale="vi" device="tablet" hint-size="768px,4200px"></dc-import></div>
+      </div>
+      <div id="6c" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">6c</span><span style="font-size:16px;font-weight:700">VI · 1280</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Listing Detail" locale="vi" device="desktop" hint-size="1280px,3400px"></dc-import></div>
+      </div>
+      <div id="6d" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">6d</span><span style="font-size:16px;font-weight:700">RU · 390</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Listing Detail" locale="ru" device="mobile" hint-size="390px,5200px"></dc-import></div>
+      </div>
+      <div id="6e" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">6e</span><span style="font-size:16px;font-weight:700">RU · 768</span></div>
+        <div style="width:768px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Listing Detail" locale="ru" device="tablet" hint-size="768px,4200px"></dc-import></div>
+      </div>
+      <div id="6f" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">6f</span><span style="font-size:16px;font-weight:700">RU · 1280</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Listing Detail" locale="ru" device="desktop" hint-size="1280px,3400px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

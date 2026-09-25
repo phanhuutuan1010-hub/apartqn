@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script></helmet>
+<sc-if value="{{ lg }}" hint-placeholder-val="{{ true }}">
+  <form onSubmit="{{ submit }}" style="display:flex;flex-wrap:nowrap;align-items:stretch;gap:4px;padding:8px;margin:0;background:#FFFFFF;border-radius:16px;box-shadow:0 12px 40px rgba(16,24,40,.14),0 1px 3px rgba(16,24,40,.08);font-family:'Noto Sans',system-ui,sans-serif">
+    <sc-for list="{{ fields }}" as="f" hint-placeholder-count="4">
+      <label style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px;padding:10px 16px;border-radius:12px;cursor:pointer;position:relative" style-hover="background:#F7F8FA">
+        <span style="font-size:12px;font-weight:700;color:#3A404C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ f.label }}</span>
+        <select value="{{ f.value }}" onChange="{{ f.on }}" style="appearance:none;-webkit-appearance:none;border:0;background:transparent;padding:0 18px 0 0;font:inherit;font-size:16px;font-weight:500;color:#141821;width:100%;min-height:24px;cursor:pointer;outline:none;text-overflow:ellipsis">
+          <sc-for list="{{ f.opts }}" as="o"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+        </select>
+        <span style="position:absolute;right:16px;bottom:13px;font-size:12px;color:#687080;pointer-events:none">▾</span>
+      </label>
+    </sc-for>
+    <button type="submit" style="flex:0 0 auto;min-height:60px;padding:0 28px;border:0;border-radius:12px;background:#D52B1E;color:#FFFFFF;font:inherit;font-size:16px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#B82217" style-active="background:#9C1C12">{{ searchLabel }}</button>
+  </form>
+</sc-if>
+<sc-if value="{{ ltLg }}">
+  <form onSubmit="{{ submit }}" style="display:flex;flex-direction:column;gap:10px;padding:14px;margin:0;background:#FFFFFF;border-radius:16px;box-shadow:0 12px 40px rgba(16,24,40,.14),0 1px 3px rgba(16,24,40,.08);font-family:'Noto Sans',system-ui,sans-serif">
+    <div style="display:grid;grid-template-columns:{{ gridCols }};gap:10px">
+      <sc-for list="{{ mobFields }}" as="f" hint-placeholder-count="3">
+        <label style="display:flex;flex-direction:column;gap:2px;padding:8px 14px;border:1px solid #C9CED6;border-radius:10px;position:relative;min-width:0">
+          <span style="font-size:12px;font-weight:700;color:#3A404C">{{ f.label }}</span>
+          <select value="{{ f.value }}" onChange="{{ f.on }}" style="appearance:none;-webkit-appearance:none;border:0;background:transparent;padding:0 18px 0 0;font:inherit;font-size:16px;font-weight:500;color:#141821;width:100%;outline:none;min-height:28px;text-overflow:ellipsis">
+            <sc-for list="{{ f.opts }}" as="o"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+          </select>
+          <span style="position:absolute;right:14px;bottom:14px;font-size:12px;color:#687080;pointer-events:none">▾</span>
+        </label>
+      </sc-for>
+    </div>
+    <button type="submit" style="height:52px;border:0;border-radius:10px;background:#D52B1E;color:#FFFFFF;font:inherit;font-size:16px;font-weight:700;cursor:pointer" style-active="background:#9C1C12">{{ searchLabel }}</button>
+    <button type="button" onClick="{{ onFilters }}" style="height:44px;border:0;background:none;font:inherit;font-size:15px;font-weight:700;color:#0039A6;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><span style="display:flex;flex-direction:column;gap:3px"><span style="width:14px;height:2px;background:currentColor"></span><span style="width:10px;height:2px;background:currentColor;margin-left:2px"></span><span style="width:6px;height:2px;background:currentColor;margin-left:4px"></span></span>{{ moreLabel }}</button>
+  </form>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1136,&quot;height&quot;:100},&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;bp&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;sm&quot;,&quot;md&quot;,&quot;lg&quot;],&quot;default&quot;:&quot;lg&quot;,&quot;tsType&quot;:&quot;'sm' | 'md' | 'lg'&quot;},&quot;onFilters&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(e) =&gt; void&quot;}}">
+class Component extends DCLogic {
+  state = { building: '', rent: '', beds: '', furn: '' };
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); }
+  componentWillUnmount() { clearInterval(this._p); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.props.locale || 'vi', t = (k) => A.t(k, l), st = this.state;
+    const bp = this.props.bp || (this.props.mobile ? 'sm' : 'lg');
+    const f = (key, label, opts) => ({ label, value: st[key], on: (e) => this.setState({ [key]: e.target.value }), opts });
+    const building = f('building', t('sBuilding'), [{ v: '', label: t('sAnyBuilding') }].concat(A.B.map((b) => ({ v: b.id, label: b.name }))));
+    const rent = f('rent', t('sRent'), [{ v: '', label: t('sAny') }].concat([0, 1, 2, 3].map((i) => ({ v: 'r' + i, label: t('rent' + i) }))));
+    const beds = f('beds', t('sBeds'), [{ v: '', label: t('sAny') }, { v: '0', label: t('studio') }, { v: '1', label: '1' }, { v: '2', label: '2' }, { v: '3', label: '3+' }]);
+    const furn = f('furn', t('sFurn'), [{ v: '', label: t('sAny') }].concat(['full', 'basic', 'empty'].map((k) => ({ v: k, label: t('furn_' + k) }))));
+    return {
+      lg: bp === 'lg', ltLg: bp !== 'lg', fields: [building, rent, beds, furn],
+      mobFields: bp === 'md' ? [building, rent, beds, furn] : [building, rent, beds],
+      gridCols: bp === 'md' ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)',
+      searchLabel: t('search'), moreLabel: t('moreFilters'),
+      onFilters: (e) => this.props.onFilters && this.props.onFilters(e),
+      submit: (e) => { e.preventDefault(); location.href = A.link('results', { b: st.building, rent: st.rent, beds: st.beds, furn: st.furn }, l); }
+    };
+  }
+}
+</script>
+</body>
+</html>

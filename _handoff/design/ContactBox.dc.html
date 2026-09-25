@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script></helmet>
+<sc-if value="{{ isBox }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;flex-direction:column;gap:14px;font-family:'Noto Sans',system-ui,sans-serif;color:#141821">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:{{ c.stBg }};color:{{ c.stFg }}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>{{ c.status }}</span>
+      <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#687080">{{ c.code }}</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap"><span style="font-size:30px;font-weight:800;letter-spacing:-0.02em;color:#D52B1E">{{ c.rent }}</span><span style="font-size:15px;color:#687080">{{ c.per }}</span></div>
+      <div style="font-size:14px;color:#3A404C">{{ c.estLabel }}: <b style="font-weight:700;color:#141821">{{ c.est }}</b></div>
+      <div style="font-size:14px;color:#3A404C">{{ c.moveIn }}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <a href="{{ p.href }}" style="height:48px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#0039A6;color:#FFFFFF;font-size:15px;font-weight:700;text-decoration:none" style-hover="background:#002F8A" style-active="background:#00256E">{{ p.label }}</a>
+      <a href="{{ s.href }}" style="height:48px;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1.5px solid #0039A6;background:#FFFFFF;color:#0039A6;font-size:15px;font-weight:700;text-decoration:none;box-sizing:border-box" style-hover="background:#EEF3FC" style-active="background:#D9E4F7">{{ s.label }}</a>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:8px;background:#F7F8FA">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#687080">{{ prefilledLabel }}</span>
+      <span style="font-size:13px;line-height:1.45;color:#3A404C">“{{ msg }}”</span>
+    </div>
+  </div>
+</sc-if>
+<sc-if value="{{ isBar }}">
+  <div style="display:grid;grid-template-columns:64px 64px minmax(0,1fr);align-items:center;gap:8px;padding:10px {{ px }} calc(10px + env(safe-area-inset-bottom));background:#FFFFFF;border-top:1px solid #E3E6EB;box-shadow:0 -6px 20px rgba(16,24,40,.08);font-family:'Noto Sans',system-ui,sans-serif;color:#141821">
+    <a href="{{ callHref }}" style="height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:12px;color:#0039A6;text-decoration:none" style-active="background:#EEF3FC"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h3.5l1.8 4.3-2.3 1.4a11 11 0 0 0 6.3 6.3l1.4-2.3L20 15.5V19a1.5 1.5 0 0 1-1.6 1.5A16.5 16.5 0 0 1 3.5 5.6 1.5 1.5 0 0 1 5 4z"></path></svg><span style="font-size:13px;font-weight:600;line-height:1;color:#3A404C;white-space:nowrap">{{ callLabel }}</span></a>
+    <a href="{{ chatHref }}" target="_blank" style="height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:12px;color:#0039A6;text-decoration:none" style-active="background:#EEF3FC"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4A8 8 0 1 1 20 12z"></path><path d="M8.5 11h.01M12 11h.01M15.5 11h.01" stroke-width="2.6"></path></svg><span style="font-size:13px;font-weight:600;line-height:1;color:#3A404C;white-space:nowrap">{{ chatLabel }}</span></a>
+    <a href="{{ ctaHref }}" aria-label="{{ ctaLabel }}" style="min-width:0;height:60px;padding:0 12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:14px;background:#D52B1E;color:#FFFFFF;text-decoration:none;box-shadow:0 6px 18px rgba(213,43,30,.28)" style-active="background:#9C1C12">
+      <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.2;opacity:.92">{{ forRent }}</span>
+      <span style="display:flex;align-items:baseline;gap:4px;white-space:nowrap;line-height:1.2"><span style="font-size:21px;font-weight:800;letter-spacing:-0.01em">{{ priceShort }}</span><span style="font-size:14px;font-weight:600">{{ c.per }}</span></span>
+    </a>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:380,&quot;height&quot;:320},&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;code&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;QN-001&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;variant&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;box&quot;,&quot;bar&quot;],&quot;default&quot;:&quot;box&quot;,&quot;tsType&quot;:&quot;'box' | 'bar'&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); }
+  componentWillUnmount() { clearInterval(this._p); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.props.locale || 'vi', code = this.props.code || 'QN-001', x = A.listing(code), cs = A.contacts(code, l);
+    const bar = this.props.variant === 'bar';
+    const all = A.contacts(code, 'vi').concat(A.contacts(code, 'en'));
+    const call = all.find((k) => k.k === 'call'), chat = cs.find((k) => k.k !== 'call');
+    return { callHref: call.href, callLabel: A.t('callShort', l), chatHref: chat.href, chatLabel: chat.label, forRent: A.t('forRent', l), priceShort: A.mil(x.rent, l).replace(/ ?₫$/, ''),
+      px: this.props.px || '16px', ctaHref: this.props.ctaHref || '#viewing', ctaLabel: A.t('vrShort', l), isBox: !bar, isBar: bar, c: A.card(x, l), p: cs[0], s: cs[1], prefilledLabel: A.t('prefilled', l), msg: A.F.msg(code, l) };
+  }
+}
+</script>
+</body>
+</html>

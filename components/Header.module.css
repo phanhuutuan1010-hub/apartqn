@@ -1,0 +1,20 @@
+.header { position: sticky; top: 0; z-index: 40; background: var(--white); border-bottom: 1px solid var(--gray-200); }
+.bar { height: var(--hdr); display: flex; align-items: center; gap: 16px; }
+.brand { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 3px; min-height: 44px; text-decoration: none; min-width: 0; }
+.logoWrap { font-size: 22px; display: block; }
+.tagline { font-size: 12px; line-height: 1.3; color: var(--gray-500); white-space: nowrap; }
+@media (max-width: 399.98px) { .tagline { display: none; } }
+
+.nav { display: none; flex-wrap: nowrap; gap: 4px; margin-left: 24px; min-width: 0; }
+.navLink { display: flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: var(--r-sm); font-size: 15px; font-weight: 500; color: var(--gray-700); text-decoration: none; white-space: nowrap; }
+.navLink:hover { background: var(--gray-100); color: var(--blue-500); }
+.navActive { color: var(--blue-500); font-weight: 700; }
+
+.right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.consign { display: none !important; height: 44px; padding: 0 16px; font-size: 15px; }
+
+@media (min-width: 1024px) {
+  .logoWrap { font-size: 24px; }
+  .nav { display: flex; }
+  .consign { display: inline-flex !important; }
+}

@@ -1,0 +1,96 @@
+/* ApartQN design tokens — mirrored 1:1 from _handoff/README.md */
+:root {
+  /* blue — brand, links, secondary buttons, selection */
+  --blue-50: #EEF3FC; --blue-100: #D9E4F7; --blue-200: #B3C8EF; --blue-500: #0039A6; --blue-600: #002F8A; --blue-700: #00256E; --blue-900: #001A4D;
+  /* red — PRIMARY CTA + PRICE ONLY (~5% of surface) */
+  --red-50: #FCECEA; --red-500: #D52B1E; --red-600: #B82217; --red-700: #9C1C12;
+  /* neutrals */
+  --ink-900: #141821; --ink-heading: #0B1530; --gray-700: #3A404C; --gray-500: #687080; --gray-300: #C9CED6; --gray-200: #E3E6EB; --gray-150: #EEF0F3; --gray-100: #F1F3F6; --gray-50: #F7F8FA; --white: #FFFFFF;
+  /* status badges (fg/bg) */
+  --ok-fg: #1E7F4F; --ok-bg: #E6F4EC; --warn-fg: #8A5200; --warn-bg: #FDF0D8; --muted-fg: #4A5160; --muted-bg: #EDEFF2; --error: #B42318;
+  /* radius */
+  --r-sm: 8px; --r-md: 10px; --r-card: 12px; --r-panel: 16px; --r-sheet: 20px; --r-pill: 999px;
+  /* shadow */
+  --sh-card: 0 1px 2px rgba(16,24,40,.06), 0 4px 16px rgba(16,24,40,.06);
+  --sh-panel: 0 8px 32px rgba(16,24,40,.08);
+  --sh-search: 0 12px 40px rgba(16,24,40,.14), 0 1px 3px rgba(16,24,40,.08);
+  --sh-sheet: 0 24px 60px rgba(11,21,48,.28);
+  /* spacing scale */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-6: 24px; --s-8: 32px; --s-12: 48px;
+  --font: var(--font-noto), 'Noto Sans', system-ui, sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, monospace;
+  --placeholder: repeating-linear-gradient(135deg, #E8ECF2 0 12px, #F1F4F8 12px 24px);
+  --placeholder-bld: repeating-linear-gradient(135deg, #E3E9F3 0 12px, #EEF2F8 12px 24px);
+  --placeholder-map: repeating-linear-gradient(135deg, #E1EAF4 0 12px, #ECF1F8 12px 24px);
+
+  /* layout (responsive) */
+  --px: 16px;
+  --hdr: 60px;
+  color-scheme: light;
+}
+@media (min-width: 768px) { :root { --px: 24px; } }
+@media (min-width: 1024px) { :root { --px: 32px; --hdr: 72px; } }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--hdr) + 12px); }
+body {
+  margin: 0;
+  background: var(--white);
+  color: var(--ink-900);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--blue-200); outline-offset: 2px; }
+
+/* Headings: line-height ≥ 1.15 + padding-top .08em so stacked Vietnamese diacritics never clip */
+h1, h2, h3 { margin: 0; padding-top: .08em; line-height: 1.2; overflow-wrap: break-word; }
+
+.container { max-width: calc(1200px + 2 * var(--px)); margin: 0 auto; padding-left: var(--px); padding-right: var(--px); width: 100%; }
+
+.h1 { font-size: clamp(30px, 4.5vw, 56px); line-height: 1.15; font-weight: 800; letter-spacing: -0.025em; max-width: 20ch; text-wrap: balance; color: var(--ink-heading); }
+.h2 { font-size: clamp(24px, 3vw, 36px); line-height: 1.2; font-weight: 800; letter-spacing: -0.02em; }
+.h2s { font-size: 22px; line-height: 1.25; font-weight: 700; }
+
+.visually-hidden { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px; border-radius: var(--r-md); font-size: 16px; font-weight: 700; text-decoration: none; border: 0; white-space: nowrap; }
+.btn-primary { background: var(--red-500); color: var(--white); height: 52px; }
+.btn-primary:hover { background: var(--red-600); }
+.btn-primary:active { background: var(--red-700); }
+.btn-primary:disabled { opacity: .7; cursor: default; }
+.btn-secondary { background: var(--white); color: var(--blue-500); border: 1.5px solid var(--blue-500); }
+.btn-secondary:hover { background: var(--blue-50); }
+.btn-blue { background: var(--blue-500); color: var(--white); border: 1.5px solid var(--blue-500); }
+.btn-blue:hover { background: var(--blue-600); }
+.btn-blue:active { background: var(--blue-700); }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--r-pill); font-size: 12px; font-weight: 600; line-height: 1; white-space: nowrap; }
+.badge-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge-demo { border: 1px dashed var(--warn-fg); color: var(--warn-fg); font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: .06em; padding: 0 10px; }
+
+/* Form fields */
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--gray-700); min-width: 0; }
+.input { height: 48px; padding: 0 14px; border: 1px solid var(--gray-300); border-radius: var(--r-md); font-size: 16px; font-weight: 400; color: var(--ink-900); background: var(--white); width: 100%; min-width: 0; }
+.input:focus { border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-100); outline: none; }
+select.input { appearance: none; -webkit-appearance: none; padding-right: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23687080' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; }
+input[type='date'].input { appearance: none; -webkit-appearance: none; display: flex; align-items: center; }
+
+.ph-label { font-family: var(--mono); font-size: 11px; line-height: 1.4; color: #5A6272; background: rgba(255,255,255,.88); padding: 4px 8px; border-radius: 6px; text-align: center; }
+
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gray-500); }
+
+.link-more { display: inline-flex; align-items: center; min-height: 44px; font-size: 15px; font-weight: 600; color: var(--blue-500); text-decoration: none; white-space: nowrap; }
+.link-more:hover { text-decoration: underline; }
+
+.nowrap { white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }

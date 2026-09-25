@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script></helmet>
+<div style="background:#F7F8FA;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:0;font-family:'Noto Sans',system-ui,sans-serif;color:#141821">
+  <sc-for list="{{ rows }}" as="r" hint-placeholder-count="4">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:10px 0;border-bottom:1px dashed #D5D9E0">
+      <span style="font-size:15px;color:#3A404C">{{ r.label }}</span>
+      <span style="font-size:15px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums">{{ r.value }}</span>
+    </div>
+  </sc-for>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:14px 0 6px">
+    <span style="font-size:16px;font-weight:700">{{ totalLabel }}</span>
+    <span style="font-size:22px;font-weight:800;letter-spacing:-0.01em;white-space:nowrap;font-variant-numeric:tabular-nums">{{ total }}<span style="font-size:14px;font-weight:500;color:#687080">{{ per }}</span></span>
+  </div>
+  <div style="display:flex;justify-content:space-between;gap:16px;font-size:13px;color:#687080;padding-bottom:12px">
+    <span>{{ carLabel }}</span><span style="white-space:nowrap">+ {{ car }}</span>
+  </div>
+  <div style="display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:#FFFFFF;border:1px solid #E3E6EB;font-size:13px;line-height:1.45;color:#3A404C">
+    <span style="flex:0 0 18px;height:18px;border-radius:50%;background:#EEF3FC;color:#0039A6;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center">i</span>
+    <span>{{ note }}</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:420,&quot;height&quot;:340},&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;code&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;QN-001&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); }
+  componentWillUnmount() { clearInterval(this._p); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.props.locale || 'vi', x = A.listing(this.props.code || 'QN-001'), t = (k) => A.t(k, l), m = (n) => A.money(n, l);
+    return {
+      rows: [
+        { label: t('cRent'), value: m(x.rent) },
+        { label: t('cMgmt'), value: m(x.mgmt) },
+        { label: t('cPark'), value: m(x.moto) },
+        { label: t('cNet'), value: x.net ? m(x.net) : t('included') }
+      ],
+      totalLabel: t('total'), total: m(A.total(x)), per: t('perMonth'),
+      carLabel: t('cCar'), car: m(x.car) + t('perMonth'), note: t('costNote')
+    };
+  }
+}
+</script>
+</body>
+</html>

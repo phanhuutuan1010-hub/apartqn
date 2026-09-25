@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script></helmet>
+<a href="{{ href }}" style="display:flex;flex-direction:column;gap:12px;text-decoration:none;color:#141821;font-family:'Noto Sans',system-ui,sans-serif;min-width:0;opacity:{{ dim }}">
+  <div style="position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:repeating-linear-gradient(135deg,#E8ECF2 0 12px,#F1F4F8 12px 24px);box-shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06)">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:40px 48px">
+      <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.4;color:#5A6272;background:rgba(255,255,255,.88);padding:4px 8px;border-radius:6px;text-align:center">{{ photoLabel }}</span>
+    </div>
+    <div style="position:absolute;top:10px;left:10px;right:10px;display:flex;flex-wrap:wrap;gap:6px">
+      <span style="display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:{{ c.stBg }};color:{{ c.stFg }}"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>{{ c.status }}</span>
+      <sc-if value="{{ c.verified }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;background:#FFFFFF;color:#0039A6">✓ {{ c.verifiedLabel }}</span></sc-if>
+    </div>
+    <button onClick="{{ prev }}" aria-label="prev" style="position:absolute;left:2px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center"><span style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.94);box-shadow:0 1px 4px rgba(16,24,40,.18);font-size:18px;line-height:32px;color:#141821">‹</span></button>
+    <button onClick="{{ next }}" aria-label="next" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);width:44px;height:44px;border:0;background:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center"><span style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.94);box-shadow:0 1px 4px rgba(16,24,40,.18);font-size:18px;line-height:32px;color:#141821">›</span></button>
+    <div style="position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;gap:5px">
+      <sc-for list="{{ dots }}" as="d" hint-placeholder-count="5"><span style="width:{{ d.w }};height:6px;border-radius:3px;background:#FFFFFF;opacity:{{ d.o }};box-shadow:0 0 2px rgba(0,0,0,.25)"></span></sc-for>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:4px;padding:0 2px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;align-items:baseline;gap:2px;white-space:nowrap"><span style="font-size:19px;font-weight:800;color:#D52B1E;letter-spacing:-0.01em">{{ c.rent }}</span><span style="font-size:13px;color:#687080">{{ c.per }}</span></div>
+      <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#687080">{{ c.code }}</span>
+    </div>
+    <div style="font-size:13px;color:#3A404C">{{ c.estLabel }}: <b style="font-weight:600;color:#141821">{{ c.est }}</b></div>
+    <div style="font-size:14px;font-weight:600;color:#141821;margin-top:2px">{{ c.meta }}</div>
+    <div style="font-size:14px;color:#3A404C;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.bname }}</div>
+    <div style="font-size:13px;color:#687080">{{ c.moveIn }}</div>
+  </div>
+</a>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:340,&quot;height&quot;:420},&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;code&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;QN-001&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;href&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;#&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { i: 0 };
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); }
+  componentWillUnmount() { clearInterval(this._p); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.props.locale || 'vi', x = A.listing(this.props.code || 'QN-001'), c = A.card(x, l), n = x.photos, i = this.state.i;
+    const go = (d) => (e) => { e.preventDefault(); e.stopPropagation(); this.setState({ i: (i + d + n) % n }); };
+    const act = Math.min(i, 4);
+    return {
+      c, href: this.props.href && this.props.href !== '#' ? this.props.href : A.link('listing', { code: x.code }, l), dim: x.status === 'rented' ? 0.72 : 1,
+      photoLabel: 'photo ' + (i + 1) + '/' + n + ' · ' + x.code,
+      dots: [0, 1, 2, 3, 4].map((k) => ({ w: k === act ? '16px' : '6px', o: k === act ? 1 : 0.6 })),
+      prev: go(-1), next: go(1)
+    };
+  }
+}
+</script>
+</body>
+</html>

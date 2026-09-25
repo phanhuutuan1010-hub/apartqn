@@ -1,0 +1,12 @@
+.wrap { position: relative; }
+.btn { height: 44px; min-width: 64px; padding: 0 12px; border: 1px solid var(--gray-300); border-radius: var(--r-md); background: var(--white); font-size: 14px; font-weight: 700; letter-spacing: .04em; color: var(--ink-900); display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.btn:hover { border-color: var(--blue-500); }
+.caret { font-size: 10px; color: var(--gray-500); }
+.list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 184px; padding: 6px; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--r-card); box-shadow: 0 12px 32px rgba(16,24,40,.16); display: flex; flex-direction: column; gap: 2px; }
+.opt { min-height: 44px; padding: 0 12px; border: 0; border-radius: var(--r-sm); background: transparent; font-size: 15px; color: var(--ink-900); display: flex; align-items: center; gap: 10px; text-align: left; white-space: nowrap; }
+.opt:hover { background: var(--gray-100); }
+.cur { background: var(--blue-50); }
+.code { width: 26px; font-size: 13px; font-weight: 700; letter-spacing: .04em; color: var(--gray-500); }
+.cur .code { color: var(--blue-500); }
+.name { flex: 1; }
+.mark { color: var(--blue-500); font-weight: 700; }

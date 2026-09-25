@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script></helmet>
+<div style="display:flex;flex-direction:column;gap:14px;font-family:'Noto Sans',system-ui,sans-serif;color:#141821">
+  <div style="font-size:18px;font-weight:700">{{ s.vrTitle }}</div>
+  <sc-if value="{{ sent }}">
+    <div style="display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:12px;background:#E6F4EC;color:#1E7F4F">
+      <span style="font-size:16px;font-weight:700">✓ {{ s.vrDone }} · {{ code }}</span>
+      <span style="font-size:14px;color:#145A37">{{ s.vrDoneSub }}</span>
+      <button onClick="{{ again }}" style="align-self:flex-start;min-height:44px;padding:0;border:0;background:none;font:inherit;font-size:14px;font-weight:600;color:#0039A6;cursor:pointer;text-decoration:underline">{{ s.vrAgain }}</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+    <form onSubmit="{{ submit }}" style="display:flex;flex-direction:column;gap:12px;margin:0">
+      <div style="display:grid;grid-template-columns:{{ nameCols }};gap:12px">
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#3A404C">{{ s.vrName }}
+        <input value="{{ name }}" onChange="{{ onName }}" placeholder="{{ s.vrNamePh }}" required="{{ true }}" style="height:48px;padding:0 14px;border:1px solid #C9CED6;border-radius:10px;font:inherit;font-size:16px;font-weight:400;color:#141821;background:#FFFFFF;width:100%;box-sizing:border-box" style-focus="border-color:#0039A6;box-shadow:0 0 0 3px #D9E4F7;outline:none"></input>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#3A404C">{{ s.vrPhone }}
+        <input type="tel" value="{{ phone }}" onChange="{{ onPhone }}" placeholder="+84 9xx xxx xxx" required="{{ true }}" style="height:48px;padding:0 14px;border:1px solid #C9CED6;border-radius:10px;font:inherit;font-size:16px;font-weight:400;color:#141821;background:#FFFFFF;width:100%;box-sizing:border-box" style-focus="border-color:#0039A6;box-shadow:0 0 0 3px #D9E4F7;outline:none"></input>
+      </label>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#3A404C">{{ s.vrDate }}
+        <input type="date" value="{{ date }}" onChange="{{ onDate }}" style="height:48px;padding:0 14px;border:1px solid #C9CED6;border-radius:10px;font:inherit;font-size:16px;font-weight:400;color:#141821;background:#FFFFFF;width:100%;box-sizing:border-box" style-focus="border-color:#0039A6;box-shadow:0 0 0 3px #D9E4F7;outline:none"></input>
+      </label>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <span style="font-size:13px;font-weight:600;color:#3A404C">{{ s.vrDur }}</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <sc-for list="{{ durs }}" as="d" hint-placeholder-count="3"><button type="button" onClick="{{ d.on }}" style="flex:1 1 auto;min-height:44px;padding:0 12px;border-radius:10px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;border:1.5px solid {{ d.bd }};background:{{ d.bg }};color:{{ d.fg }}">{{ d.label }}</button></sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ err }}"><span style="font-size:13px;color:#B42318">{{ s.sendErr }}</span></sc-if>
+      <button type="submit" disabled="{{ busy }}" style="height:52px;margin-top:4px;border:0;border-radius:10px;opacity:{{ busyOp }};background:#D52B1E;color:#FFFFFF;font:inherit;font-size:16px;font-weight:700;cursor:pointer" style-hover="background:#B82217" style-active="background:#9C1C12">{{ submitLabel }}</button>
+    </form>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:380,&quot;height&quot;:480},&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;code&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;QN-001&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { name: '', phone: '', date: '', dur: 1, sent: false, busy: false, err: false };
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); }
+  componentWillUnmount() { clearInterval(this._p); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.props.locale || 'vi', st = this.state;
+    const s = {}; ['vrTitle', 'vrName', 'vrPhone', 'vrDate', 'vrDur', 'vrNamePh', 'vrSubmit', 'vrDone', 'vrDoneSub', 'vrAgain', 'sendErr'].forEach((k) => (s[k] = A.t(k, l)));
+    return {
+      nameCols: this.props.cols === 2 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)', s, code: this.props.code || 'QN-001', sent: st.sent, open: !st.sent,
+      name: st.name, phone: st.phone, date: st.date,
+      onName: (e) => this.setState({ name: e.target.value }),
+      onPhone: (e) => this.setState({ phone: e.target.value }),
+      onDate: (e) => this.setState({ date: e.target.value }),
+      durs: [0, 1, 2].map((i) => ({ label: A.t('dur' + i, l), on: () => this.setState({ dur: i }), bd: i === st.dur ? '#0039A6' : '#C9CED6', bg: i === st.dur ? '#EEF3FC' : '#FFFFFF', fg: i === st.dur ? '#0039A6' : '#141821' })),
+      err: !!st.err, busy: !!st.busy, busyOp: st.busy ? 0.7 : 1, submitLabel: st.busy ? A.t('sending', l) : s.vrSubmit,
+      submit: (e) => {
+        e.preventDefault(); if (st.busy) return;
+        const code = this.props.code || 'QN-001', x = A.listing(code);
+        this.setState({ busy: true, err: false });
+        A.send('[ApartQN] Đặt lịch xem ' + code, { 'Loại': 'Đặt lịch xem nhà', 'Mã căn': code, 'Toà nhà': A.building(x.b).name, 'Họ tên': st.name, 'Điện thoại': st.phone, 'Ngày muốn xem': st.date || '—', 'Thời gian thuê': A.t('dur' + st.dur, 'vi'), 'Ngôn ngữ khách': l.toUpperCase() })
+          .then(() => this.setState({ busy: false, sent: true }))
+          .catch(() => this.setState({ busy: false, err: true }));
+      },
+      again: () => this.setState({ sent: false, name: '', phone: '', date: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script><style>body{margin:0;background:#FFFFFF}a{color:#0039A6}a:hover{color:#002F8A}</style></helmet>
+<div ref="{{ rootRef }}" data-screen-label="Results" style="position:relative;container-type:inline-size;overflow-x:clip;background:#FFFFFF;font-family:'Noto Sans',system-ui,sans-serif;color:#141821;min-height:100vh;font-size:16px;line-height:1.6">
+  <dc-import name="SiteHeader" locale="{{ locale }}" active="results" on-locale="{{ setLocale }}" hint-size="100%,64px"></dc-import>
+  <div style="max-width:1200px;margin:0 auto;padding:clamp(20px,3cqw,32px) {{ L.px }} 0;display:flex;flex-direction:column;gap:6px">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+      <h1 style="margin:0;padding-top:.08em;font-size:clamp(26px,3.4cqw,40px);line-height:1.15;font-weight:800;letter-spacing:-0.02em;text-wrap:balance">{{ s.results }}</h1>
+      <span style="display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:999px;border:1px dashed #8A5200;color:#8A5200;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.06em;white-space:nowrap">{{ s.demo }}</span>
+    </div>
+  </div>
+  <div style="position:sticky;top:{{ hdrTop }};z-index:30;background:rgba(255,255,255,.97);backdrop-filter:blur(8px);border-bottom:1px solid #E3E6EB">
+    <div style="max-width:1200px;margin:0 auto;padding:12px {{ L.px }};display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:{{ tbWrap }};overflow-x:auto;scrollbar-width:none;margin:0 {{ L.nx }};padding:2px {{ L.px }}">
+        <sc-if value="{{ L.ltLg }}"><button onClick="{{ openDrawer }}" style="flex:0 0 auto;height:44px;padding:0 16px;border:1.5px solid {{ fBtn.bd }};border-radius:999px;background:{{ fBtn.bg }};color:#0039A6;font:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px" style-hover="background:#EEF3FC">
+          <span style="display:flex;flex-direction:column;gap:3px"><span style="width:14px;height:2px;background:currentColor"></span><span style="width:10px;height:2px;background:currentColor;margin-left:2px"></span><span style="width:6px;height:2px;background:currentColor;margin-left:4px"></span></span>{{ s.filters }}
+          <sc-if value="{{ fBtn.has }}"><span style="min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:#0039A6;color:#FFFFFF;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ fBtn.n }}</span></sc-if>
+        </button></sc-if>
+        <sc-for list="{{ selects }}" as="d" hint-placeholder-count="3">
+          <label style="flex:0 0 auto;position:relative;display:flex;align-items:center">
+            <select aria-label="{{ d.aria }}" value="{{ d.value }}" onChange="{{ d.on }}" style="appearance:none;-webkit-appearance:none;height:44px;padding:0 34px 0 16px;border:1px solid {{ d.bd }};border-radius:999px;background:{{ d.bg }};font:inherit;font-size:16px;font-weight:600;color:#141821;cursor:pointer;max-width:260px;text-overflow:ellipsis" style-focus="border-color:#0039A6;box-shadow:0 0 0 3px #D9E4F7;outline:none">
+              <sc-for list="{{ d.opts }}" as="o"><option value="{{ o.v }}">{{ o.label }}</option></sc-for>
+            </select>
+            <span style="position:absolute;right:14px;font-size:11px;color:#687080;pointer-events:none">▾</span>
+          </label>
+        </sc-for>
+        <div role="group" style="flex:0 0 auto;margin-left:auto;display:flex;padding:3px;border-radius:999px;background:#F1F3F6;gap:2px">
+          <sc-for list="{{ views }}" as="v" hint-placeholder-count="2"><button onClick="{{ v.on }}" style="height:38px;min-width:44px;white-space:nowrap;padding:0 16px;border:0;border-radius:999px;font:inherit;font-size:14px;font-weight:700;cursor:pointer;background:{{ v.bg }};color:{{ v.fg }};box-shadow:{{ v.sh }}">{{ v.label }}</button></sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-height:44px">
+        <span style="font-size:15px;font-weight:700">{{ found }}</span>
+        <sc-for list="{{ pills }}" as="p">
+          <button onClick="{{ p.on }}" style="min-height:44px;padding:0 10px 0 14px;border:0;border-radius:999px;background:#EEF3FC;color:#0039A6;font:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap" style-hover="background:#D9E4F7">{{ p.label }}<span style="font-size:16px;line-height:1">×</span></button>
+        </sc-for>
+        <sc-if value="{{ hasPills }}"><button onClick="{{ clearAll }}" style="min-height:44px;padding:0 4px;border:0;background:none;font:inherit;font-size:13px;font-weight:600;color:#141821;text-decoration:underline;cursor:pointer">{{ s.clearAll }}</button></sc-if>
+        <button onClick="{{ toggleRented }}" style="margin-left:auto;min-height:44px;padding:0;border:0;background:none;font:inherit;font-size:13px;font-weight:500;color:#3A404C;cursor:pointer;display:flex;align-items:center;gap:8px">
+          <span style="width:18px;height:18px;box-sizing:border-box;border-radius:5px;border:1.5px solid {{ rentedBox.bd }};background:{{ rentedBox.bg }};color:#FFFFFF;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">{{ rentedBox.mark }}</span>{{ s.showRented }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1200px;margin:0 auto;padding:clamp(20px,2.5cqw,28px) {{ L.px }} clamp(48px,6cqw,80px);display:grid;grid-template-columns:{{ bodyCols }};gap:28px;align-items:start">
+    <sc-if value="{{ L.lg }}" hint-placeholder-val="{{ true }}">
+      <aside style="position:sticky;top:{{ asideTop }};min-width:0">
+        <dc-import name="FilterDrawer" locale="{{ locale }}" variant="sidebar" value="{{ f }}" on-apply="{{ applySide }}" hint-size="100%,640px"></dc-import>
+      </aside>
+    </sc-if>
+    <div style="min-width:0">
+    <sc-if value="{{ empty }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:64px 20px;text-align:center;border:1px dashed #C9CED6;border-radius:16px">
+        <span style="font-size:20px;font-weight:700">{{ s.noRes }}</span>
+        <span style="font-size:15px;color:#3A404C">{{ s.noResSub }}</span>
+        <button onClick="{{ clearAll }}" style="margin-top:6px;height:44px;padding:0 18px;border:1.5px solid #0039A6;border-radius:10px;background:#FFFFFF;color:#0039A6;font:inherit;font-size:15px;font-weight:700;cursor:pointer">{{ s.clearAll }}</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showGrid }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:{{ cardCols }};gap:36px 24px">
+        <sc-for list="{{ items }}" as="f" hint-placeholder-count="6"><dc-import name="ListingCard" locale="{{ locale }}" code="{{ f.code }}" hint-size="100%,420px"></dc-import></sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showSplit }}">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;align-items:start">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:32px">
+          <sc-for list="{{ items }}" as="f"><dc-import name="ListingCard" locale="{{ locale }}" code="{{ f.code }}" hint-size="100%,400px"></dc-import></sc-for>
+        </div>
+        <div style="position:sticky;top:{{ asideTop }};height:640px">
+          <div style="position:relative;height:100%;border-radius:16px;overflow:hidden;background:repeating-linear-gradient(135deg,#E1EAF4 0 12px,#ECF1F8 12px 24px);box-shadow:inset 0 0 0 1px #DCE3EE">
+            <span style="position:absolute;left:12px;top:12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5A6272;background:rgba(255,255,255,.9);padding:4px 8px;border-radius:6px">{{ s.mapNote }}</span>
+            <sc-for list="{{ pins }}" as="p">
+              <button onClick="{{ p.on }}" style="position:absolute;left:{{ p.x }};top:{{ p.y }};transform:translate(-50%,-100%);z-index:{{ p.z }};height:34px;padding:0 12px;border:1.5px solid #0039A6;border-radius:999px;background:{{ p.bg }};color:{{ p.fg }};font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;box-shadow:0 2px 10px rgba(16,24,40,.18);display:flex;align-items:center;gap:6px">{{ p.label }}<span style="font-size:11px;font-weight:600;opacity:.8">· {{ p.n }}</span></button>
+            </sc-for>
+            <sc-if value="{{ selB }}">
+              <div style="position:absolute;left:12px;right:12px;bottom:12px;z-index:20;display:flex;align-items:center;gap:14px;padding:14px 14px 14px 16px;border-radius:14px;background:#FFFFFF;box-shadow:0 8px 28px rgba(16,24,40,.18)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ selB.name }}</span>
+                  <span style="font-size:13px;color:#3A404C">{{ selB.units }}</span>
+                </div>
+                <a href="{{ selB.href }}" style="flex:0 0 auto;height:40px;padding:0 14px;display:flex;align-items:center;border-radius:10px;background:#0039A6;color:#FFFFFF;font-size:14px;font-weight:700;text-decoration:none" style-hover="background:#002F8A;color:#FFFFFF">{{ s.viewBld }}</a>
+                <button onClick="{{ clearSel }}" aria-label="{{ s.close }}" style="flex:0 0 36px;height:36px;border:0;border-radius:50%;background:#F1F3F6;font-size:18px;line-height:1;color:#141821;cursor:pointer">×</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMobMap }}">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="position:relative;height:440px;margin:0 {{ L.nx }};overflow:hidden;background:repeating-linear-gradient(135deg,#E1EAF4 0 12px,#ECF1F8 12px 24px)">
+          <span style="position:absolute;left:12px;top:12px;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#5A6272;background:rgba(255,255,255,.9);padding:4px 8px;border-radius:6px">{{ s.mapNote }}</span>
+          <sc-for list="{{ pins }}" as="p">
+            <button onClick="{{ p.on }}" style="position:absolute;left:{{ p.x }};top:{{ p.y }};transform:translate(-50%,-100%);z-index:{{ p.z }};min-height:36px;padding:0 12px;border:1.5px solid #0039A6;border-radius:999px;background:{{ p.bg }};color:{{ p.fg }};font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;box-shadow:0 2px 10px rgba(16,24,40,.18)">{{ p.label }}</button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ selB }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="min-width:0;display:flex;flex-direction:column;gap:2px">
+              <span style="font-size:16px;font-weight:700">{{ selB.name }}</span>
+              <span style="font-size:13px;color:#3A404C">{{ selB.units }}</span>
+            </div>
+            <a href="{{ selB.href }}" style="flex:0 0 auto;font-size:14px;font-weight:600;color:#0039A6;text-decoration:none">{{ s.viewBld }} →</a>
+          </div>
+        </sc-if>
+        <div style="display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 {{ L.nx }};padding:4px {{ L.px }} 12px;scroll-padding:0 {{ L.px }};scrollbar-width:none">
+          <sc-for list="{{ items }}" as="f"><div style="flex:0 0 {{ slideW }};scroll-snap-align:start"><dc-import name="ListingCard" locale="{{ locale }}" code="{{ f.code }}" hint-size="100%,400px"></dc-import></div></sc-for>
+        </div>
+      </div>
+    </sc-if>
+    </div>
+  </div>
+
+  <dc-import name="SiteFooter" locale="{{ locale }}" hint-size="100%,340px"></dc-import>
+
+  <sc-if value="{{ drawer }}">
+    <div onClick="{{ closeDrawer }}" style="position:absolute;inset:0;z-index:60;background:rgba(11,21,48,.45)"></div>
+    <div style="position:absolute;left:{{ dPos.left }};right:{{ dPos.right }};width:{{ dPos.width }};top:{{ dPos.top }};z-index:61">
+      <dc-import name="FilterDrawer" locale="{{ locale }}" value="{{ f }}" on-close="{{ closeDrawer }}" on-apply="{{ applyDrawer }}" hint-size="100%,700px"></dc-import>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;device&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;mobile&quot;,&quot;tablet&quot;,&quot;desktop&quot;],&quot;tsType&quot;:&quot;'mobile' | 'desktop'&quot;},&quot;view&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;list&quot;,&quot;map&quot;],&quot;default&quot;:&quot;list&quot;,&quot;tsType&quot;:&quot;'list' | 'map'&quot;},&quot;filters&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;object&quot;}}">
+class Component extends DCLogic {
+  state = { loc: null, f: null, sort: null, view: null, sel: '', drawer: false, top: 160, w: null };
+  _measure = () => { const el = this._el; if (!el) return; const w = Math.round(el.getBoundingClientRect().width); if (w && w !== this.state.w) this.setState({ w }); };
+  rootRef = (el) => { if (!el || el === this._el) return; this._ro && this._ro.disconnect(); this._el = el; this._measure(); requestAnimationFrame(this._measure); if (!this._rs) { this._rs = true; window.addEventListener('resize', this._measure); } try { this._ro = new ResizeObserver(this._measure); this._ro.observe(el); } catch (_) {} };
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); this._watch(); }
+  componentWillUnmount() { window.removeEventListener('resize', this._measure); clearInterval(this._p); this._ro && this._ro.disconnect(); }
+  componentDidUpdate(pp) { this._watch(); if (pp.locale !== this.props.locale) this.setState({ loc: null }); }
+  _watch() { const el = this._el; if (!el || this._ro) return; this._ro = new ResizeObserver((es) => { const w = Math.round(es[0].contentRect.width); if (w && w !== this.state.w) this.setState({ w }); }); this._ro.observe(el); }
+
+  sync(l, f, sort, view) {
+    try { if (/Results\.dc\.html$/.test(location.pathname)) history.replaceState(null, '', A_link(l, f, sort, view)); } catch (_) {}
+    function A_link(l, f, sort, view) { return window.AQN.link('results', Object.assign({}, f, { sort: sort === 'new' ? '' : sort, view: view === 'list' ? '' : view }), l); }
+  }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.state.loc || this.props.locale || A.qp('l') || 'vi', t = (k) => A.t(k, l);
+    const L = A.layout(this.state.w || A.initW(this.props)), mob = L.sm;
+    const contentW = Math.min(1200, L.w - 2 * parseInt(L.px, 10));
+    const f = this.state.f || Object.assign(A.qFilters(), this.props.filters || {});
+    const sort = this.state.sort || A.qp('sort') || 'new';
+    const view = this.state.view || this.props.view || A.qp('view') || 'list';
+    const sel = this.state.sel;
+    const setF = (patch) => { const nf = Object.assign({}, f, patch); this.setState({ f: nf, sel: patch.b !== undefined ? '' : sel }); this.sync(l, nf, sort, view); };
+    const s = {}; ['results', 'demo', 'filters', 'clearAll', 'showRented', 'noRes', 'noResSub', 'mapNote', 'viewBld', 'close'].forEach((k) => (s[k] = t(k)));
+
+    const cmp = { new: (a, b) => b.updated.localeCompare(a.updated), low: (a, b) => a.rent - b.rent, high: (a, b) => b.rent - a.rent, move: (a, b) => a.moveIn.localeCompare(b.moveIn) }[sort];
+    const matched = A.L.filter((x) => A.match(x, f)).sort((a, b) => ((a.status === 'rented') - (b.status === 'rented')) || cmp(a, b));
+    const inView = sel ? matched.filter((x) => x.b === sel) : matched;
+
+    const sel_ = (key, aria, opts, value, on) => ({ aria, opts, value, on, bd: value ? '#0039A6' : '#C9CED6', bg: value ? '#EEF3FC' : '#FFFFFF' });
+    const selects = [
+      sel_('b', t('sBuilding'), [{ v: '', label: t('sAnyBuilding') }].concat(A.B.map((b) => ({ v: b.id, label: b.name }))), f.b, (e) => setF({ b: e.target.value })),
+      sel_('rent', t('sRent'), [{ v: '', label: t('sRent') + ': ' + t('sAny') }].concat([0, 1, 2, 3].map((i) => ({ v: 'r' + i, label: t('rent' + i) }))), f.rent, (e) => setF({ rent: e.target.value }))
+    ];
+    const sortSel = { aria: t('sort'), value: sort, bd: '#C9CED6', bg: '#FFFFFF', opts: ['new', 'low', 'high', 'move'].map((k) => ({ v: k, label: t('sort_' + k) })), on: (e) => { this.setState({ sort: e.target.value }); this.sync(l, f, e.target.value, view); } };
+    if (mob) selects.splice(1, 1); if (L.lg) selects.splice(1, 1);
+    selects.push(sortSel);
+
+    const bedsLabel = (v) => t('sBeds') + ': ' + (v === '0' ? t('studio') : v === '3' ? '3+' : v);
+    const pills = [];
+    if (f.b) pills.push({ label: A.building(f.b).name, on: () => setF({ b: '' }) });
+    if (f.rent) pills.push({ label: t('rent' + f.rent.slice(1)), on: () => setF({ rent: '' }) });
+    if (f.beds) pills.push({ label: bedsLabel(f.beds), on: () => setF({ beds: '' }) });
+    if (f.furn) pills.push({ label: t('furn_' + f.furn), on: () => setF({ furn: '' }) });
+    if (f.pets) pills.push({ label: t('pets'), on: () => setF({ pets: false }) });
+    if (f.date) pills.push({ label: t('moveIn') + ': ' + A.dFull(f.date, l), on: () => setF({ date: '' }) });
+    const drawerN = ['beds', 'furn', 'pets', 'date'].filter((k) => f[k]).length;
+
+    const pins = A.B.map((b) => {
+      const ls = matched.filter((x) => x.b === b.id); if (!ls.length) return null;
+      const on = sel === b.id, min = Math.min(...ls.map((x) => x.rent));
+      return { x: b.x + '%', y: b.y + '%', n: ls.length, label: A.mil(min, l), bg: on ? '#0039A6' : '#FFFFFF', fg: on ? '#FFFFFF' : '#0039A6', z: on ? 10 : 1, on: () => this.setState({ sel: on ? '' : b.id }) };
+    }).filter(Boolean);
+    const sb = sel ? A.building(sel) : null;
+
+    return {
+      locale: l, mob, L, s, f, rootRef: this.rootRef, tbWrap: mob ? 'nowrap' : 'wrap',
+      hdrTop: L.hdr + 'px', asideTop: (L.hdr + 128) + 'px', bodyCols: L.lg ? '264px minmax(0,1fr)' : 'minmax(0,1fr)',
+      cardCols: 'repeat(' + (L.lg ? ((contentW - 292) / 3 >= 260 ? 3 : 2) : L.cols) + ',minmax(0,1fr))', slideW: L.md ? '46%' : '86%',
+      applySide: (nf) => { const m = Object.assign({}, f, nf); this.setState({ f: m }); this.sync(l, m, sort, view); },
+      setLocale: (v) => this.setState({ loc: v }),
+      fBtn: { has: drawerN > 0, n: drawerN, bd: drawerN ? '#0039A6' : '#0039A6', bg: drawerN ? '#EEF3FC' : '#FFFFFF' },
+      selects,
+      views: [['list', t('listView')], ['map', t('mapView')]].map(([k, label]) => ({ label, bg: view === k ? '#FFFFFF' : 'transparent', fg: view === k ? '#0039A6' : '#3A404C', sh: view === k ? '0 1px 3px rgba(16,24,40,.14)' : 'none', on: () => { this.setState({ view: k }); this.sync(l, f, sort, k); } })),
+      found: A.F.found(inView.length, l), pills, hasPills: pills.length > 0,
+      clearAll: () => { const nf = Object.assign({}, A.EMPTY, { rented: f.rented }); this.setState({ f: nf, sel: '' }); this.sync(l, nf, sort, view); },
+      rentedBox: { bd: f.rented ? '#0039A6' : '#8C93A0', bg: f.rented ? '#0039A6' : '#FFFFFF', mark: f.rented ? '✓' : '' },
+      toggleRented: () => setF({ rented: !f.rented }),
+      empty: matched.length === 0,
+      items: inView.map((x) => ({ code: x.code })),
+      showGrid: matched.length > 0 && view === 'list', showSplit: matched.length > 0 && view === 'map' && L.lg, showMobMap: matched.length > 0 && view === 'map' && L.ltLg,
+      pins, selB: sb ? { name: sb.name, units: A.F.units(matched.filter((x) => x.b === sb.id).length, l), href: A.link('building', { id: sb.id }, l) } : null,
+      clearSel: () => this.setState({ sel: '' }),
+      drawer: this.state.drawer,
+      dPos: mob ? { left: '8px', right: '8px', width: 'auto', top: this.state.top + 'px' } : { left: 'calc(50% - 240px)', right: 'auto', width: '480px', top: this.state.top + 'px' },
+      openDrawer: (e) => {
+        let top = 160;
+        try { const r = this._el.getBoundingClientRect(), b = e.currentTarget.getBoundingClientRect(); top = Math.max(64, b.bottom - r.top + 8); } catch (_) {}
+        this.setState({ drawer: true, top });
+      },
+      closeDrawer: () => this.setState({ drawer: false }),
+      applyDrawer: (nf) => { const m = Object.assign({}, f, nf); this.setState({ f: m, drawer: false }); this.sync(l, m, sort, view); }
+    };
+  }
+}
+</script>
+</body>
+</html>

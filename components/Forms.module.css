@@ -1,0 +1,41 @@
+/* Viewing request */
+.vr { display: flex; flex-direction: column; gap: 14px; color: var(--ink-900); }
+.vrTitle { font-size: 18px; font-weight: 700; line-height: 1.3; }
+.form { display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 768px) and (max-width: 1023.98px) { .pair2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.durs { border: 0; margin: 0; padding: 0; min-width: 0; }
+.durLabel { font-size: 13px; font-weight: 600; color: var(--gray-700); padding: 0; margin-bottom: 6px; }
+.durRow { display: flex; flex-wrap: wrap; gap: 6px; }
+.dur { flex: 1 1 auto; min-height: 44px; padding: 0 12px; border-radius: var(--r-md); font-size: 14px; font-weight: 600; border: 1.5px solid var(--gray-300); background: var(--white); color: var(--ink-900); }
+.durOn { border-color: var(--blue-500); background: var(--blue-50); color: var(--blue-500); }
+.submit { margin-top: 4px; width: 100%; white-space: normal; }
+.err { font-size: 13px; color: var(--error); }
+.hp { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; }
+.done { display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: var(--r-card); background: var(--ok-bg); color: var(--ok-fg); }
+.doneTitle { font-size: 16px; font-weight: 700; }
+.doneSub { font-size: 14px; color: #145A37; }
+.again { align-self: flex-start; min-height: 44px; padding: 0; border: 0; background: none; font-size: 14px; font-weight: 600; color: var(--blue-500); text-decoration: underline; }
+
+/* Consign */
+.cf { display: flex; flex-direction: column; gap: 20px; margin: 0; padding: 24px; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--r-panel); box-shadow: var(--sh-card); color: var(--ink-900); }
+@media (max-width: 767.98px) { .cf { padding: 20px 16px; } }
+.cfHead { display: flex; flex-direction: column; gap: 4px; }
+.cfTitle { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.25; }
+.cfSub { font-size: 14px; color: var(--gray-700); margin: 0; }
+.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: end; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 768px) { .two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.drop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 16px; border: 1.5px dashed #8FA9DA; border-radius: var(--r-card); background: #F5F8FE; text-align: center; cursor: pointer; }
+.drop:hover, .dropOver { background: var(--blue-50); }
+.drop:focus-within { border-color: var(--blue-500); }
+.plus { width: 40px; height: 40px; border-radius: 50%; background: var(--blue-100); color: var(--blue-500); font-size: 22px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.dropT { font-size: 14px; font-weight: 600; color: var(--blue-500); }
+.dropH { font-size: 12px; color: var(--gray-500); }
+.files { font-size: 13px; font-weight: 600; color: var(--ok-fg); }
+.warn { font-size: 13px; color: var(--warn-fg); }
+.fileInput { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.cfDone { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 32px 24px; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--r-panel); }
+.cfCheck { width: 48px; height: 48px; border-radius: 50%; background: var(--ok-bg); color: var(--ok-fg); font-size: 24px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.cfDoneT { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; }
+.cfDoneS { font-size: 15px; line-height: 1.55; color: var(--gray-700); }

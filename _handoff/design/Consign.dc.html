@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><script src="apartqn-data.js"></script><style>body{margin:0;background:#FFFFFF}a{color:#0039A6}a:hover{color:#002F8A}</style></helmet>
+<div ref="{{ rootRef }}" data-screen-label="Consign" style="position:relative;container-type:inline-size;overflow-x:clip;background:#FFFFFF;font-family:'Noto Sans',system-ui,sans-serif;color:#141821;font-size:16px;line-height:1.6">
+  <dc-import name="SiteHeader" locale="{{ locale }}" active="consign" on-locale="{{ setLocale }}" hint-size="100%,64px"></dc-import>
+  <section style="background:#EEF3FC">
+    <div style="max-width:1200px;margin:0 auto;padding:clamp(28px,5cqw,64px) {{ L.px }};display:grid;grid-template-columns:{{ heroCols }};gap:clamp(28px,4cqw,56px);align-items:start">
+      <div style="min-width:0;display:flex;flex-direction:column;gap:16px;padding-top:clamp(0px,2cqw,24px)">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <span style="display:inline-flex;align-items:center;height:28px;padding:0 12px;border-radius:999px;background:#FFFFFF;color:#0039A6;font-size:13px;font-weight:600">{{ s.cgEyebrow }}</span>
+          <span style="display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:999px;border:1px dashed #8A5200;color:#8A5200;font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.06em">{{ s.demo }}</span>
+        </div>
+        <h1 style="margin:0;font-size:clamp(30px,4.4cqw,52px);line-height:1.15;font-weight:800;letter-spacing:-0.028em;max-width:20ch;text-wrap:balance;color:#0B1530">{{ s.cgTitle }}</h1>
+        <p style="margin:0;font-size:clamp(16px,1.5cqw,18px);line-height:1.55;color:#3A404C;max-width:48ch;text-wrap:pretty">{{ s.cgSub }}</p>
+        <div style="display:flex;flex-direction:column;gap:0;margin-top:clamp(8px,2cqw,24px)">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#687080;margin-bottom:8px">{{ s.cgHow }}</span>
+          <sc-for list="{{ steps }}" as="st" hint-placeholder-count="4">
+            <div style="display:grid;grid-template-columns:36px minmax(0,1fr);gap:14px;padding:14px 0;border-top:1px solid #D3DDF0">
+              <span style="width:32px;height:32px;border-radius:50%;background:#0039A6;color:#FFFFFF;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center">{{ st.n }}</span>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <span style="font-size:16px;font-weight:700">{{ st.t }}</span>
+                <span style="font-size:14px;line-height:1.55;color:#3A404C;text-wrap:pretty">{{ st.d }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="min-width:0">
+        <dc-import name="ConsignForm" locale="{{ locale }}" building="{{ preB }}" hint-size="100%,900px"></dc-import>
+      </div>
+    </div>
+  </section>
+  <section style="max-width:1200px;margin:0 auto;padding:clamp(40px,6cqw,80px) {{ L.px }}">
+    <h2 style="margin:0 0 8px;font-size:clamp(24px,3cqw,36px);line-height:1.2;font-weight:800;letter-spacing:-0.02em">{{ s.cgArea }}</h2>
+    <p style="margin:0 0 24px;font-size:16px;line-height:1.5;color:#3A404C;max-width:60ch">{{ s.cgAreaSub }}</p>
+    <div style="display:grid;grid-template-columns:{{ bldCols }};gap:10px">
+      <sc-for list="{{ blds }}" as="b" hint-placeholder-count="8">
+        <a href="{{ b.href }}" style="display:flex;flex-direction:column;gap:2px;padding:14px 16px;border:1px solid #E3E6EB;border-radius:12px;text-decoration:none;color:#141821" style-hover="border-color:#0039A6;background:#F5F8FE">
+          <span style="font-size:15px;font-weight:700;line-height:1.3">{{ b.name }}</span>
+          <span style="font-size:13px;color:#687080">{{ b.street }}</span>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+  <dc-import name="SiteFooter" locale="{{ locale }}" hint-size="100%,340px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;locale&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;vi&quot;,&quot;en&quot;,&quot;ru&quot;],&quot;default&quot;:&quot;vi&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;device&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;mobile&quot;,&quot;tablet&quot;,&quot;desktop&quot;],&quot;tsType&quot;:&quot;'mobile' | 'desktop'&quot;}}">
+class Component extends DCLogic {
+  state = { loc: null, w: null };
+  _measure = () => { const el = this._el; if (!el) return; const w = Math.round(el.getBoundingClientRect().width); if (w && w !== this.state.w) this.setState({ w }); };
+  rootRef = (el) => { if (!el || el === this._el) return; this._ro && this._ro.disconnect(); this._el = el; this._measure(); requestAnimationFrame(this._measure); if (!this._rs) { this._rs = true; window.addEventListener('resize', this._measure); } try { this._ro = new ResizeObserver(this._measure); this._ro.observe(el); } catch (_) {} };
+  componentDidMount() { if (!window.AQN) this._p = setInterval(() => { if (window.AQN) { clearInterval(this._p); this.forceUpdate(); } }, 40); this._watch(); }
+  componentWillUnmount() { window.removeEventListener('resize', this._measure); clearInterval(this._p); this._ro && this._ro.disconnect(); }
+  componentDidUpdate(pp) { this._watch(); if (pp.locale !== this.props.locale) this.setState({ loc: null }); }
+  _watch() { const el = this._el; if (!el || this._ro) return; this._ro = new ResizeObserver((es) => { const w = Math.round(es[0].contentRect.width); if (w && w !== this.state.w) this.setState({ w }); }); this._ro.observe(el); }
+  renderVals() {
+    const A = window.AQN; if (!A) return {};
+    const l = this.state.loc || this.props.locale || A.qp('l') || 'vi', t = (k) => A.t(k, l);
+    const L = A.layout(this.state.w || A.initW(this.props)), mob = L.sm;
+    const s = {}; ['cgEyebrow', 'demo', 'cgTitle', 'cgSub', 'cgHow', 'cgArea', 'cgAreaSub'].forEach((k) => (s[k] = t(k)));
+    return {
+      locale: l, mob, L, rootRef: this.rootRef, heroCols: L.lg ? 'minmax(0,1fr) minmax(0,520px)' : 'minmax(0,1fr)', bldCols: 'repeat(' + (L.lg ? 4 : L.md ? 2 : 1) + ',minmax(0,1fr))', s, preB: A.qp('b') || '',
+      setLocale: (v) => this.setState({ loc: v }),
+      steps: [1, 2, 3, 4].map((i) => ({ n: i, t: t('cs' + i + 't'), d: t('cs' + i + 'd') })),
+      blds: A.B.map((b) => ({ name: b.name, street: b.street + ' · ' + t('ward'), href: A.link('building', { id: b.id }, l) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap"><style>body{margin:0;background:#E6E9EE}a{color:#0039A6}a:hover{color:#002F8A}</style></helmet>
+<section style="display:flex;flex-direction:column;gap:72px;padding:64px;font-family:'Noto Sans',system-ui,sans-serif;color:#141821">
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0039A6">English · for review</span>
+    <span style="font-size:40px;font-weight:800;letter-spacing:-0.03em">ApartQN — all pages in English</span>
+    <span style="font-size:16px;color:#3A404C">Mobile 390 + desktop 1280. EN contact buttons: WhatsApp + Telegram. All data is DEMO DATA.</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <span style="font-size:24px;font-weight:800">Home</span>
+    <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+      <div id="3a" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3a</span><span style="font-size:16px;font-weight:700">EN · mobile</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Home" locale="en" device="mobile" hint-size="390px,3000px"></dc-import></div>
+      </div>
+      <div id="3b" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3b</span><span style="font-size:16px;font-weight:700">EN · desktop</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Home" locale="en" device="desktop" hint-size="1280px,3000px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <span style="font-size:24px;font-weight:800">Results</span>
+    <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+      <div id="3c" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3c</span><span style="font-size:16px;font-weight:700">EN · mobile · list</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Results" locale="en" device="mobile" view="list" hint-size="390px,2400px"></dc-import></div>
+      </div>
+      <div id="3d" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3d</span><span style="font-size:16px;font-weight:700">EN · desktop · map</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Results" locale="en" device="desktop" view="map" hint-size="1280px,1800px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <span style="font-size:24px;font-weight:800">Listing detail · QN-001</span>
+    <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+      <div id="3e" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3e</span><span style="font-size:16px;font-weight:700">EN · mobile</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Listing Detail" locale="en" device="mobile" hint-size="390px,4800px"></dc-import></div>
+      </div>
+      <div id="3f" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3f</span><span style="font-size:16px;font-weight:700">EN · desktop</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Listing Detail" locale="en" device="desktop" hint-size="1280px,3600px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <span style="font-size:24px;font-weight:800">Building · Altara</span>
+    <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+      <div id="3g" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3g</span><span style="font-size:16px;font-weight:700">EN · mobile</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Building" locale="en" device="mobile" id="altara" hint-size="390px,3600px"></dc-import></div>
+      </div>
+      <div id="3h" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3h</span><span style="font-size:16px;font-weight:700">EN · desktop</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Building" locale="en" device="desktop" id="altara" hint-size="1280px,2600px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <span style="font-size:24px;font-weight:800">Consign</span>
+    <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+      <div id="3i" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3i</span><span style="font-size:16px;font-weight:700">EN · mobile</span></div>
+        <div style="width:390px;background:#FFFFFF;border-radius:28px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Consign" locale="en" device="mobile" hint-size="390px,2600px"></dc-import></div>
+      </div>
+      <div id="3j" style="display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:10px"><span style="height:28px;padding:0 10px;display:inline-flex;align-items:center;border-radius:8px;background:#0039A6;color:#FFFFFF;font-weight:800;font-size:14px">3j</span><span style="font-size:16px;font-weight:700">EN · desktop</span></div>
+        <div style="width:1280px;background:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 8px 40px rgba(16,24,40,.12)"><dc-import name="Consign" locale="en" device="desktop" hint-size="1280px,1800px"></dc-import></div>
+      </div>
+    </div>
+  </div>
+</section>
+</x-dc>
+</body>
+</html>

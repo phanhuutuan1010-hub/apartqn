@@ -1,0 +1,11 @@
+.card { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.photo { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-card); overflow: hidden; background: var(--placeholder-bld); box-shadow: var(--sh-card); }
+.body { display: flex; flex-direction: column; gap: 3px; padding: 0 2px; line-height: 1.35; min-width: 0; }
+.name { font-size: 15px; font-weight: 700; color: var(--ink-900); text-decoration: none; text-wrap: pretty; overflow-wrap: anywhere; }
+.name::after { content: ''; position: absolute; inset: 0; border-radius: var(--r-card); }
+.name:focus-visible { outline: none; }
+.name:focus-visible::after { outline: 3px solid var(--blue-200); outline-offset: 4px; }
+.card:hover .name { color: var(--blue-500); }
+.street { font-size: 13px; color: var(--gray-500); }
+.units { font-size: 13px; font-weight: 600; color: var(--blue-500); margin-top: 2px; }
+.from { font-size: 13px; color: var(--gray-700); }
