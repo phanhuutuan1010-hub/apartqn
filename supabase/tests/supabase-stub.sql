@@ -60,3 +60,12 @@ grant all on storage.objects, storage.buckets to anon, authenticated, service_ro
 create function storage.foldername(name text) returns text[] language sql immutable as $$
   select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1]
 $$;
+
+-- GoTrue connects as supabase_auth_admin (session_user) and owns auth.users writes
+do $$ begin
+  if not exists (select 1 from pg_roles where rolname = 'supabase_auth_admin') then
+    create role supabase_auth_admin login noinherit password 'auth';
+  end if;
+end $$;
+grant usage on schema auth to supabase_auth_admin;
+grant all on auth.users to supabase_auth_admin;
