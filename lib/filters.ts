@@ -1,5 +1,5 @@
 /** Filter + sort logic — ported 1:1 from apartqn-data.js (`RENT`, `EMPTY`, `match`) and Results sort. */
-import type { Listing } from '@/data/listings';
+import type { Listing } from '@/lib/types';
 
 export const RENT: [number, number][] = [[0, 8e6], [8e6, 12e6], [12e6, 18e6], [18e6, Infinity]];
 

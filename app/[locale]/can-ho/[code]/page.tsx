@@ -23,7 +23,9 @@ export async function generateStaticParams() {
   const ls = await getListings();
   return ls.map((x) => ({ code: codeSlug(x.code) }));
 }
-export const dynamicParams = false;
+// New codes/buildings render on demand; admin changes call revalidatePath (hourly fallback).
+export const dynamicParams = true;
+export const revalidate = 3600;
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { locale, code } = await params;

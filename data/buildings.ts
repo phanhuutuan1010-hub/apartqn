@@ -1,4 +1,5 @@
-/**
+/** SEED INPUT ONLY — the site reads Supabase (lib/repo.ts). Used by scripts/seed.mts.
+ *
  * Buildings — ported 1:1 from _handoff/design/apartqn-data.js (`B`).
  * `ward`, `lat`, `lng` are intentionally absent: they are not verified yet.
  * A building without lat/lng gets no map marker and shows "Đang cập nhật vị trí".

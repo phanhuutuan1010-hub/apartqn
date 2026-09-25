@@ -1,5 +1,5 @@
 import { useLocale, useTranslations } from 'next-intl';
-import type { Listing } from '@/data/listings';
+import type { Listing } from '@/lib/types';
 import { money, total } from '@/lib/format';
 import styles from './CostBreakdown.module.css';
 

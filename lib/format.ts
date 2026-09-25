@@ -1,6 +1,6 @@
 /** Formatters — ported 1:1 from apartqn-data.js (money, mil, dShort, dFull, m2, pl, F.*). */
 import type { Locale } from '@/i18n/routing';
-import type { Listing } from '@/data/listings';
+import type { Listing } from '@/lib/types';
 
 const TAG: Record<Locale, string> = { vi: 'vi-VN', en: 'en-US', ru: 'ru-RU' };
 

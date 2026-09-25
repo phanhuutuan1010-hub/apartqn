@@ -1,6 +1,6 @@
 import { useTranslations } from 'next-intl';
 import { MapPinOff } from 'lucide-react';
-import type { Building } from '@/data/buildings';
+import type { Building } from '@/lib/types';
 import { LazyMap } from './LazyMap';
 import styles from './LocationBlock.module.css';
 

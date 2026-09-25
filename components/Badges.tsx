@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import type { Listing } from '@/data/listings';
+import type { Listing } from '@/lib/types';
 import { STATUS } from '@/lib/format';
 
 export function StatusBadge({ status, tall }: { status: Listing['status']; tall?: boolean }) {

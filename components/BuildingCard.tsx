@@ -1,7 +1,7 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
-import type { Building } from '@/data/buildings';
-import type { Listing } from '@/data/listings';
+import type { Building } from '@/lib/types';
+import type { Listing } from '@/lib/types';
 import { F, mil } from '@/lib/format';
 import { Photo } from './Photo';
 import styles from './BuildingCard.module.css';
@@ -16,7 +16,7 @@ export function BuildingCard({ b, listings, showWard = false }: { b: Building; l
   return (
     <article className={styles.card}>
       <div className={styles.photo}>
-        <Photo src={b.photos[0]} alt={b.name} label="building facade" tone="building" sizes="(min-width:1024px) 290px, (min-width:768px) 33vw, 50vw" />
+        <Photo src={b.thumbs[0]} alt={b.name} label="building facade" tone="building" sizes="(min-width:1024px) 290px, (min-width:768px) 33vw, 50vw" />
       </div>
       <div className={styles.body}>
         <Link href={{ pathname: '/toa-nha/[id]', params: { id: b.id } }} className={styles.name}>{b.name}</Link>

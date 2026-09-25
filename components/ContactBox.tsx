@@ -1,6 +1,6 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { MessageCircle, Phone } from 'lucide-react';
-import type { Listing } from '@/data/listings';
+import type { Listing } from '@/lib/types';
 import { BAR_MESSENGER, contactLinks, contacts } from '@/lib/contacts';
 import { dShort, F, milShort, money, total } from '@/lib/format';
 import { StatusBadge } from './Badges';

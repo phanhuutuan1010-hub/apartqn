@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId } from 'react';
-import type { Listing } from '@/data/listings';
+import type { Listing } from '@/lib/types';
 import type { Filters } from '@/lib/filters';
 import { FilterPanel } from './FilterPanel';
 import styles from './FilterSheet.module.css';

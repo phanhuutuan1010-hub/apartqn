@@ -4,7 +4,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
-import type { Listing } from '@/data/listings';
+import type { Listing } from '@/lib/types';
 import { EMPTY, toQuery, type Filters } from '@/lib/filters';
 import styles from './SearchBar.module.css';
 

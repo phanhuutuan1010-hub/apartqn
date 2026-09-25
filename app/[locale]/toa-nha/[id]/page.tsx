@@ -21,7 +21,9 @@ type Params = { locale: Locale; id: string };
 export async function generateStaticParams() {
   return (await getBuildings()).map((b) => ({ id: b.id }));
 }
-export const dynamicParams = false;
+// New codes/buildings render on demand; admin changes call revalidatePath (hourly fallback).
+export const dynamicParams = true;
+export const revalidate = 3600;
 
 const rng = (arr: number[], fmt: (n: number) => string) => {
   if (!arr.length) return '—';

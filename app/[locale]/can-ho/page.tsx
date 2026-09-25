@@ -10,6 +10,8 @@ import { Footer } from '@/components/Footer';
 import { DemoBadge } from '@/components/Badges';
 import { ResultsFromUrl, ResultsView } from '@/components/ResultsView';
 
+export const revalidate = 3600;
+
 export async function generateMetadata({ params }: PageProps<'/[locale]/can-ho'>): Promise<Metadata> {
   const { locale } = (await params) as { locale: Locale };
   const t = await getTranslations({ locale });

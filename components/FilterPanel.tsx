@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import type { Listing } from '@/data/listings';
+import type { Listing } from '@/lib/types';
 import { hasCarData, match, type Filters } from '@/lib/filters';
 import { F } from '@/lib/format';
 import styles from './FilterPanel.module.css';

@@ -1,4 +1,5 @@
-/**
+/** SEED INPUT ONLY — the site reads Supabase (lib/repo.ts). Used by scripts/seed.mts.
+ *
  * Listings — ported 1:1 from _handoff/design/apartqn-data.js (`L`, merged with `base`).
  * ALL values are demo data (`demo: true`). Unit photos are not supplied yet: `photos` is empty
  * and `photoCount` keeps the prototype's count so the striped placeholders render.

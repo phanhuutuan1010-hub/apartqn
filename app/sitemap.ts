@@ -7,6 +7,8 @@ import { absUrl } from '@/lib/seo';
 type Href = Parameters<typeof absUrl>[1];
 
 /** Generated from the repo; one entry per page (vi URL) with en/ru alternates. */
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [listings, buildings] = await Promise.all([getListings(), getBuildings()]);
   const latest = listings.reduce((m, x) => (x.updated > m ? x.updated : m), '2026-01-01');

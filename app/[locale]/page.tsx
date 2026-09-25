@@ -14,6 +14,8 @@ import { BuildingCard } from '@/components/BuildingCard';
 import { DemoBadge } from '@/components/Badges';
 import styles from './home.module.css';
 
+export const revalidate = 3600;
+
 export async function generateMetadata({ params }: PageProps<'/[locale]'>): Promise<Metadata> {
   const { locale } = (await params) as { locale: Locale };
   const t = await getTranslations({ locale });

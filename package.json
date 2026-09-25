@@ -6,9 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "db:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/db-migrate.mts",
+    "db:seed": "node --env-file-if-exists=.env.local --import tsx scripts/seed.mts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.1",
     "@vercel/blob": "^2.8.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.48.0",
@@ -22,12 +27,17 @@
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.22",
-    "@types/node": "^20",
+    "@types/node": "^24.13.6",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "embedded-postgres": "17.10.0-beta.17",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "pg": "^8.23.0",
     "sharp": "^0.35.4",
-    "typescript": "^5"
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.0.1"
   }
 }

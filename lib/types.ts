@@ -1,0 +1,68 @@
+/** Public data shapes used by the site. Produced by lib/repo.ts from the Supabase public views. */
+
+export type BuildingAmenity = 'pool' | 'gym' | 'security' | 'lift' | 'basement' | 'mart' | 'kids';
+export type Furnishing = 'full' | 'basic' | 'empty';
+export type ListingStatus = 'available' | 'reserved' | 'rented';
+export type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+export type ViewKind = 'sea' | 'city' | 'river' | 'lagoon';
+export type Descriptions = { vi?: string; en?: string; ru?: string };
+
+export type Building = {
+  /** URL slug (e.g. "altara") */
+  id: string;
+  name: string;
+  street: string;
+  /** current ward (after the 2025 merger); missing → "Phường —" */
+  ward?: string;
+  wardOld?: string;
+  lat?: number;
+  lng?: number;
+  amenities: BuildingAmenity[];
+  /** full-size public photo URLs, cover first; empty → striped placeholder */
+  photos: string[];
+  /** 600px thumbnails, same order as photos */
+  thumbs: string[];
+  desc: Descriptions;
+  demo: boolean;
+};
+
+export type Listing = {
+  code: string;
+  /** building slug */
+  buildingId: string;
+  floor: number;
+  area: number;
+  beds: number;
+  baths: number;
+  dir: Direction;
+  view: ViewKind;
+  furn: Furnishing;
+  rent: number;
+  /** months */
+  deposit: number;
+  cycle: 'm1' | 'm3';
+  mgmt: number;
+  elec: 'evn' | 'fixed';
+  water: 'meter' | 'person';
+  moto: number;
+  car: number;
+  net: number;
+  minTerm: number;
+  maxOcc: number;
+  pets: boolean;
+  tempReg: boolean;
+  verified: boolean;
+  video: boolean;
+  status: ListingStatus;
+  /** YYYY-MM-DD */
+  moveIn: string;
+  /** YYYY-MM-DD */
+  updated: string;
+  photos: string[];
+  thumbs: string[];
+  /** photos.length, or the demo placeholder count when there are no photos yet */
+  photoCount: number;
+  carParking?: boolean;
+  desc: Descriptions;
+  demo: boolean;
+};

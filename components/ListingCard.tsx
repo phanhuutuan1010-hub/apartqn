@@ -1,7 +1,7 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
-import type { Building } from '@/data/buildings';
-import type { Listing } from '@/data/listings';
+import type { Building } from '@/lib/types';
+import type { Listing } from '@/lib/types';
 import { codeSlug, dShort, F, m2, money, total } from '@/lib/format';
 import { StatusBadge, VerifiedBadge } from './Badges';
 import { CardPhotos } from './CardPhotos';
@@ -35,9 +35,9 @@ export function ListingCard({ x, building, slider = false, priority = false, siz
     <article className={`${styles.card} ${x.status === 'rented' ? styles.dim : ''}`}>
       <div className={styles.photo}>
         {slider && count > 1 ? (
-          <CardPhotos photos={x.photos} count={count} code={x.code} alt={alt} sizes={sizes} priority={priority} photoLabel={t('photoOf')} />
+          <CardPhotos photos={x.thumbs} count={count} code={x.code} alt={alt} sizes={sizes} priority={priority} photoLabel={t('photoOf')} />
         ) : (
-          <Photo src={x.photos[0]} alt={alt} label={`photo · ${x.code}`} sizes={sizes} priority={priority} />
+          <Photo src={x.thumbs[0]} alt={alt} label={`photo · ${x.code}`} sizes={sizes} priority={priority} />
         )}
         {badges}
       </div>
