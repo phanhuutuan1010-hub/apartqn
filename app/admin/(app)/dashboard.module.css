@@ -1,0 +1,14 @@
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.tile { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; background: var(--white); border: 1px solid var(--gray-200); border-left: 4px solid var(--gray-200); border-radius: var(--r-card); text-decoration: none; color: var(--ink-900); }
+.tile:hover { border-color: var(--blue-200); border-left-color: var(--blue-500); }
+.label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--gray-700); }
+.value { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.hint { font-size: 12px; color: var(--gray-500); }
+.warn { border-left-color: #E3A93A; }
+.warn .value { color: var(--warn-fg); }
+.red { border-left-color: var(--red-500); }
+.red .value { color: var(--error); }
+.ok { border-left-color: var(--ok-fg); }
+.status { display: flex; flex-wrap: wrap; gap: 8px; }
+.statusItem { display: inline-flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--r-md); text-decoration: none; color: var(--ink-900); font-size: 15px; }
+.statusItem:hover { border-color: var(--blue-200); }

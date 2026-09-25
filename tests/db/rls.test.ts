@@ -347,3 +347,70 @@ describe('service role (server)', () => {
     expect(r).toEqual([1, 4]);
   });
 });
+
+describe('admin helpers (migration 6)', () => {
+  it('admin_listings: anon denied, sales sees own rows only, admin sees all', async () => {
+    expect(await as('anon', (q) => denied(q(`select * from public.admin_listings`)))).toMatch(/permission denied/);
+    const s1 = await as(id(U.s1), (q) => q(`select id, unit_no, building_slug from public.admin_listings`));
+    expect(s1.rows).toEqual([{ id: l1, unit_no: '18.05', building_slug: 'altara' }]);
+    const a = await as(id(U.admin), (q) => q(`select count(*)::int n from public.admin_listings`));
+    expect(a.rows[0].n).toBe(4);
+  });
+
+  it('create_listing_draft: sales always owns the new unit; duplicates get a clear message', async () => {
+    const r = await as(id(U.s1), async (q) => {
+      const lid = (await q(`select public.create_listing_draft($1, 7, '07-01', $2) as id`, [B, U.s2])).rows[0].id;
+      const row = (await q(`select status, assigned_to, code from public.admin_listings where id = $1`, [lid])).rows[0];
+      const dup = await denied(q(`select public.create_listing_draft($1, 7, '0701')`, [B]));
+      return { row, dup };
+    });
+    expect(r.row).toEqual({ status: 'draft', assigned_to: U.s1, code: null });
+    expect(r.dup).toMatch(/đã có trong hệ thống/);
+  });
+
+  it('create_listing_draft: admin may assign to someone else; anon cannot call', async () => {
+    const owner = await as(id(U.admin), async (q) => {
+      const lid = (await q(`select public.create_listing_draft($1, 8, '0802', $2) as id`, [B, U.s2])).rows[0].id;
+      return (await q(`select assigned_to from public.admin_listings where id = $1`, [lid])).rows[0].assigned_to;
+    });
+    expect(owner).toBe(U.s2);
+    expect(await as('anon', (q) => denied(q(`select public.create_listing_draft($1, 9, '0903')`, [B])))).toMatch(/permission denied/);
+  });
+});
+
+describe('consign assignment + lead notes (migration 7)', () => {
+  const newConsign = async () =>
+    (await root(`insert into public.consign_inbox (building_id, floor, area, beds, rent, owner_name, owner_phone)
+                 values ($1, '14', '72,5 m2', '2', '12.000.000 đ', 'Chủ Mới', '0912345678') returning id`, [B])).rows[0].id as string;
+
+  it('admin assigns → unit with owner data + prefilled draft, visible to the assignee', async () => {
+    const c = await newConsign();
+    const r = await as(id(U.admin), async (q) => {
+      const lid = (await q(`select public.assign_consign($1, $2, $3, 14, '14-08') as id`, [c, U.s2, B])).rows[0].id;
+      const l = (await q(`select status, rent, area, beds, code, assigned_to from public.admin_listings where id=$1`, [lid])).rows[0];
+      const inbox = (await q(`select status, assigned_to, listing_id from public.consign_inbox where id=$1`, [c])).rows[0];
+      await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.s2, role: 'authenticated' })]);
+      const seen = (await q(`select u.owner_phone from public.units u join public.listings x on x.unit_id=u.id where x.id=$1`, [lid])).rows[0];
+      const again = await denied(q(`select public.assign_consign($1, $2, $3, 15, '1509')`, [c, U.s1, B]));
+      return { lid, l, inbox, seen, again };
+    });
+    expect(r.l).toMatchObject({ status: 'draft', rent: '12000000', area: '72.5', beds: 2, code: null, assigned_to: U.s2 });
+    expect(r.inbox).toEqual({ status: 'assigned', assigned_to: U.s2, listing_id: r.lid });
+    expect(r.seen).toEqual({ owner_phone: '0912345678' });
+    expect(r.again).toMatch(/admin only/);
+  });
+
+  it('sales cannot assign; cannot assign twice; inactive assignee refused', async () => {
+    const c = await newConsign();
+    expect(await as(id(U.s1), (q) => denied(q(`select public.assign_consign($1, $2, $3, 1, '0101')`, [c, U.s1, B])))).toMatch(/admin only/);
+    expect(await as(id(U.admin), (q) => denied(q(`select public.assign_consign($1, $2, $3, 1, '0101')`, [c, U.off, B])))).toMatch(/not an active/);
+  });
+
+  it('add_lead_note: assignee appends, others cannot', async () => {
+    const r = await as(id(U.s1), async (q) => (await q(`select public.add_lead_note($1, 'Đã gọi, hẹn thứ 7') as n`, [lead1])).rows[0].n);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ by: U.s1, text: 'Đã gọi, hẹn thứ 7' });
+    expect(await as(id(U.s2), (q) => denied(q(`select public.add_lead_note($1, 'x')`, [lead1])))).toMatch(/not allowed/);
+    expect(await as('anon', (q) => denied(q(`select public.add_lead_note($1, 'x')`, [lead1])))).toMatch(/permission denied/);
+  });
+});
