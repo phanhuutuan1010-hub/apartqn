@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
-import { getBuilding, getBuildings, getListing, getListings } from '@/lib/repo';
+import { getBuilding, getBuildings, getListing, getListings, staticParams } from '@/lib/repo';
 import { codeSlug, dFull, F, m2, mil, money, total, UNIT_AM } from '@/lib/format';
 import { listingDescription } from '@/lib/summary';
 import { alternates, OG_LOCALE } from '@/lib/seo';
@@ -21,7 +21,7 @@ import styles from './detail.module.css';
 type Params = { locale: Locale; code: string };
 
 export async function generateStaticParams() {
-  const ls = await getListings();
+  const ls = await staticParams(getListings);
   return ls.map((x) => ({ code: codeSlug(x.code) }));
 }
 // New codes/buildings render on demand; admin changes call revalidatePath (hourly fallback).
