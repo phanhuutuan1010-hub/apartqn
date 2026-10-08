@@ -6,13 +6,14 @@ import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
 import { TagInput } from './TagInput';
 
 export type BuildingData = {
-  id: string | null; slug: string; name: string; aliases: string[]; street: string; ward_new: string | null; ward_old: string | null;
+  id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; ward_new: string | null; ward_old: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
   desc_vi: string | null; desc_en: string | null; desc_ru: string | null; sort: number; is_demo: boolean;
 };
 
-export function BuildingForm({ b, photos }: { b: BuildingData; photos?: React.ReactNode }) {
+/** `codedListings`: listings of this building that already carry a code → the prefix is frozen. */
+export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData; photos?: React.ReactNode; codedListings?: number }) {
   const [state, action, pending] = useActionState<BuildingResult, FormData>(saveBuilding.bind(null, b.id), {});
   const [tab, setTab] = useState<'vi' | 'en' | 'ru'>('vi');
   const fe = state.fieldErrors ?? {};
@@ -28,6 +29,11 @@ export function BuildingForm({ b, photos }: { b: BuildingData; photos?: React.Re
           <label className={cls('name', 'span2')}>Tên toà nhà<input className="input" name="name" defaultValue={b.name} required maxLength={120} />{err('name')}</label>
           <label className={cls('slug')}>Đường dẫn (slug) <span className="hint">{b.id ? 'không đổi được' : 'vd. altara'}</span>
             <input className="input a-mono" name={b.id ? undefined : 'slug'} defaultValue={b.slug} disabled={!!b.id} pattern="[a-z0-9-]{2,40}" />{err('slug')}
+          </label>
+          <label className={cls('code_prefix')}>Tiền tố mã căn <span className="hint">{codedListings ? `đã có ${codedListings} căn mang mã → không đổi được` : '3 chữ cái, vd. ALT → ALT-001'}</span>
+            <input className="input a-mono" name={codedListings ? undefined : 'code_prefix'} defaultValue={b.code_prefix} disabled={codedListings > 0}
+              required={!codedListings} maxLength={3} pattern="[A-Za-z]{3}" style={{ textTransform: 'uppercase' }} />
+            {err('code_prefix')}
           </label>
           <label className={cls('sort')}>Thứ tự hiển thị<input className="input" name="sort" inputMode="numeric" defaultValue={b.sort} /></label>
           <div className={cls('aliases', 'span4')}>
