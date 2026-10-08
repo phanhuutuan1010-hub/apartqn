@@ -13,8 +13,6 @@ type Props = {
   labels: { video: string; showAll: string; photosN: string; close: string };
 };
 
-const SHOTS = ['living room', 'master bedroom', 'kitchen', 'balcony view', 'bathroom'];
-
 /** sm: swipe carousel (scroll-snap) with "1 / 12". md+: 1 large + 4 grid, "Show all photos" dialog. */
 export function DetailGallery({ photos, count, code, alt, video, labels }: Props) {
   const [gi, setGi] = useState(0);
@@ -22,7 +20,6 @@ export function DetailGallery({ photos, count, code, alt, video, labels }: Props
   const closeRef = useRef<HTMLButtonElement>(null);
   const n = Math.max(count, photos.length, 1);
   const src = (i: number) => photos[i];
-  const lab = (i: number) => (photos[i] ? '' : `photo ${i + 1} · ${SHOTS[i % 5]}`);
 
   useEffect(() => {
     if (!all) return;
@@ -41,7 +38,7 @@ export function DetailGallery({ photos, count, code, alt, video, labels }: Props
         <div className={styles.track} onScroll={(e) => { const el = e.currentTarget; const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (i !== gi) setGi(i); }}>
           {Array.from({ length: n }, (_, i) => (
             <div key={i} className={styles.slide}>
-              <Photo src={src(i)} alt={`${alt} · ${i + 1}/${n}`} label={lab(i) || code} sizes="100vw" priority={i === 0} />
+              <Photo src={src(i)} alt={`${alt} · ${i + 1}/${n}`} sizes="100vw" priority={i === 0} />
             </div>
           ))}
         </div>
@@ -53,7 +50,7 @@ export function DetailGallery({ photos, count, code, alt, video, labels }: Props
       <div className={styles.grid}>
         {Array.from({ length: 5 }, (_, i) => (
           <button key={i} type="button" className={`${styles.cell} ${i === 0 ? styles.big : ''}`} onClick={() => setAll(true)} aria-label={`${labels.showAll} · ${labels.photosN}`}>
-            <Photo src={src(i)} alt={`${alt} · ${i + 1}/${n}`} label={photos[i] ? '' : SHOTS[i]} sizes={i === 0 ? '(min-width:1024px) 600px, 50vw' : '(min-width:1024px) 300px, 25vw'} />
+            <Photo src={src(i)} alt={`${alt} · ${i + 1}/${n}`} sizes={i === 0 ? '(min-width:1024px) 600px, 50vw' : '(min-width:1024px) 300px, 25vw'} />
           </button>
         ))}
         <div className={styles.actions}>
@@ -71,7 +68,7 @@ export function DetailGallery({ photos, count, code, alt, video, labels }: Props
           <div className={styles.dialogList}>
             {Array.from({ length: n }, (_, i) => (
               <div key={i} className={styles.dialogItem}>
-                <Photo src={src(i)} alt={`${alt} · ${i + 1}/${n}`} label={lab(i) || code} sizes="(min-width:1024px) 960px, 100vw" />
+                <Photo src={src(i)} alt={`${alt} · ${i + 1}/${n}`} sizes="(min-width:1024px) 960px, 100vw" />
               </div>
             ))}
           </div>

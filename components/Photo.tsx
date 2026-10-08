@@ -4,19 +4,19 @@ import styles from './Photo.module.css';
 type Props = {
   src?: string;
   alt: string;
-  /** mono label shown on the striped placeholder when there is no photo */
-  label: string;
+  /** optional mono label on the striped placeholder (no photo) — listing codes / fake shot names are not shown */
+  label?: string;
   sizes: string;
   priority?: boolean;
   tone?: 'unit' | 'building';
 };
 
-/** Fills its (aspect-ratio) parent: a real image, or the striped placeholder with a mono label. */
+/** Fills its (aspect-ratio) parent: a real image, or the neutral striped placeholder. */
 export function Photo({ src, alt, label, sizes, priority, tone = 'unit' }: Props) {
   if (!src) {
     return (
       <div className={`${styles.ph} ${tone === 'building' ? styles.bld : ''}`} role="img" aria-label={alt}>
-        <span className="ph-label">{label}</span>
+        {label && <span className="ph-label">{label}</span>}
       </div>
     );
   }

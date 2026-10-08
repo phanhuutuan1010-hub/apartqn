@@ -80,7 +80,7 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
         <div className={styles.gallery}>
           {gallery.map((label, i) => (
             <div key={label} className={`${styles.cell} ${i === 0 ? styles.big : ''}`}>
-              <Photo src={b.photos[i]} alt={`${b.name} · ${i + 1}`} label={label} tone="building" sizes={i === 0 ? '(min-width:768px) 66vw, 100vw' : '33vw'} priority={i === 0} />
+              <Photo src={b.photos[i]} alt={`${b.name} · ${i + 1}`} tone="building" sizes={i === 0 ? '(min-width:768px) 66vw, 100vw' : '33vw'} priority={i === 0} />
             </div>
           ))}
         </div>

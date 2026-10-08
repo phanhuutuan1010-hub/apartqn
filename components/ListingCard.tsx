@@ -35,9 +35,9 @@ export function ListingCard({ x, building, slider = false, priority = false, siz
     <article className={`${styles.card} ${x.status === 'rented' ? styles.dim : ''}`}>
       <div className={styles.photo}>
         {slider && count > 1 ? (
-          <CardPhotos photos={x.thumbs} count={count} code={x.code} alt={alt} sizes={sizes} priority={priority} photoLabel={t('photoOf')} />
+          <CardPhotos photos={x.thumbs} count={count} alt={alt} sizes={sizes} priority={priority} photoLabel={t('photoOf')} />
         ) : (
-          <Photo src={x.thumbs[0]} alt={alt} label={`photo · ${x.code}`} sizes={sizes} priority={priority} />
+          <Photo src={x.thumbs[0]} alt={alt} sizes={sizes} priority={priority} />
         )}
         {badges}
       </div>

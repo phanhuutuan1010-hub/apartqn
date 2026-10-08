@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { Photo } from './Photo';
 import styles from './CardPhotos.module.css';
 
-type Props = { photos: string[]; count: number; code: string; alt: string; sizes: string; priority?: boolean; photoLabel: string };
+type Props = { photos: string[]; count: number; alt: string; sizes: string; priority?: boolean; photoLabel: string };
 
 /** ‹ › step through photos without navigating; dots show 5 max. */
-export function CardPhotos({ photos, count, code, alt, sizes, priority, photoLabel }: Props) {
+export function CardPhotos({ photos, count, alt, sizes, priority, photoLabel }: Props) {
   const [i, setI] = useState(0);
   const go = (d: number) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -18,7 +18,7 @@ export function CardPhotos({ photos, count, code, alt, sizes, priority, photoLab
 
   return (
     <>
-      <Photo src={photos[i]} alt={`${alt} · ${i + 1}/${count}`} label={`photo ${i + 1}/${count} · ${code}`} sizes={sizes} priority={priority && i === 0} />
+      <Photo src={photos[i]} alt={`${alt} · ${i + 1}/${count}`} sizes={sizes} priority={priority && i === 0} />
       <button type="button" className={`${styles.arrow} ${styles.prev}`} aria-label={`${photoLabel} ${((i - 1 + count) % count) + 1}/${count}`} onClick={go(-1)}>
         <span aria-hidden>‹</span>
       </button>
