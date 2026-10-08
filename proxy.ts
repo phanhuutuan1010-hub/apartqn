@@ -74,9 +74,36 @@ async function admin(req: NextRequest) {
   return done(res);
 }
 
-export default function proxy(req: NextRequest) {
+/** Old QN-### listing URLs → 301 to the per-building code (looked up once per instance via legacy_code). */
+const LEGACY = /^(\/(?:en|ru))?\/(can-ho|apartments|kvartiry)\/(qn-\d{1,5})\/?$/i;
+const legacyCache = new Map<string, string | null>();
+async function legacyRedirect(req: NextRequest) {
+  const m = LEGACY.exec(req.nextUrl.pathname);
+  if (!m) return null;
+  const old = m[3].toUpperCase().replace(/^QN-(\d+)$/, (_, n: string) => `QN-${n.padStart(3, '0')}`);
+  if (!legacyCache.has(old)) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    try {
+      const r = await fetch(`${url}/rest/v1/public_listings?select=code&legacy_code=eq.${encodeURIComponent(old)}&limit=1`, {
+        headers: { apikey: key!, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(3000),
+      });
+      if (!r.ok) return null; // don't cache failures
+      const rows = (await r.json()) as { code: string }[];
+      legacyCache.set(old, rows[0]?.code ?? null);
+    } catch {
+      return null;
+    }
+  }
+  const code = legacyCache.get(old);
+  if (!code) return null; // unknown / no longer public → normal 404
+  const to = req.nextUrl.clone();
+  to.pathname = `${m[1] ?? ''}/${m[2]}/${code.toLowerCase()}`;
+  return NextResponse.redirect(to, 301);
+}
+
+export default async function proxy(req: NextRequest) {
   if (req.nextUrl.pathname === '/admin' || req.nextUrl.pathname.startsWith('/admin/')) return admin(req);
-  return intl(req);
+  return (await legacyRedirect(req)) ?? intl(req);
 }
 
 export const config = {
