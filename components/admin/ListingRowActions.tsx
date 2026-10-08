@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { changeStatus, confirmAvailable } from '@/lib/admin/listingActions';
 import { STATUS_LABEL, type ListingStatusAll } from '@/lib/admin/labels';
 
@@ -48,6 +49,7 @@ export function ListingRowActions({ id, status, role, canPublish }: { id: string
           ✓ Còn trống
         </button>
       )}
+      <Link href={`/admin/can-ho/moi?from=${id}`} className="a-btn a-btn-ghost a-btn-sm" title="Tạo căn mới từ căn này (nháp)">Nhân bản</Link>
       {msg && <span className="a-small" style={{ color: msg.t === 'error' ? 'var(--error)' : 'var(--ok-fg)', flexBasis: '100%', textAlign: 'right' }} role="status">{msg.m}</span>}
     </div>
   );

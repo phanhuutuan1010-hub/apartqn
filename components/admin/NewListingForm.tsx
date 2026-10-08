@@ -6,9 +6,11 @@ import { checkDuplicate, createDraft, type ActionResult } from '@/lib/admin/list
 
 type Opt = { value: string; label: string };
 
-export function NewListingForm({ buildings, staff, isAdmin, meId }: { buildings: Opt[]; staff: Opt[]; isAdmin: boolean; meId: string }) {
+type From = { id: string; building: string; ownerVisible: boolean };
+
+export function NewListingForm({ buildings, staff, isAdmin, meId, from }: { buildings: Opt[]; staff: Opt[]; isAdmin: boolean; meId: string; from?: From }) {
   const [state, action, pending] = useActionState<ActionResult, FormData>(createDraft, {});
-  const [v, setV] = useState({ building: '', floor: '', unit_no: '' });
+  const [v, setV] = useState({ building: from?.building ?? '', floor: '', unit_no: '' });
   const [dup, setDup] = useState<{ name: string; at: string | null } | null>(null);
 
   // duplicate check as you type (building + floor + unit no.)
@@ -60,11 +62,19 @@ export function NewListingForm({ buildings, staff, isAdmin, meId }: { buildings:
           </span>
         </div>
       )}
+      {from && (
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <input type="hidden" name="from" value={from.id} />
+          <p className="a-small a-muted" style={{ margin: 0 }}>Sẽ chép: diện tích, phòng, hướng, nội thất, giá và phí (kể cả ghi đè), điều kiện thuê, mô tả VI/EN/RU. Không chép mã, tầng, số căn, xác nhận còn trống — căn mới là Nháp.</p>
+          <label className="a-check"><input type="checkbox" name="copy_photos" /> Sao chép ảnh</label>
+          {from.ownerVisible && <label className="a-check"><input type="checkbox" name="same_owner" /> Cùng chủ nhà (chép tên, số điện thoại, ghi chú chủ nhà)</label>}
+        </div>
+      )}
       {state.error && <div className="a-alert error" style={{ marginTop: 14 }}>{state.error}</div>}
       <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-        <button className="a-btn a-btn-blue" disabled={pending || !!dup}>{pending ? 'Đang tạo…' : 'Tạo nháp & nhập chi tiết'}</button>
+        <button className="a-btn a-btn-blue" disabled={pending || !!dup}>{pending ? 'Đang tạo…' : from ? 'Tạo bản sao (nháp)' : 'Tạo nháp & nhập chi tiết'}</button>
       </div>
-      <p className="a-small a-muted" style={{ margin: '12px 0 0' }}>Căn mới luôn bắt đầu ở trạng thái Nháp. Mã QN được cấp khi đăng tin lần đầu.</p>
+      <p className="a-small a-muted" style={{ margin: '12px 0 0' }}>Căn mới luôn bắt đầu ở trạng thái Nháp. Mã căn (vd. ALT-001) được cấp khi đăng tin lần đầu.</p>
     </form>
   );
 }
