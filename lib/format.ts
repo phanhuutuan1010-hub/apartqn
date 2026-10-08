@@ -47,8 +47,8 @@ export const F = {
   waterPerson: (l: Locale) => money(100000, l) + (l === 'vi' ? '/người/tháng' : l === 'ru' ? ' с человека в мес.' : ' per person/mo'),
 };
 
-/** Estimated monthly total — the one place this is computed. */
-export const total = (x: Pick<Listing, 'rent' | 'mgmt' | 'moto' | 'net'>) => x.rent + x.mgmt + x.moto + x.net;
+/** Estimated monthly total — the one place this is computed: rent + management (if the tenant pays it) + one motorbike. */
+export const total = (x: Pick<Listing, 'rent' | 'mgmt' | 'moto' | 'mgmtPaidBy'>) => x.rent + (x.mgmtPaidBy === 'owner' ? 0 : x.mgmt) + x.moto;
 
 /** Status badge colours (fg, bg) — token values */
 export const STATUS: Record<Listing['status'], [string, string]> = {

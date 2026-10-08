@@ -144,7 +144,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
 
             <section className={styles.sec}>
               <h2 className={`h2s ${styles.h2}`}>{t('costs')}</h2>
-              <CostBreakdown x={x} />
+              <CostBreakdown x={x} b={b} />
             </section>
 
             <section className={styles.sec}>

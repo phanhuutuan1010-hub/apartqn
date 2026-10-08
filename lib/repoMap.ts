@@ -3,6 +3,7 @@
  * against rows from plain Postgres (bigint/numeric arrive as strings there, numbers via PostgREST).
  */
 import type { Building, BuildingAmenity, Descriptions, Listing } from './types';
+import { toBuildingFees } from './fees';
 
 type PhotoRow = { path: string; thumb: string | null };
 
@@ -14,6 +15,8 @@ export type PublicBuildingRow = {
   aliases?: string[] | null;
   /** missing before migration 13 */
   code_prefix?: string | null;
+  /** fee columns: migration 14 */
+  [fee: string]: unknown;
 };
 
 export type PublicListingRow = {
@@ -30,6 +33,8 @@ export type PublicListingRow = {
   video_url?: string | null;
   /** missing before migration 13 */
   legacy_code?: string | null;
+  /** missing before migration 14 */
+  mgmt_fee_paid_by?: 'tenant' | 'owner' | null;
 };
 
 /** Public URL of an object in the listing-public bucket */
@@ -67,6 +72,7 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
     demo: r.is_demo,
     aliases: r.aliases ?? [],
     prefix: r.code_prefix ?? '',
+    fees: (({ fee_source, ...f }) => (void fee_source, f))(toBuildingFees(r)),
   };
 }
 
@@ -110,6 +116,7 @@ export function toListing(r: PublicListingRow, supabaseUrl: string): Listing {
     demo: r.is_demo,
     ...(r.video_url ? { videoUrl: r.video_url } : {}),
     ...(r.legacy_code ? { legacyCode: r.legacy_code } : {}),
+    ...(r.mgmt_fee_paid_by === 'owner' ? { mgmtPaidBy: 'owner' as const } : {}),
     ...(r.verified_at != null ? { verifiedAt: iso(r.verified_at) } : {}),
     ...(r.published_at != null ? { publishedAt: iso(r.published_at) } : {}),
   };

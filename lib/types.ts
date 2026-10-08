@@ -6,6 +6,8 @@ export type ListingStatus = 'available' | 'reserved' | 'rented';
 export type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
 export type ViewKind = 'sea' | 'city' | 'river' | 'lagoon';
 export type Descriptions = { vi?: string; en?: string; ru?: string };
+export type { BuildingFees } from './fees';
+import type { BuildingFees } from './fees';
 
 export type Building = {
   /** URL slug (e.g. "altara") */
@@ -28,6 +30,8 @@ export type Building = {
   aliases: string[];
   /** listing code prefix (ALT → ALT-001) */
   prefix: string;
+  /** management-office rates (public subset: no source note) */
+  fees: Omit<BuildingFees, 'fee_source'>;
 };
 
 export type Listing = {
@@ -71,6 +75,8 @@ export type Listing = {
   videoUrl?: string;
   /** old QN-### code (redirects, search) */
   legacyCode?: string;
+  /** who pays the management fee (default tenant) */
+  mgmtPaidBy?: 'tenant' | 'owner';
   desc: Descriptions;
   demo: boolean;
   /** ISO timestamps (search ranking) */
