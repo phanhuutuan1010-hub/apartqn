@@ -9,6 +9,8 @@ import { requireStaff } from '@/lib/admin/session';
 import { publicRef, refresh } from '@/lib/admin/refresh';
 import { parseVnd, type ListingStatusAll } from '@/lib/admin/labels';
 import { vnError } from '@/lib/admin/errors';
+import { copyListing } from '@/lib/admin/duplicate';
+import { effectiveFees, FEE_FIELDS, toBuildingFees, type Overrides } from '@/lib/fees';
 
 export type ActionResult = { ok?: string; error?: string; fieldErrors?: Record<string, string>; updatedAt?: string };
 
@@ -39,8 +41,20 @@ export async function createDraft(_: ActionResult, fd: FormData): Promise<Action
     p_assigned_to: me.role === 'admin' && assignee ? assignee : null,
   });
   if (error) return { error: vnError(error) };
+  // "Nhân bản căn hộ": fill the new draft from the source (the duplicate-unit check above already ran in the rpc)
+  const from = String(fd.get('from') ?? '');
+  let note = '';
+  if (/^[0-9a-f-]{36}$/.test(from)) {
+    try {
+      const r = await copyListing(sb, from, data as string, { photos: fd.get('copy_photos') === 'on', owner: fd.get('same_owner') === 'on' });
+      note = `&copied=${r.photos}`;
+    } catch (e) {
+      revalidatePath('/admin/can-ho');
+      redirect(`/admin/can-ho/${data}?created=1&copyError=${encodeURIComponent((e as Error).message.slice(0, 200))}`);
+    }
+  }
   revalidatePath('/admin/can-ho');
-  redirect(`/admin/can-ho/${data}?created=1`);
+  redirect(`/admin/can-ho/${data}?created=1${note}`);
 }
 
 // ───────────────────────── save ─────────────────────────
@@ -64,8 +78,10 @@ const SaveSchema = z.object({
   dir: opt(['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']), view: opt(['sea', 'city', 'river', 'lagoon']), furn: opt(['full', 'basic', 'empty']),
   move_in: z.preprocess((v) => (v ? v : null), z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()),
   verified: bool,
-  rent: money, deposit: int(0, 12), cycle: opt(['m1', 'm3']), mgmt: money, elec: opt(['evn', 'fixed']), water: opt(['meter', 'person']),
-  moto: money, car: money, net: money,
+  rent: money, deposit: int(0, 12), cycle: opt(['m1', 'm3']), elec: opt(['evn', 'fixed']), water: opt(['meter', 'person']), net: money,
+  // fees come from the building; ov_* = fields typed by hand ("Ghi đè")
+  ov_mgmt: money, ov_moto: money, ov_car: money,
+  mgmt_fee_paid_by: z.preprocess((v) => (v ? v : 'tenant'), z.enum(['tenant', 'owner'])),
   min_term: int(1, 120), max_occ: int(1, 20), pets: bool, temp_reg: bool, car_parking: tri,
   video_url: z.preprocess((v) => (typeof v === 'string' && v.trim() ? normaliseYoutube(v) ?? 'invalid' : null), z.string().regex(YOUTUBE_RE, 'Chỉ nhận link YouTube (youtube.com hoặc youtu.be)').nullable()),
   desc_vi: text(8000), desc_en: text(8000), desc_ru: text(8000),
@@ -98,9 +114,18 @@ export async function saveListing(id: string, _: ActionResult, fd: FormData): Pr
   if (u.error) return { error: vnError(u.error) };
   if (!u.data?.length) return { error: 'Bạn không có quyền sửa căn này.' };
 
-  const { building_id: _b, floor: _f, unit_no: _u, owner_name: _on, owner_phone: _op, owner_notes: _nt, assigned_to: _a, expected_updated_at: _e, ...listing } = v;
+  const { building_id: _b, floor: _f, unit_no: _u, owner_name: _on, owner_phone: _op, owner_notes: _nt, assigned_to: _a, expected_updated_at: _e,
+    ov_mgmt, ov_moto, ov_car, car_parking, ...listing } = v;
   void _b; void _f; void _u; void _on; void _op; void _nt; void _a; void _e;
-  const l = await sb.from('listings').update({ ...listing, video: !!listing.video_url }).eq('id', id).select('updated_at');
+  // effective fees: building rates (authoritative, read here) unless overridden
+  const { data: bRow } = await sb.from('buildings').select(FEE_FIELDS.join(', ')).eq('id', v.building_id).maybeSingle();
+  const fees = toBuildingFees((bRow ?? {}) as unknown as Record<string, unknown>);
+  const overrides: Overrides = Object.fromEntries(([['mgmt', ov_mgmt], ['moto', ov_moto], ['car', ov_car]] as const).filter(([, x]) => x != null));
+  const eff = effectiveFees(fees, listing.area, overrides);
+  const l = await sb.from('listings').update({
+    ...listing, video: !!listing.video_url, fee_overrides: overrides,
+    mgmt: eff.mgmt, moto: eff.moto, car: eff.car, car_parking: eff.carParking ?? car_parking,
+  }).eq('id', id).select('updated_at');
   if (l.error) return { error: vnError(l.error) };
   if (!l.data?.length) return { error: 'Bạn không có quyền sửa căn này.' };
 

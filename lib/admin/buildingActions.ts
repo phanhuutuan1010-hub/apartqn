@@ -7,12 +7,17 @@ import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
 import { revalidatePublic } from '@/lib/revalidate';
 import { parseVnd, AMENITIES } from '@/lib/admin/labels';
+import { FEE_FIELDS, toBuildingFees, type BuildingFees } from '@/lib/fees';
+import { syncListingFees } from '@/lib/admin/feeSync';
 
 export type BuildingResult = { ok?: string; error?: string; fieldErrors?: Record<string, string> };
 
 const txt = (max: number) => z.preprocess((v) => (typeof v === 'string' && v.trim() ? v.trim() : null), z.string().max(max).nullable());
 const coord = (min: number, max: number) => z.preprocess((v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.'))), z.number().min(min).max(max).nullable());
 const vnd = z.preprocess((v) => parseVnd(v as FormDataEntryValue), z.number().int().min(0).max(100_000_000).nullable());
+// '' = unknown (null) — never 0
+const pct = z.preprocess((v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.'))), z.number().min(0).max(100).nullable());
+const date = z.preprocess((v) => (v ? v : null), z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable());
 
 const Schema = z.object({
   name: z.string().trim().min(1, 'Nhập tên toà nhà').max(120),
@@ -22,7 +27,13 @@ const Schema = z.object({
   street: z.string().trim().max(120),
   ward_new: txt(120), ward_old: txt(120),
   lat: coord(-90, 90), lng: coord(-180, 180),
-  mgmt_per_m2: vnd, moto: vnd, car: vnd, net: vnd,
+  net: vnd,
+  // fees (migration 14)
+  mgmt_fee_per_m2: vnd, mgmt_fee_vat_pct: pct, motorbike_fee: vnd, motorbike_fee_from_3rd: vnd, car_fee: vnd,
+  car_parking: z.preprocess((v) => (v ? v : null), z.enum(['paid', 'free', 'none']).nullable()), bicycle_fee: vnd,
+  electricity_rate: vnd, electricity_vat_pct: pct, water_rate: vnd, water_vat_pct: pct,
+  water_extra_note: txt(300), fee_source: txt(300), fee_updated_on: date,
+  fee_verified: z.preprocess((v) => v === 'on', z.boolean()),
   desc_vi: txt(8000), desc_en: txt(8000), desc_ru: txt(8000),
   sort: z.coerce.number().int().min(0).max(999),
   is_demo: z.preprocess((v) => v === 'on', z.boolean()),
@@ -58,16 +69,16 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
     .filter((a) => a && a.toLowerCase() !== v.name.toLowerCase()).map((a) => [a.toLowerCase(), a])).values()];
   if (aliases.length > 20) return { error: 'Tối đa 20 tên gọi khác.', fieldErrors: { aliases: 'Tối đa 20' } };
   const amenities = fd.getAll('amenities').map(String).filter((a) => (AMENITIES as readonly string[]).includes(a));
-  const default_fees = Object.fromEntries(
-    (['mgmt_per_m2', 'moto', 'car', 'net'] as const).filter((k) => v[k] != null).map((k) => [k, v[k]]),
-  );
+  const default_fees = v.net != null ? { net: v.net } : {};
+  const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, v[k]])) as BuildingFees;
   const row = {
     name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street, ward_new: v.ward_new, ward_old: v.ward_old, lat: v.lat, lng: v.lng,
-    amenities, default_fees, desc_vi: v.desc_vi, desc_en: v.desc_en, desc_ru: v.desc_ru, sort: v.sort, is_demo: v.is_demo,
+    amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, desc_ru: v.desc_ru, sort: v.sort, is_demo: v.is_demo,
   };
   const sb = await supabaseServer();
   if (!id) {
     if (!v.slug) return { error: 'Nhập đường dẫn (slug).', fieldErrors: { slug: 'Bắt buộc' } };
+    if (!v.code_prefix) return { error: 'Nhập tiền tố mã căn.', fieldErrors: { code_prefix: 'Bắt buộc, 3 chữ cái' } };
     const { data, error } = await sb.from('buildings').insert({ ...row, slug: v.slug }).select('id').single();
     if (error) return dbError(error);
     revalidatePublic({ building: v.slug });
@@ -76,7 +87,29 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   }
   const { data, error } = await sb.from('buildings').update(row).eq('id', id).select('slug').single();
   if (error) return dbError(error);
+  let synced = 0;
+  if (fd.get('propagate') === '1') {
+    try {
+      synced = (await syncListingFees(sb, id, fees, true)).count;
+    } catch (e) {
+      return { error: 'Đã lưu toà nhà, nhưng chưa cập nhật được phí các căn: ' + (e as Error).message };
+    }
+  }
   await refreshBuilding(id, data.slug);
   revalidatePath(`/admin/toa-nha/${id}`);
-  return { ok: 'Đã lưu. Website cập nhật ngay.' };
+  revalidatePath('/admin/can-ho');
+  return { ok: synced ? `Đã lưu và cập nhật phí ${synced} căn. Website cập nhật ngay.` : 'Đã lưu. Website cập nhật ngay.' };
+}
+
+/** How many listings would take new fees from this form (before saving): drives the "Cập nhật N căn" dialog. */
+export async function previewFeeSync(id: string, fd: FormData): Promise<{ count: number; error?: string }> {
+  await requireAdmin();
+  const p = Schema.safeParse(Object.fromEntries(fd));
+  if (!p.success) return { count: 0 };
+  const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, p.data[k]])) as BuildingFees;
+  try {
+    return { count: (await syncListingFees(await supabaseServer(), id, toBuildingFees(fees), false)).count };
+  } catch (e) {
+    return { count: 0, error: (e as Error).message };
+  }
 }

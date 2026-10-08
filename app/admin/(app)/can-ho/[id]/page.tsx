@@ -5,16 +5,18 @@ import { ExternalLink } from 'lucide-react';
 import { requireStaff, staffDirectory } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
+import { FEE_FIELDS, toBuildingFees } from '@/lib/fees';
 import { STATUS_LABEL, STATUS_TONE, fmtDateTime, daysSince, type ListingStatusAll } from '@/lib/admin/labels';
 import { ListingForm, type BuildingOpt, type ListingData, type UnitData } from '@/components/admin/ListingForm';
 import { PhotoManager, type PhotoView } from '@/components/admin/PhotoManager';
 import { ListingRowActions } from '@/components/admin/ListingRowActions';
 
 export const metadata: Metadata = { title: 'Sửa căn' };
+const BUILDING_COLS = `id, name, slug, default_fees, ${FEE_FIELDS.join(', ')}`;
 
-export default async function EditListingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
+export default async function EditListingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string; copied?: string; copyError?: string }> }) {
   const { id } = await params;
-  const { created } = await searchParams;
+  const { created, copied, copyError } = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const me = await requireStaff();
   const sb = await supabaseServer();
@@ -22,7 +24,7 @@ export default async function EditListingPage({ params, searchParams }: { params
   // one round trip: listing + its unit (join) in parallel with buildings, photos and the staff directory
   const [{ data: row }, { data: buildings }, { data: photoRows }, dir] = await Promise.all([
     sb.from('listings').select('*, unit:units(building_id, floor, unit_no, owner_name, owner_phone, owner_notes, assigned_to)').eq('id', id).maybeSingle(),
-    sb.from('buildings').select('id, name, slug, default_fees').order('sort'),
+    sb.from('buildings').select(BUILDING_COLS).order('sort') as unknown as Promise<{ data: ({ id: string; name: string; slug: string; default_fees: { net?: number } } & Record<string, unknown>)[] | null }>,
     sb.from('photos').select('id, bucket, path, thumb_path, visibility, is_cover, sort, width, height, watermark').eq('listing_id', id).order('sort'),
     staffDirectory(),
   ]);
@@ -72,7 +74,9 @@ export default async function EditListingPage({ params, searchParams }: { params
         </div>
       </div>
 
-      {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo nháp. Điền thông tin, thêm ảnh rồi bấm “{me.can_publish || me.role === 'admin' ? 'Đăng ngay' : 'Gửi duyệt'}”.</div>}
+      {copied != null && !copyError && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã nhân bản{Number(copied) ? ` kèm ${copied} ảnh` : ''}. Kiểm tra tầng, số căn, ngày dọn vào rồi lưu.</div>}
+      {copyError && <div className="a-alert error" style={{ marginBottom: 14 }}>Đã tạo nháp nhưng chép dữ liệu chưa xong: {copyError}</div>}
+      {created && copied == null && !copyError && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo nháp. Điền thông tin, thêm ảnh rồi bấm “{me.can_publish || me.role === 'admin' ? 'Đăng ngay' : 'Gửi duyệt'}”.</div>}
       {status === 'draft' && listing.rejection_reason && (
         <div className="a-alert error" style={{ marginBottom: 14 }}><b>Bị từ chối:</b> {listing.rejection_reason}</div>
       )}
@@ -81,7 +85,7 @@ export default async function EditListingPage({ params, searchParams }: { params
       <ListingForm
         listing={listing as ListingData}
         unit={unit as UnitData}
-        buildings={(buildings ?? []) as BuildingOpt[]}
+        buildings={((buildings ?? []) as unknown as Record<string, unknown>[]).map((x) => ({ id: x.id, name: x.name, default_fees: x.default_fees ?? {}, fees: toBuildingFees(x) }) as BuildingOpt)}
         staff={[...dir.values()].filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
         isAdmin={me.role === 'admin'}
         canPublish={me.role === 'admin' || me.can_publish}

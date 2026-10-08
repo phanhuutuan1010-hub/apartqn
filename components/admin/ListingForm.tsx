@@ -4,8 +4,9 @@ import { useActionState, useEffect, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { saveListing, type ActionResult } from '@/lib/admin/listingActions';
 import { DIRS, FURNS, VIEWS, dirLabel, fmtVnd, furnLabel, parseVnd, viewLabel } from '@/lib/admin/labels';
+import { effectiveFees, mgmtFormula, type BuildingFees, type OverrideKey, type Overrides } from '@/lib/fees';
 
-export type BuildingOpt = { id: string; name: string; default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number } };
+export type BuildingOpt = { id: string; name: string; default_fees: { net?: number }; fees: BuildingFees };
 export type ListingData = Record<string, unknown> & {
   id: string; status: string; updated_at: string;
   desc_vi_updated_at: string | null; desc_en_updated_at: string | null; desc_ru_updated_at: string | null;
@@ -29,10 +30,18 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   const [updatedAt, setUpdatedAt] = useState(L.updated_at);
   const [tab, setTab] = useState<'vi' | 'en' | 'ru'>('vi');
   const [dirty, setDirty] = useState(false);
-  // fields prefilled from building defaults
-  const [f, setF] = useState({
-    building_id: U.building_id, area: s(L.area),
-    mgmt: fmtVnd(L.mgmt as number | null), moto: fmtVnd(L.moto as number | null), car: fmtVnd(L.car as number | null), net: fmtVnd(L.net as number | null),
+  // building + area drive the fees; ov = fields typed by hand ("Ghi đè"), as display strings
+  const initialOv = (L.fee_overrides ?? {}) as Overrides;
+  const [f, setF] = useState({ building_id: U.building_id, area: s(L.area), net: fmtVnd(L.net as number | null) });
+  const [ov, setOv] = useState<Partial<Record<OverrideKey, string>>>(() => {
+    const o: Partial<Record<OverrideKey, string>> = Object.fromEntries(Object.entries(initialOv).map(([k, v]) => [k, fmtVnd(v as number)]));
+    // a fee the building does not know yet keeps the listing's own stored value (typed earlier)
+    const b0 = buildings.find((b) => b.id === U.building_id);
+    if (b0) {
+      const auto0 = effectiveFees(b0.fees, Number(L.area) || null, {});
+      for (const k of ['mgmt', 'moto', 'car'] as const) if (o[k] == null && auto0[k] == null && L[k] != null) o[k] = fmtVnd(Number(L[k]));
+    }
+    return o;
   });
 
   // react to a new action result during render (no effect-driven setState)
@@ -51,25 +60,59 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
     return () => window.removeEventListener('beforeunload', h);
   }, [dirty]);
 
-  const prefill = (buildingId: string, area: string) => {
-    const b = buildings.find((x) => x.id === buildingId);
-    const d = b?.default_fees ?? {};
-    const a = Number(area.replace(',', '.'));
-    setF((cur) => ({
-      ...cur,
-      building_id: buildingId,
-      area,
-      mgmt: cur.mgmt || (d.mgmt_per_m2 && a ? fmtVnd(Math.round((d.mgmt_per_m2 * a) / 1000) * 1000) : ''),
-      moto: cur.moto || (d.moto != null ? fmtVnd(d.moto) : ''),
-      car: cur.car || (d.car != null ? fmtVnd(d.car) : ''),
-      net: cur.net || (d.net != null ? fmtVnd(d.net) : ''),
-    }));
+  const building = buildings.find((b) => b.id === f.building_id);
+  const areaN = Number(f.area.replace(',', '.')) || null;
+  const auto = building ? effectiveFees(building.fees, areaN, {}) : null;
+  const onBuilding = (id: string) => {
+    const nb = buildings.find((b) => b.id === id);
+    setF((c) => ({ ...c, building_id: id, net: c.net || (nb?.default_fees?.net != null ? fmtVnd(nb.default_fees.net) : '') }));
   };
-  const money = (k: 'mgmt' | 'moto' | 'car' | 'net') => ({
-    name: k, value: f[k], inputMode: 'numeric' as const, className: 'input',
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setF((c) => ({ ...c, [k]: e.target.value })),
-    onBlur: (e: React.FocusEvent<HTMLInputElement>) => { const n = parseVnd(e.target.value); setF((c) => ({ ...c, [k]: n == null ? '' : fmtVnd(n) })); },
-  });
+  const net = {
+    name: 'net', value: f.net, inputMode: 'numeric' as const, className: 'input',
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setF((c) => ({ ...c, net: e.target.value })),
+    onBlur: (e: React.FocusEvent<HTMLInputElement>) => { const n = parseVnd(e.target.value); setF((c) => ({ ...c, net: n == null ? '' : fmtVnd(n) })); },
+  };
+
+  /** One inherited fee: "Theo toà nhà" (read-only, live) or "Ghi đè" (typed). Missing at the building → must be typed. */
+  const FeeField = ({ k, label, hint }: { k: OverrideKey; label: string; hint?: React.ReactNode }) => {
+    const fromB = auto?.[k] ?? null;
+    const locked = k === 'car' && building?.fees.car_parking === 'none';
+    const missing = fromB == null && !locked;
+    const overriding = ov[k] != null || missing;
+    return (
+      <div className={cls(k, 'span2')}>
+        <span className="a-fee-head">
+          {label}
+          {!missing && !locked && (
+            <label className="a-fee-toggle">
+              <input type="checkbox" checked={ov[k] != null} onChange={(e) => setOv((c) => {
+                const n = { ...c };
+                if (e.target.checked) n[k] = fmtVnd(fromB); else delete n[k];
+                return n;
+              })} /> Ghi đè
+            </label>
+          )}
+        </span>
+        {locked ? (
+          <span className="a-fee-auto">Không — toà nhà không có chỗ đậu ô tô</span>
+        ) : overriding ? (
+          <span className="a-suffix">
+            <input className="input" name={`ov_${k}`} inputMode="numeric" value={ov[k] ?? ''} placeholder={missing ? 'nhập tay' : ''}
+              onChange={(e) => setOv((c) => ({ ...c, [k]: e.target.value }))}
+              onBlur={(e) => { const n = parseVnd(e.target.value); setOv((c) => ({ ...c, [k]: n == null ? '' : fmtVnd(n) })); }} />
+            <span>₫/tháng</span>
+          </span>
+        ) : (
+          <span className="a-fee-auto">Theo toà nhà · <b>{fmtVnd(fromB)} ₫/tháng</b></span>
+        )}
+        {missing && <span className="hint">Toà nhà chưa có số liệu — nhập tay (hoặc quản trị viên bổ sung ở trang Toà nhà).</span>}
+        {hint && !overriding && <span className="hint">{hint}</span>}
+        {err(k)}
+      </div>
+    );
+  };
+  const formula = building && mgmtFormula(areaN, building.fees.mgmt_fee_per_m2, building.fees.mgmt_fee_vat_pct, (n) => fmtVnd(n));
+  const carParkingFixed = building?.fees.car_parking ?? null;
 
   const fe = state.fieldErrors ?? {};
   const cls = (k: string, extra = '') => `a-field ${extra} ${fe[k] ? 'invalid' : ''}`;
@@ -89,14 +132,14 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
         <h2 className="a-section-title">Thông tin căn</h2>
         <div className="a-grid">
           <label className={cls('building_id', 'span2')}>Toà nhà
-            <select className="input" name="building_id" value={f.building_id} onChange={(e) => prefill(e.target.value, f.area)}>
+            <select className="input" name="building_id" value={f.building_id} onChange={(e) => onBuilding(e.target.value)}>
               {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>{err('building_id')}
           </label>
           <label className={cls('floor')}>Tầng<input className="input" name="floor" inputMode="numeric" defaultValue={U.floor} />{err('floor')}</label>
           <label className={cls('unit_no')}>Số căn<input className="input" name="unit_no" defaultValue={U.unit_no} maxLength={20} />{err('unit_no')}</label>
-          <label className={cls('area')}>Diện tích
-            <span className="a-suffix"><input className="input" name="area" inputMode="decimal" value={f.area} onChange={(e) => setF((c) => ({ ...c, area: e.target.value }))} onBlur={(e) => prefill(f.building_id, e.target.value)} /><span>m²</span></span>{err('area')}
+          <label className={cls('area')}>Diện tích thông thủy
+            <span className="a-suffix"><input className="input" name="area" inputMode="decimal" value={f.area} onChange={(e) => setF((c) => ({ ...c, area: e.target.value }))} /><span>m²</span></span>{err('area')}
           </label>
           <label className={cls('beds')}>Phòng ngủ <span className="hint">0 = studio</span><input className="input" name="beds" inputMode="numeric" defaultValue={s(L.beds)} />{err('beds')}</label>
           <label className={cls('baths')}>Phòng tắm<input className="input" name="baths" inputMode="numeric" defaultValue={s(L.baths)} />{err('baths')}</label>
@@ -125,10 +168,16 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
           <label className={cls('cycle')}>Kỳ thanh toán
             <select className="input" name="cycle" defaultValue={s(L.cycle)}><option value="">—</option><option value="m1">Hằng tháng</option><option value="m3">3 tháng/lần</option></select>{err('cycle')}
           </label>
-          <label className={cls('mgmt')}>Phí quản lý<span className="a-suffix"><input {...money('mgmt')} /><span>₫/tháng</span></span>{err('mgmt')}</label>
-          <label className={cls('moto')}>Gửi xe máy<span className="a-suffix"><input {...money('moto')} /><span>₫/tháng</span></span>{err('moto')}</label>
-          <label className={cls('car')}>Gửi ô tô<span className="a-suffix"><input {...money('car')} /><span>₫/tháng</span></span>{err('car')}</label>
-          <label className={cls('net')}>Internet <span className="hint">0 = đã gồm</span><span className="a-suffix"><input {...money('net')} /><span>₫/tháng</span></span>{err('net')}</label>
+          {FeeField({ k: 'mgmt', label: 'Phí quản lý', hint: formula ?? 'Nhập diện tích thông thủy để tính.' })}
+          <label className={cls('mgmt_fee_paid_by', 'span2')}>Ai trả phí quản lý
+            <select className="input" name="mgmt_fee_paid_by" defaultValue={s(L.mgmt_fee_paid_by) || 'tenant'}>
+              <option value="tenant">Khách thuê trả (cộng vào ước tính)</option>
+              <option value="owner">Chủ nhà trả</option>
+            </select>
+          </label>
+          {FeeField({ k: 'moto', label: 'Gửi xe máy (1 xe)', hint: building?.fees.motorbike_fee_from_3rd != null ? `Từ xe thứ 3: ${fmtVnd(building.fees.motorbike_fee_from_3rd)} ₫` : undefined })}
+          {FeeField({ k: 'car', label: 'Gửi ô tô', hint: carParkingFixed === 'free' ? 'Toà nhà cho đậu miễn phí' : undefined })}
+          <label className={cls('net')}>Internet <span className="hint">0 = đã gồm</span><span className="a-suffix"><input {...net} /><span>₫/tháng</span></span>{err('net')}</label>
           <label className={cls('elec')}>Điện
             <select className="input" name="elec" defaultValue={s(L.elec)}><option value="">—</option><option value="evn">Giá EVN, theo công tơ</option><option value="fixed">Giá cố định</option></select>{err('elec')}
           </label>
@@ -136,8 +185,12 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
             <select className="input" name="water" defaultValue={s(L.water)}><option value="">—</option><option value="meter">Theo đồng hồ</option><option value="person">Theo đầu người</option></select>{err('water')}
           </label>
         </div>
-        {!buildings.find((b) => b.id === f.building_id)?.default_fees?.moto && (
-          <p className="a-small a-muted" style={{ margin: '12px 0 0' }}>Toà nhà này chưa có phí mặc định — nhập tay. (Quản trị viên có thể đặt phí mặc định ở trang Toà nhà.)</p>
+        {building && (building.fees.electricity_rate != null || building.fees.water_rate != null) && (
+          <p className="a-small a-muted" style={{ margin: '12px 0 0' }}>
+            Đơn giá toà nhà: {building.fees.electricity_rate != null && <>điện {fmtVnd(building.fees.electricity_rate)} ₫/kWh{building.fees.electricity_vat_pct != null ? ` + VAT ${building.fees.electricity_vat_pct}%` : ''}</>}
+            {building.fees.water_rate != null && <> · nước {fmtVnd(building.fees.water_rate)} ₫/m³{building.fees.water_vat_pct != null ? ` + VAT ${building.fees.water_vat_pct}%` : ''}</>}
+            {building.fees.fee_verified ? ' · đã xác minh' : ' · chưa xác minh'}
+          </p>
         )}
       </section>
 
@@ -147,11 +200,17 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
         <div className="a-grid">
           <label className={cls('min_term')}>Thuê tối thiểu<span className="a-suffix"><input className="input" name="min_term" inputMode="numeric" defaultValue={s(L.min_term)} /><span>tháng</span></span>{err('min_term')}</label>
           <label className={cls('max_occ')}>Số người tối đa<input className="input" name="max_occ" inputMode="numeric" defaultValue={s(L.max_occ)} />{err('max_occ')}</label>
-          <label className="a-field">Chỗ đậu ô tô
-            <select className="input" name="car_parking" defaultValue={L.car_parking === true ? 'yes' : L.car_parking === false ? 'no' : ''}>
-              <option value="">Chưa rõ</option><option value="yes">Có</option><option value="no">Không</option>
-            </select>
-          </label>
+          {carParkingFixed ? (
+            <div className="a-field">Chỗ đậu ô tô
+              <span className="a-fee-auto">Theo toà nhà · <b>{carParkingFixed === 'none' ? 'Không' : carParkingFixed === 'free' ? 'Có, miễn phí' : 'Có, thu phí'}</b></span>
+            </div>
+          ) : (
+            <label className="a-field">Chỗ đậu ô tô <span className="hint">toà nhà chưa có thông tin</span>
+              <select className="input" name="car_parking" defaultValue={L.car_parking === true ? 'yes' : L.car_parking === false ? 'no' : ''}>
+                <option value="">Chưa rõ</option><option value="yes">Có</option><option value="no">Không</option>
+              </select>
+            </label>
+          )}
           <div />
           <label className="a-check"><input type="checkbox" name="pets" defaultChecked={!!L.pets} /> Cho nuôi thú cưng</label>
           <label className="a-check"><input type="checkbox" name="temp_reg" defaultChecked={L.temp_reg !== false} /> Hỗ trợ đăng ký tạm trú</label>

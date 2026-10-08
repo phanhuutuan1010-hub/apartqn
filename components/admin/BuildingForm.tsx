@@ -1,7 +1,8 @@
 'use client';
 
-import { useActionState, useState } from 'react';
-import { saveBuilding, type BuildingResult } from '@/lib/admin/buildingActions';
+import { startTransition, useActionState, useState } from 'react';
+import { previewFeeSync, saveBuilding, type BuildingResult } from '@/lib/admin/buildingActions';
+import type { BuildingFees } from '@/lib/fees';
 import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
 import { TagInput } from './TagInput';
 
@@ -10,7 +11,7 @@ export type BuildingData = {
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
   desc_vi: string | null; desc_en: string | null; desc_ru: string | null; sort: number; is_demo: boolean;
-};
+} & BuildingFees;
 
 /** `codedListings`: listings of this building that already carry a code → the prefix is frozen. */
 export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData; photos?: React.ReactNode; codedListings?: number }) {
@@ -20,9 +21,33 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
   const cls = (k: string, extra = '') => `a-field ${extra} ${fe[k] ? 'invalid' : ''}`;
   const err = (k: string) => fe[k] && <span className="err">{fe[k]}</span>;
   const s = (v: unknown) => (v == null ? '' : String(v));
+  const pctS = (v: number | null) => (v == null ? '' : String(v).replace('.', ','));
+  const [carParking, setCarParking] = useState(b.car_parking ?? '');
+  const [checking, setChecking] = useState(false);
+
+  // existing building: ask before re-pricing its listings ("Cập nhật N căn")
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (!b.id) return;
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    setChecking(true);
+    const { count } = await previewFeeSync(b.id, fd);
+    setChecking(false);
+    if (count > 0) {
+      if (!confirm(`Phí mới áp dụng cho ${count} căn của toà này (căn có phí ghi đè giữ nguyên).\n\nLưu và cập nhật ${count} căn?`)) return;
+      fd.set('propagate', '1');
+    }
+    startTransition(() => action(fd));
+  };
+  const money = (k: keyof BuildingFees, label: React.ReactNode, unit: string, extra = '') => (
+    <label className={cls(k, extra)}>{label}<span className="a-suffix"><input className="input" name={k} inputMode="numeric" defaultValue={fmtVnd(b[k] as number | null)} placeholder="chưa rõ" /><span>{unit}</span></span>{err(k)}</label>
+  );
+  const vat = (k: keyof BuildingFees) => (
+    <label className={cls(k)}>VAT <span className="hint">trống = chưa rõ</span><span className="a-suffix"><input className="input" name={k} inputMode="decimal" defaultValue={pctS(b[k] as number | null)} placeholder="chưa rõ" /><span>%</span></span>{err(k)}</label>
+  );
 
   return (
-    <form action={action}>
+    <form action={action} onSubmit={onSubmit}>
       <section className="a-card">
         <h2 className="a-section-title">Thông tin</h2>
         <div className="a-grid">
@@ -61,13 +86,38 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
       </section>
 
       <section className="a-card">
-        <h2 className="a-section-title">Phí mặc định</h2>
-        <p className="a-small a-muted" style={{ margin: '-6px 0 12px' }}>Tự điền vào căn mới của toà này (sales vẫn sửa được từng căn). Để trống nếu chưa chắc.</p>
+        <h2 className="a-section-title">Phí toà nhà</h2>
+        <p className="a-small a-muted" style={{ margin: '-6px 0 12px' }}>
+          Căn của toà tự lấy các phí này (trừ ô sales ghi đè). Để trống nếu chưa biết — không đoán. Lưu khi đã có căn sẽ hỏi cập nhật phí các căn đó.
+        </p>
         <div className="a-grid">
-          <label className={cls('mgmt_per_m2')}>Phí quản lý<span className="a-suffix"><input className="input" name="mgmt_per_m2" inputMode="numeric" defaultValue={fmtVnd(b.default_fees.mgmt_per_m2)} /><span>₫/m²</span></span>{err('mgmt_per_m2')}</label>
-          <label className={cls('moto')}>Gửi xe máy<span className="a-suffix"><input className="input" name="moto" inputMode="numeric" defaultValue={fmtVnd(b.default_fees.moto)} /><span>₫/tháng</span></span>{err('moto')}</label>
-          <label className={cls('car')}>Gửi ô tô<span className="a-suffix"><input className="input" name="car" inputMode="numeric" defaultValue={fmtVnd(b.default_fees.car)} /><span>₫/tháng</span></span>{err('car')}</label>
-          <label className={cls('net')}>Internet<span className="a-suffix"><input className="input" name="net" inputMode="numeric" defaultValue={fmtVnd(b.default_fees.net)} /><span>₫/tháng</span></span>{err('net')}</label>
+          {money('mgmt_fee_per_m2', 'Phí quản lý', '₫/m²')}
+          {vat('mgmt_fee_vat_pct')}
+          {money('motorbike_fee', 'Gửi xe máy', '₫/xe/tháng')}
+          {money('motorbike_fee_from_3rd', <>Xe máy từ xe thứ 3 <span className="hint">nếu khác</span></>, '₫/xe/tháng')}
+          <label className={cls('car_parking')}>Chỗ đậu ô tô
+            <select className="input" name="car_parking" value={carParking} onChange={(e) => setCarParking(e.target.value as typeof carParking)}>
+              <option value="">Chưa rõ</option>
+              <option value="paid">Có, thu phí</option>
+              <option value="free">Có, miễn phí</option>
+              <option value="none">Không có</option>
+            </select>{err('car_parking')}
+          </label>
+          {carParking === 'paid' ? money('car_fee', 'Gửi ô tô', '₫/xe/tháng') : <input type="hidden" name="car_fee" value={carParking === '' ? fmtVnd(b.car_fee) : ''} />}
+          {money('bicycle_fee', 'Gửi xe đạp', '₫/xe/tháng')}
+          <label className={cls('net')}>Internet <span className="hint">mặc định cho căn mới</span><span className="a-suffix"><input className="input" name="net" inputMode="numeric" defaultValue={fmtVnd(b.default_fees.net)} /><span>₫/tháng</span></span>{err('net')}</label>
+          {money('electricity_rate', 'Giá điện', '₫/kWh')}
+          {vat('electricity_vat_pct')}
+          {money('water_rate', 'Giá nước', '₫/m³')}
+          {vat('water_vat_pct')}
+          <label className={cls('water_extra_note', 'span4')}>Phí kèm theo nước <span className="hint">vd. “+ phí bảo vệ môi trường 10%”</span>
+            <input className="input" name="water_extra_note" defaultValue={s(b.water_extra_note)} maxLength={300} />{err('water_extra_note')}
+          </label>
+          <label className={cls('fee_source', 'span2')}>Nguồn số liệu <span className="hint">vd. “Hoá đơn BQL 08/2026” — không ghi tên, số căn của người khác</span>
+            <input className="input" name="fee_source" defaultValue={s(b.fee_source)} maxLength={300} />{err('fee_source')}
+          </label>
+          <label className={cls('fee_updated_on')}>Cập nhật ngày<input className="input" type="date" name="fee_updated_on" defaultValue={s(b.fee_updated_on)} />{err('fee_updated_on')}</label>
+          <label className="a-check" style={{ alignSelf: 'end' }}><input type="checkbox" name="fee_verified" defaultChecked={b.fee_verified} /> Đã xác minh (theo hoá đơn / BQL)</label>
         </div>
       </section>
 
@@ -99,7 +149,7 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
         {state.error && <span className="a-small" style={{ color: 'var(--error)' }} role="alert">{state.error}</span>}
         {state.ok && <span className="a-small" style={{ color: 'var(--ok-fg)' }} role="status">✓ {state.ok}</span>}
         <span className="spacer" />
-        <button className="a-btn a-btn-blue" disabled={pending}>{pending ? 'Đang lưu…' : b.id ? 'Lưu' : 'Tạo toà nhà'}</button>
+        <button className="a-btn a-btn-blue" disabled={pending || checking}>{pending || checking ? 'Đang lưu…' : b.id ? 'Lưu' : 'Tạo toà nhà'}</button>
       </div>
     </form>
   );
