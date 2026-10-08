@@ -61,6 +61,9 @@ export async function setPassword(_: FormState, fd: FormData): Promise<FormState
   const sb = await supabaseServer();
   const { data } = await sb.auth.getClaims();
   if (!data?.claims?.sub) return { error: 'Link đã hết hạn. Hãy yêu cầu link mới.' };
+  // RLS returns the own profile only while active (the proxy no longer checks this per request)
+  const { data: me } = await sb.from('profiles').select('id').eq('id', data.claims.sub).maybeSingle();
+  if (!me) return { error: 'Tài khoản đã bị khoá. Liên hệ quản trị viên.' };
   const { error } = await sb.auth.updateUser({ password });
   if (error) return { error: error.message.includes('different') ? 'Mật khẩu mới phải khác mật khẩu cũ.' : 'Không đặt được mật khẩu: ' + error.message };
   if (fullName) await sb.from('profiles').update({ full_name: fullName }).eq('id', data.claims.sub);

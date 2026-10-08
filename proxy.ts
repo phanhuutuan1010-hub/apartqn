@@ -8,11 +8,22 @@ const intl = createMiddleware(routing);
 /** /admin pages reachable without a session */
 const PUBLIC_ADMIN = ['/admin/login', '/admin/forgot', '/admin/auth/confirm'];
 
+const PERF = process.env.PERF_LOG === '1';
+
 /**
- * /admin/*: refresh the Supabase session cookie, require a signed-in ACTIVE staff member
- * (inactive → signed out). Everything else: locale routing.
+ * /admin/*: refresh the Supabase session cookie and require a session. Whether the session belongs to an ACTIVE
+ * staff member is checked by requireStaff() in every admin page / action / route (RLS returns the own profile only
+ * while active) — not here, so a navigation costs no extra round trip. Only /admin/login looks the profile up, to
+ * sign an inactive account out instead of bouncing between /admin and the login page.
  */
 async function admin(req: NextRequest) {
+  const t0 = performance.now();
+  const timing: string[] = [];
+  const timed = <T,>(name: string, p: Promise<T>) => {
+    if (!PERF) return p;
+    const t = performance.now();
+    return p.finally(() => timing.push(`${name};dur=${(performance.now() - t).toFixed(1)}`));
+  };
   let res = NextResponse.next({ request: req });
   const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
     cookies: {
@@ -24,9 +35,17 @@ async function admin(req: NextRequest) {
       },
     },
   });
+  const done = (r: NextResponse) => {
+    if (PERF) {
+      timing.push(`proxy;dur=${(performance.now() - t0).toFixed(1)}`);
+      r.headers.set('Server-Timing', timing.join(', '));
+      console.log(`[perf] proxy ${req.nextUrl.pathname} ${timing.join(' ')}`);
+    }
+    return r;
+  };
 
-  // verifies the JWT (asymmetric signing keys) and refreshes it when needed
-  const { data } = await supabase.auth.getClaims();
+  // verifies the JWT locally (asymmetric signing keys) and refreshes it when needed
+  const { data } = await timed('auth', supabase.auth.getClaims());
   const uid = data?.claims?.sub;
   const path = req.nextUrl.pathname;
   const isPublic = PUBLIC_ADMIN.some((p) => path === p || path.startsWith(p + '/'));
@@ -40,17 +59,19 @@ async function admin(req: NextRequest) {
     return r;
   };
 
-  if (!uid) return isPublic ? res : redirect('/admin/login', path === '/admin' ? {} : { next: path + req.nextUrl.search });
+  if (!uid) return done(isPublic ? res : redirect('/admin/login', path === '/admin' ? {} : { next: path + req.nextUrl.search }));
 
-  // RLS returns the own profile only while it is active
-  const { data: me } = await supabase.from('profiles').select('id').eq('id', uid).maybeSingle();
-  if (!me) {
-    await supabase.auth.signOut();
-    return redirect('/admin/login', { locked: '1' });
+  if (path === '/admin/login') {
+    // RLS returns the own profile only while it is active
+    const { data: me } = await timed('profile', Promise.resolve(supabase.from('profiles').select('id').eq('id', uid).maybeSingle()));
+    if (!me) {
+      await supabase.auth.signOut();
+      return done(redirect('/admin/login', { locked: '1' }));
+    }
+    return done(redirect('/admin'));
   }
-  if (path === '/admin/login') return redirect('/admin');
   res.headers.set('X-Robots-Tag', 'noindex, nofollow');
-  return res;
+  return done(res);
 }
 
 export default function proxy(req: NextRequest) {
