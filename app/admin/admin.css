@@ -117,3 +117,9 @@ a.a-tab { text-decoration: none; }
 .a-tag { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; min-height: 28px; padding: 0 4px 0 10px; border-radius: var(--r-pill); background: var(--blue-50); color: var(--blue-700); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .a-tag button { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
 .a-tag button:hover { background: var(--blue-100); }
+
+/* loading skeleton (app/admin/(app)/loading.tsx) */
+.a-skel { border-radius: 6px; background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-50) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: a-skel 1.2s ease-in-out infinite; }
+@keyframes a-skel { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .a-skel { animation: none; } }
+.a-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
