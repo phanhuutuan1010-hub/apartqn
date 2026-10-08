@@ -4,7 +4,8 @@ import sharp from 'sharp';
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
 vi.mock('@/lib/admin/refresh', () => ({ refresh: vi.fn() }));
 
-const { movePhoto, setPhotoWatermark, renderPublicPair } = await import('@/lib/admin/photoPipeline');
+const { movePhoto, setPhotoWatermark, renderPublicPair, normaliseMaster } = await import('@/lib/admin/photoPipeline');
+const { classify, MAX_BYTES } = await import('@/lib/admin/imageInput');
 type Row = Parameters<typeof setPhotoWatermark>[1];
 
 /** In-memory Supabase: storage buckets + one photos table. */
@@ -65,5 +66,33 @@ describe('photo pipeline', () => {
     await movePhoto(f.sb, f.rows.get('p3')!, 'public');
     expect(f.rows.get('p3')).toMatchObject({ bucket: 'listing-public', visibility: 'public', path: 'listings/L1/p3-wm1.webp', master_path: 'listings/L1/p3.webp' });
     expect(listed(f.files)).toEqual(['listing-master/listings/L1/p3.webp', 'listing-public/listings/L1/p3-wm1.webp', 'listing-public/listings/L1/thumbs/p3-wm1.webp']);
+  });
+});
+
+describe('upload input', () => {
+  const file = (name: string, type: string, size = 1000) => new File([new Uint8Array(size)], name, { type });
+  it('accepts JPG/JPEG in any case, PNG, WebP, AVIF, HEIC/HEIF — by MIME or by extension', () => {
+    for (const [n, t] of [['a.jpg', 'image/jpeg'], ['B.JPEG', ''], ['c.JPG', ''], ['d.png', 'image/png'], ['e.webp', ''], ['f.avif', 'image/avif'], ['g.HEIC', ''], ['h.heif', 'image/heif'], ['noext', 'image/jpeg']] as const)
+      expect(classify(file(n, t)), n).not.toHaveProperty('error');
+    expect(classify(file('IMG_0001.HEIC', ''))).toEqual({ kind: 'heic' });
+  });
+  it('refuses other formats, empty and > 25 MB files with a Vietnamese message', () => {
+    expect(classify(file('doc.pdf', 'application/pdf'))).toEqual({ error: expect.stringContaining('.pdf') });
+    expect(classify(file('clip.mov', 'video/quicktime'))).toHaveProperty('error');
+    expect(classify(file('x.jpg', 'image/jpeg', 0))).toEqual({ error: 'Tệp rỗng' });
+    expect(classify(file('big.jpg', 'image/jpeg', MAX_BYTES + 1))).toEqual({ error: expect.stringMatching(/25 MB/) });
+  });
+});
+
+describe('Safari JPEG master', () => {
+  it('is converted to a WebP master in place before rendering', async () => {
+    const f = fake();
+    const jpg = await sharp({ create: { width: 1200, height: 1600, channels: 3, background: '#a87' } }).jpeg().toBuffer();
+    const out = await normaliseMaster(f.sb, 'listings/L1/p9.webp', jpg);
+    expect((await sharp(out).metadata()).format).toBe('webp');
+    expect((await sharp(f.files.get('listing-master/listings/L1/p9.webp')!).metadata()).format).toBe('webp');
+    const webp = await sharp(jpg).webp().toBuffer();
+    expect(await normaliseMaster(f.sb, 'listings/L1/p8.webp', webp)).toBe(webp); // already WebP: untouched, not re-uploaded
+    expect(f.files.has('listing-master/listings/L1/p8.webp')).toBe(false);
   });
 });

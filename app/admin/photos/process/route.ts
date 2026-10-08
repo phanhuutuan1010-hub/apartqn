@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase/server';
-import { BUCKET, col, download, refreshOwner, removeFiles, renderPublicPair, type PhotoOwner } from '@/lib/admin/photoPipeline';
+import { BUCKET, col, download, normaliseMaster, refreshOwner, removeFiles, renderPublicPair, type PhotoOwner } from '@/lib/admin/photoPipeline';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
   let out: Awaited<ReturnType<typeof renderPublicPair>>;
   try {
-    const master = await download(sb, BUCKET.master, master_path);
+    const master = await normaliseMaster(sb, master_path, await download(sb, BUCKET.master, master_path));
     out = await renderPublicPair(sb, prefix, photoId, master, watermark);
   } catch (e) {
     return fail(500, (e as Error).message);

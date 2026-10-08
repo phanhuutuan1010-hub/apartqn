@@ -1,6 +1,6 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { WATERMARK, publicSuffix, renderCleanThumb, renderPublic } from '@/lib/watermark';
+import { WATERMARK, publicSuffix, renderCleanThumb, renderMaster, renderPublic } from '@/lib/watermark';
 import { refresh } from '@/lib/admin/refresh';
 import { revalidatePublic } from '@/lib/revalidate';
 import { revalidatePath } from 'next/cache';
@@ -33,6 +33,16 @@ export async function download(sb: Sb, bucket: string, path: string): Promise<Bu
 async function put(sb: Sb, bucket: string, path: string, data: Buffer) {
   const { error } = await sb.storage.from(bucket).upload(path, data, { ...WEBP, upsert: true });
   if (error) throw new Error(`Không lưu được ảnh ${path}: ${error.message}`);
+}
+
+const isWebp = (b: Buffer) => b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP';
+
+/** Masters are WebP at rest. Safari cannot encode WebP and sends JPEG: convert it (≤ 1600 px, no metadata) in place. */
+export async function normaliseMaster(sb: Sb, path: string, buf: Buffer): Promise<Buffer> {
+  if (isWebp(buf)) return buf;
+  const { data } = await renderMaster(buf);
+  await put(sb, BUCKET.master, path, data);
+  return data;
 }
 
 /** Render + upload the public pair for one photo. File names carry the variant, so CDN caches never go stale. */
