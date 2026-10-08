@@ -45,7 +45,7 @@ export function DetailGallery({ photos, count, code, alt, video, labels }: Props
             </div>
           ))}
         </div>
-        {video && <span className={styles.videoTag}>▶ {labels.video}</span>}
+        {video && <a href="#video" className={styles.videoTag}>▶ {labels.video}</a>}
         <span className={styles.counter} aria-live="polite">{gi + 1} / {n}</span>
       </div>
 
@@ -57,7 +57,7 @@ export function DetailGallery({ photos, count, code, alt, video, labels }: Props
           </button>
         ))}
         <div className={styles.actions}>
-          {video && <span className={styles.act}>▶ {labels.video}</span>}
+          {video && <a href="#video" className={styles.act}>▶ {labels.video}</a>}
           <button type="button" className={styles.act} onClick={() => setAll(true)}>{labels.showAll} · {labels.photosN}</button>
         </div>
       </div>

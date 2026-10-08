@@ -155,7 +155,10 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
           <div />
           <label className="a-check"><input type="checkbox" name="pets" defaultChecked={!!L.pets} /> Cho nuôi thú cưng</label>
           <label className="a-check"><input type="checkbox" name="temp_reg" defaultChecked={L.temp_reg !== false} /> Hỗ trợ đăng ký tạm trú</label>
-          <label className="a-check"><input type="checkbox" name="video" defaultChecked={!!L.video} /> Có video</label>
+          <label className={`a-field span2 ${fe.video_url ? 'invalid' : ''}`}>Video YouTube <span className="hint">tải lên YouTube ở chế độ “Không công khai”, rồi dán link vào đây (không tải video lên website)</span>
+            <input className="input" name="video_url" type="url" inputMode="url" placeholder="https://youtu.be/…" defaultValue={typeof L.video_url === 'string' ? L.video_url : ''} maxLength={200} />
+            {fe.video_url && <span className="err">{fe.video_url}</span>}
+          </label>
         </div>
       </section>
 

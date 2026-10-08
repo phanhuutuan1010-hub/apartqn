@@ -65,6 +65,8 @@ export type Listing = {
   /** photos.length, or the demo placeholder count when there are no photos yet */
   photoCount: number;
   carParking?: boolean;
+  /** unlisted YouTube link (videos are never uploaded) */
+  videoUrl?: string;
   desc: Descriptions;
   demo: boolean;
   /** ISO timestamps (search ranking) */

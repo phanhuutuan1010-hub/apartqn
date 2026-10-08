@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
+import { normaliseYoutube, YOUTUBE_RE } from '@/lib/youtube';
 import { supabaseServer } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/admin/session';
 import { publicRef, refresh } from '@/lib/admin/refresh';
@@ -65,7 +66,8 @@ const SaveSchema = z.object({
   verified: bool,
   rent: money, deposit: int(0, 12), cycle: opt(['m1', 'm3']), mgmt: money, elec: opt(['evn', 'fixed']), water: opt(['meter', 'person']),
   moto: money, car: money, net: money,
-  min_term: int(1, 120), max_occ: int(1, 20), pets: bool, temp_reg: bool, car_parking: tri, video: bool,
+  min_term: int(1, 120), max_occ: int(1, 20), pets: bool, temp_reg: bool, car_parking: tri,
+  video_url: z.preprocess((v) => (typeof v === 'string' && v.trim() ? normaliseYoutube(v) ?? 'invalid' : null), z.string().regex(YOUTUBE_RE, 'Chỉ nhận link YouTube (youtube.com hoặc youtu.be)').nullable()),
   desc_vi: text(8000), desc_en: text(8000), desc_ru: text(8000),
   expected_updated_at: z.string().min(1),
 });
@@ -75,7 +77,7 @@ export async function saveListing(id: string, _: ActionResult, fd: FormData): Pr
   const parsed = SaveSchema.safeParse(Object.fromEntries(fd));
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
-    parsed.error.issues.forEach((i) => (fieldErrors[String(i.path[0])] ??= i.message.startsWith('Nhập') || i.message.startsWith('Chọn') ? i.message : 'Giá trị không hợp lệ'));
+    parsed.error.issues.forEach((i) => (fieldErrors[String(i.path[0])] ??= i.message.startsWith('Nhập') || i.message.startsWith('Chọn') || i.message.startsWith('Chỉ') ? i.message : 'Giá trị không hợp lệ'));
     return { error: 'Kiểm tra lại các ô được đánh dấu.', fieldErrors };
   }
   const v = parsed.data;
@@ -98,7 +100,7 @@ export async function saveListing(id: string, _: ActionResult, fd: FormData): Pr
 
   const { building_id: _b, floor: _f, unit_no: _u, owner_name: _on, owner_phone: _op, owner_notes: _nt, assigned_to: _a, expected_updated_at: _e, ...listing } = v;
   void _b; void _f; void _u; void _on; void _op; void _nt; void _a; void _e;
-  const l = await sb.from('listings').update(listing).eq('id', id).select('updated_at');
+  const l = await sb.from('listings').update({ ...listing, video: !!listing.video_url }).eq('id', id).select('updated_at');
   if (l.error) return { error: vnError(l.error) };
   if (!l.data?.length) return { error: 'Bạn không có quyền sửa căn này.' };
 

@@ -16,6 +16,8 @@ import { ContactBox, MobileContactBar } from '@/components/ContactBox';
 import { ViewingRequestForm } from '@/components/ViewingRequestForm';
 import { LocationBlock } from '@/components/LocationBlock';
 import { ListingCard } from '@/components/ListingCard';
+import { YouTubeLite } from '@/components/YouTubeLite';
+import { youtubeId } from '@/lib/youtube';
 import styles from './detail.module.css';
 
 type Params = { locale: Locale; code: string };
@@ -57,6 +59,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
   const cap = (v: string) => (l === 'ru' ? v[0].toUpperCase() + v.slice(1) : v);
   const title = F.bedsLong(x.beds, l) + ' · ' + t(`v_${x.view}`);
   const bById = new Map(buildings.map((y) => [y.id, y]));
+  const videoId = youtubeId(x.videoUrl);
   const desc = listingDescription(x, b.name, l, t as unknown as Parameters<typeof listingDescription>[3]);
 
   const facts: [string, string][] = [
@@ -91,7 +94,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
           count={x.photoCount}
           code={x.code}
           alt={`${title} · ${b.name}`}
-          video={x.video}
+          video={!!videoId}
           labels={{ video: t('video'), showAll: t('showAll'), photosN: F.photos(x.photos.length || x.photoCount, l), close: t('close') }}
         />
 
@@ -120,6 +123,13 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
                 <h2 className={`h2s ${styles.h2}`}>{t('descTitle')}</h2>
                 <p className={styles.desc} lang={l}>{desc.text}</p>
                 {desc.generated && <p className={styles.descNote}>{t('sumNote')}</p>}
+              </section>
+            )}
+
+            {videoId && (
+              <section className={styles.sec} id="video">
+                <h2 className={`h2s ${styles.h2}`}>{t('video')}</h2>
+                <YouTubeLite id={videoId} title={`${x.code} · ${b.name}`} playLabel={t('video')} />
               </section>
             )}
 
