@@ -107,3 +107,12 @@ describe('parseSearch · codes and ambiguity', () => {
     expect(p('Можно с животными').pets).toBe(true);
   });
 });
+
+describe('QA queries (results / header search)', () => {
+  it('alt → its building', () => is('alt', { building: 'altara' }));
+  it('alt-2 → listing code', () => is('alt-2', { code: 'ALT-002' }));
+  it('altara 2pn', () => is('altara 2pn', { building: 'altara', beds: 2 }));
+  it('phu tai (no diacritics)', () => is('phu tai', { building: 'phutai' }));
+  it('flc full nt duoi 12tr', () => is('flc full nt duoi 12tr', { building: 'flc', furniture: 'full', priceMax: 12 * M }));
+  it('двушка до 15 млн', () => is('двушка до 15 млн', { beds: 2, priceMax: 15 * M }));
+});

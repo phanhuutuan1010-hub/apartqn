@@ -38,11 +38,17 @@ function Hl({ text, r, e }: { text: string; r: Ranges; e: Engine }) {
  * One smart search box (WAI-ARIA combobox: ↑ ↓ Enter Esc). Suggestions come from /search-index.json, fetched once
  * when the browser is idle or on first focus — typing never hits the database. < 768 px: a full-screen search sheet.
  */
-export function SmartSearch({ listings }: { listings: Listing[] }) {
+type Variant = 'hero' | 'bar' | 'header';
+
+/**
+ * hero: card with Tìm + Bộ lọc (home) · bar: compact field (results toolbar, its own Bộ lọc) ·
+ * header: inline field ≥ 1280, a search icon below — both open the same full-screen sheet on small screens.
+ */
+export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: { listings?: Listing[]; variant?: Variant; initial?: string }) {
   const t = useTranslations();
   const l = useLocale() as Locale;
   const router = useRouter();
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(initial);
   const [open, setOpen] = useState(false);
   const [sheet, setSheet] = useState(false);
   const [active, setActive] = useState(-1);
@@ -299,7 +305,7 @@ export function SmartSearch({ listings }: { listings: Listing[] }) {
 
   return (
     <>
-      <form className={styles.form} role="search" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+      <form className={`${styles.form} ${styles[variant]}`} role="search" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
         <div className={styles.field}>
           {/* ≥ 768: real combobox */}
           <div className={styles.desk}>
@@ -312,18 +318,26 @@ export function SmartSearch({ listings }: { listings: Listing[] }) {
             {open && !sheet && <div ref={popup} className={styles.popup}>{list}</div>}
           </div>
           {/* < 768: opens the full-screen sheet */}
-          <button type="button" className={styles.mob} onClick={openSheet} onPointerEnter={ensureIndex} aria-haspopup="dialog">
-            <Search size={20} aria-hidden className={styles.lead} />
-            <span className={value ? styles.mobValue : styles.mobPh}>{value || t('ssPlaceholder')}</span>
-          </button>
+          {variant === 'header' ? (
+            <button type="button" className={styles.icon} onClick={openSheet} onPointerEnter={ensureIndex} aria-haspopup="dialog" aria-label={t('ssLabel')}>
+              <Search size={22} aria-hidden />
+            </button>
+          ) : (
+            <button type="button" className={styles.mob} onClick={openSheet} onPointerEnter={ensureIndex} aria-haspopup="dialog">
+              <Search size={20} aria-hidden className={styles.lead} />
+              <span className={value ? styles.mobValue : styles.mobPh}>{value || t('ssPlaceholder')}</span>
+            </button>
+          )}
         </div>
-        <div className={styles.actions}>
-          <button type="submit" className={`btn btn-primary ${styles.submit}`}>{t('search')}</button>
-          <button type="button" className={styles.filters} onClick={() => setFilters(true)} aria-haspopup="dialog">
-            <span className={styles.fIcon} aria-hidden><span /><span /><span /></span>
-            {t('filters')}
-          </button>
-        </div>
+        {variant === 'hero' && (
+          <div className={styles.actions}>
+            <button type="submit" className={`btn btn-primary ${styles.submit}`}>{t('search')}</button>
+            <button type="button" className={styles.filters} onClick={() => setFilters(true)} aria-haspopup="dialog">
+              <span className={styles.fIcon} aria-hidden><span /><span /><span /></span>
+              {t('filters')}
+            </button>
+          </div>
+        )}
       </form>
 
       {sheet && createPortal(

@@ -32,7 +32,7 @@ export default async function ResultsPage({ params }: PageProps<'/[locale]/can-h
 
   return (
     <>
-      <Header active="results" />
+      <Header active="results" inlineSearch={false} />
       <main>
         <div className="container" style={{ paddingTop: 'clamp(20px, 3vw, 32px)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
           <h1 style={{ fontSize: 'clamp(26px, 3.4vw, 40px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em', textWrap: 'balance', color: 'var(--ink-heading)' }}>{t('results')}</h1>

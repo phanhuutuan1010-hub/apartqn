@@ -15,6 +15,7 @@ import { similarListings } from '@/lib/search/similar';
 import { logSearchMiss } from '@/lib/search/miss';
 import { SearchRequestForm } from './SearchRequestForm';
 import { FilterPanel } from './FilterPanel';
+import { SmartSearch } from './SmartSearch';
 import { ListingCard } from './ListingCard';
 import type { MapMarker } from './MapView';
 import styles from './ResultsView.module.css';
@@ -103,14 +104,6 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
   const sb = sel ? bById.get(sel) : undefined;
   const sbCount = sb ? matched.filter((x) => x.buildingId === sb.id).length : 0;
 
-  const bldSelect = (
-    <label className={styles.selWrap}>
-      <select aria-label={t('sBuilding')} className={`${styles.sel} ${f.b ? styles.selOn : ''}`} value={f.b} onChange={(e) => setF({ b: e.target.value })}>
-        <option value="">{t('sAnyBuilding')}</option>
-        {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-      </select>
-    </label>
-  );
   const rentSelect = (
     <label className={`${styles.selWrap} ${styles.mdOnly}`}>
       <select aria-label={t('sRent')} className={`${styles.sel} ${f.rent ? styles.selOn : ''}`} value={f.rent} onChange={(e) => setF({ rent: e.target.value })}>
@@ -149,13 +142,14 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
     <>
       <div className={styles.toolbarWrap}>
         <div className={`container ${styles.toolbarInner}`}>
+          {/* the same smart search as the home page; parsed criteria show up as chips below */}
+          <SmartSearch key={typed} variant="bar" initial={typed} />
           <div className={styles.toolbar}>
             <button type="button" className={`${styles.fBtn} ${drawerN ? styles.fBtnOn : ''}`} onClick={() => setSheet(true)} aria-haspopup="dialog">
               <span className={styles.fIcon} aria-hidden><span /><span /><span /></span>
               {t('filters')}
               {drawerN > 0 && <span className={styles.fCount}>{drawerN}</span>}
             </button>
-            {bldSelect}
             {rentSelect}
             {sortSelect}
             <div role="group" aria-label={`${t('listView')} / ${t('mapView')}`} className={styles.seg}>

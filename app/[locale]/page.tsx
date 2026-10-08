@@ -39,7 +39,7 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
 
   return (
     <>
-      <Header />
+      <Header inlineSearch={false} />
       <main>
         <section className={`container ${styles.hero}`}>
           <div className={styles.heroText}>

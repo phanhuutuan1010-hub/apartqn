@@ -4,11 +4,13 @@ import { contacts } from '@/lib/contacts';
 import { Logo } from './Logo';
 import { LangSwitcher } from './LangSwitcher';
 import { MobileMenu } from './MobileMenu';
+import { SmartSearch } from './SmartSearch';
 import styles from './Header.module.css';
 
 export type NavKey = 'results' | 'building' | 'consign' | 'contact' | '';
 
-export function Header({ active = '' }: { active?: NavKey }) {
+/** inlineSearch = false on pages that already have a big search box (home hero, results toolbar): icon only, < 1280. */
+export function Header({ active = '', inlineSearch = true }: { active?: NavKey; inlineSearch?: boolean }) {
   const t = useTranslations();
   const locale = useLocale();
 
@@ -36,6 +38,9 @@ export function Header({ active = '' }: { active?: NavKey }) {
         </nav>
 
         <div className={styles.right}>
+          <div className={`${styles.search} ${inlineSearch ? '' : styles.searchIconOnly}`}>
+            <SmartSearch variant="header" />
+          </div>
           <LangSwitcher />
           <Link href="/ky-gui" className={`btn btn-secondary ${styles.consign}`}>{t('navConsign')}</Link>
           <MobileMenu
