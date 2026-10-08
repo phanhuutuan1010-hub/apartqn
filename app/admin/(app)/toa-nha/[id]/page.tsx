@@ -20,7 +20,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
   const sb = await supabaseServer();
 
   let b: BuildingData = {
-    id: null, slug: '', name: '', street: '', ward_new: null, ward_old: null, lat: null, lng: null, amenities: [], default_fees: {},
+    id: null, slug: '', name: '', aliases: [], street: '', ward_new: null, ward_old: null, lat: null, lng: null, amenities: [], default_fees: {},
     desc_vi: null, desc_en: null, desc_ru: null, sort: 0, is_demo: false,
   };
   let photos: PhotoView[] = [];

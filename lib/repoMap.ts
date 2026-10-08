@@ -10,6 +10,8 @@ export type PublicBuildingRow = {
   slug: string; name: string; street: string; ward_new: string | null; ward_old: string | null;
   lat: number | string | null; lng: number | string | null; amenities: string[];
   desc_vi: string | null; desc_en: string | null; desc_ru: string | null; is_demo: boolean; photos: PhotoRow[] | null;
+  /** missing before migration 9 */
+  aliases?: string[] | null;
 };
 
 export type PublicListingRow = {
@@ -20,6 +22,8 @@ export type PublicListingRow = {
   car_parking: boolean | null; verified: boolean; video: boolean; status: string; move_in: string | Date;
   updated_at: string | Date; placeholder_photos: number | string; is_demo: boolean;
   desc_vi: string | null; desc_en: string | null; desc_ru: string | null; photos: PhotoRow[] | null;
+  /** missing before migration 9 */
+  verified_at?: string | Date | null; published_at?: string | Date | null;
 };
 
 /** Public URL of an object in the listing-public bucket */
@@ -55,8 +59,11 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),
     desc: desc(r),
     demo: r.is_demo,
+    aliases: r.aliases ?? [],
   };
 }
+
+const iso = (v: string | Date | null | undefined) => (v == null ? undefined : new Date(v).toISOString());
 
 export function toListing(r: PublicListingRow, supabaseUrl: string): Listing {
   const photos = r.photos ?? [];
@@ -94,5 +101,7 @@ export function toListing(r: PublicListingRow, supabaseUrl: string): Listing {
     ...(r.car_parking != null ? { carParking: r.car_parking } : {}),
     desc: desc(r),
     demo: r.is_demo,
+    ...(r.verified_at != null ? { verifiedAt: iso(r.verified_at) } : {}),
+    ...(r.published_at != null ? { publishedAt: iso(r.published_at) } : {}),
   };
 }

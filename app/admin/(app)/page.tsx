@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ClipboardCheck, CalendarClock, Languages, UserRound, Inbox, DatabaseBackup, Plus } from 'lucide-react';
+import { ClipboardCheck, CalendarClock, Languages, UserRound, Inbox, DatabaseBackup, Plus, SearchX } from 'lucide-react';
 import { requireStaff } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
 import { STATUS_LABEL, STATUS_TONE, daysAgoIso, daysSince, type ListingStatusAll } from '@/lib/admin/labels';
@@ -29,6 +29,9 @@ export default async function DashboardPage() {
     isAdmin ? sb.from('consign_inbox').select('id', head).eq('status', 'new') : Promise.resolve({ count: 0 }),
     sb.from('admin_listings').select('status'),
   ]);
+  // unmet demand: searches that found nothing (admins only — RLS returns nothing to sales)
+  const { data: misses } = isAdmin ? await sb.rpc('search_miss_top', { p_days: 30, p_limit: 8 }) : { data: null };
+  const top = (misses ?? []) as { query_norm: string; n: number }[];
   const byStatus = new Map<ListingStatusAll, number>();
   (all.data ?? []).forEach((r) => byStatus.set(r.status, (byStatus.get(r.status) ?? 0) + 1));
   const backupDays = daysSince(settings?.last_backup_at);
@@ -66,6 +69,23 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {isAdmin && (
+        <section className={`a-card ${styles.demand}`} aria-labelledby="demand-title">
+          <div className={styles.demandHead}>
+            <h2 id="demand-title" className="a-section-title" style={{ margin: 0 }}><SearchX size={18} aria-hidden /> Nhu cầu chưa đáp ứng</h2>
+            <Link href="/admin/nhu-cau" className="a-small" style={{ color: 'var(--blue-500)' }}>Xem tất cả →</Link>
+          </div>
+          <p className="a-small a-muted" style={{ margin: '4px 0 10px' }}>Từ khoá khách tìm trên website trong 30 ngày qua mà không ra căn nào (ẩn danh).</p>
+          {top.length ? (
+            <ol className={styles.demandList}>
+              {top.map((r) => (
+                <li key={r.query_norm}><span className={styles.demandQ}>{r.query_norm}</span><b>{r.n}</b></li>
+              ))}
+            </ol>
+          ) : <p className="a-small a-muted" style={{ margin: 0 }}>Chưa có lượt tìm nào không ra kết quả.</p>}
+        </section>
+      )}
 
       <h2 className="a-section-title" style={{ marginTop: 28 }}>Căn hộ theo trạng thái</h2>
       <div className={styles.status}>

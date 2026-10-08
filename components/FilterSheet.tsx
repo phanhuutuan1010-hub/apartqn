@@ -6,10 +6,10 @@ import type { Filters } from '@/lib/filters';
 import { FilterPanel } from './FilterPanel';
 import styles from './FilterSheet.module.css';
 
-type Props = { value: Filters; listings: Listing[]; onApply: (f: Filters) => void; onClose: () => void };
+type Props = { value: Filters; listings: Listing[]; textOk?: (x: Listing) => boolean; onApply: (f: Filters) => void; onClose: () => void };
 
 /** Bottom sheet (< 1024) with backdrop; loaded on demand via next/dynamic. */
-export default function FilterSheet({ value, listings, onApply, onClose }: Props) {
+export default function FilterSheet({ value, listings, textOk, onApply, onClose }: Props) {
   const titleId = useId();
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function FilterSheet({ value, listings, onApply, onClose }: Props
     <div className={styles.root}>
       <div className={styles.backdrop} onClick={onClose} aria-hidden />
       <div role="dialog" aria-modal="true" aria-labelledby={titleId} className={styles.sheet}>
-        <FilterPanel variant="sheet" value={value} listings={listings} onApply={onApply} onClose={onClose} titleId={titleId} />
+        <FilterPanel variant="sheet" value={value} listings={listings} textOk={textOk} onApply={onApply} onClose={onClose} titleId={titleId} />
       </div>
     </div>
   );

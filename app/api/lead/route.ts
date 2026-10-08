@@ -100,6 +100,54 @@ async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>) {
   return { saved: !error, tg, mail };
 }
 
+const RENT_VI = ['dưới 8 triệu', '8–12 triệu', '12–18 triệu', 'trên 18 triệu'];
+
+/** criteria → one Vietnamese line for staff ("Altara · 2 PN · ≤ 12 triệu · Cho nuôi thú cưng") */
+function criteriaLine(c: Extract<Lead, { type: 'search_request' }>['criteria'], buildingName?: string) {
+  const parts: string[] = [];
+  if (c.b) parts.push(buildingName ?? c.b);
+  if (c.beds) parts.push(c.beds === '0' ? 'Studio' : c.beds === '3' ? '3+ PN' : `${c.beds} PN`);
+  if (c.rent) parts.push(RENT_VI[Number(c.rent.slice(1))]);
+  if (c.pmin && c.pmax) parts.push(`${c.pmin}–${c.pmax} triệu`);
+  else if (c.pmax) parts.push(`≤ ${c.pmax} triệu`);
+  else if (c.pmin) parts.push(`≥ ${c.pmin} triệu`);
+  if (c.furn) parts.push(vi[`furn_${c.furn}` as 'furn_full']);
+  if (c.vw) parts.push(vi[`v_${c.vw}` as 'v_sea']);
+  if (c.pets) parts.push(vi.pets);
+  if (c.car) parts.push(vi.carPark);
+  if (c.date) parts.push(`dọn vào trước ${c.date.split('-').reverse().join('/')}`);
+  if (c.q) parts.push(`“${c.q}”`);
+  return parts.join(' · ');
+}
+
+async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_request' }>) {
+  let bName: string | undefined;
+  if (lead.criteria.b) {
+    const { data: b } = await sb.from('buildings').select('name').eq('slug', lead.criteria.b).maybeSingle();
+    bName = b?.name;
+  }
+  const line = criteriaLine(lead.criteria, bName);
+  const adminList = await admins(sb);
+  const message = [lead.need, lead.query && `Đã tìm: “${lead.query}”`, line && `Điều kiện: ${line}`].filter(Boolean).join('\n');
+  const { data: row, error } = await sb.from('leads').insert({
+    name: lead.name, phone: lead.phone, channel: 'web', locale: lead.locale, message: message || null, page: lead.page || null,
+    assigned_to: adminList[0]?.id ?? null, search: { query: lead.query, criteria: lead.criteria },
+  }).select('id').single();
+  if (error) console.error('[lead] search_request insert failed', error);
+
+  const rows: [string, string][] = [
+    ['Họ tên', lead.name], ['Điện thoại', lead.phone], ['Nhu cầu', lead.need || '—'], ['Đã tìm', lead.query || '—'],
+    ['Điều kiện', line || '—'], ['Ngôn ngữ khách', lead.locale.toUpperCase()],
+    ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
+  ];
+  const subject = '[ApartQN] Nhờ tìm căn giúp';
+  const [tg, mail] = await Promise.all([
+    notifyTelegram(adminList.map((a) => a.telegram_chat_id), tgRows(subject, rows)),
+    leadEmail(subject, htmlRows(subject, rows)),
+  ]);
+  return { saved: !error, tg, mail };
+}
+
 /**
  * Website forms → database (source of truth, visible in /admin) + best-effort Telegram/email.
  * Success when the row is saved OR at least one notification went out.
@@ -122,7 +170,7 @@ export async function POST(req: Request) {
     return fail('CONFIG_MISSING', 500);
   }
   const sb = supabaseSecret();
-  const r = lead.type === 'viewing' ? await handleViewing(sb, lead) : await handleConsign(sb, lead);
+  const r = lead.type === 'viewing' ? await handleViewing(sb, lead) : lead.type === 'consign' ? await handleConsign(sb, lead) : await handleSearchRequest(sb, lead);
   if ('invalid' in r) return fail('INVALID', 400, ['code']);
   if (!r.saved && !r.tg && !r.mail) return fail('SEND_FAILED', 502, { db: 'failed', telegram: r.tg, email: r.mail });
   return NextResponse.json({ ok: true, channels: { db: r.saved ? 'saved' : 'failed', telegram: r.tg ? 'sent' : 'off', email: r.mail ? 'sent' : 'off' } });

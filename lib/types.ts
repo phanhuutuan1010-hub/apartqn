@@ -24,6 +24,8 @@ export type Building = {
   thumbs: string[];
   desc: Descriptions;
   demo: boolean;
+  /** other names people search for (any script) */
+  aliases: string[];
 };
 
 export type Listing = {
@@ -65,4 +67,7 @@ export type Listing = {
   carParking?: boolean;
   desc: Descriptions;
   demo: boolean;
+  /** ISO timestamps (search ranking) */
+  verifiedAt?: string;
+  publishedAt?: string;
 };

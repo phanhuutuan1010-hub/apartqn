@@ -109,3 +109,11 @@ body.admin { background: var(--gray-50); font-size: 15px; line-height: 1.5; }
 a.a-tab { text-decoration: none; }
 .a-count { display: inline-flex; min-width: 20px; height: 18px; padding: 0 6px; border-radius: 9px; background: var(--gray-150); color: var(--gray-700); font-size: 11px; font-weight: 700; align-items: center; justify-content: center; }
 .a-tab.on .a-count { background: var(--blue-50); color: var(--blue-500); }
+
+/* tag input (Toà nhà → Tên gọi khác) */
+.a-field .a-tags, .a-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; height: auto; min-height: 42px; padding: 5px 8px; cursor: text; }
+.a-tags > input { flex: 1 1 120px; min-width: 120px; height: 30px; border: 0; outline: none; background: transparent; font: inherit; font-size: 15px; font-weight: 400; color: var(--ink-900); padding: 0 4px; }
+.a-tags:focus-within { border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-100); }
+.a-tag { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; min-height: 28px; padding: 0 4px 0 10px; border-radius: var(--r-pill); background: var(--blue-50); color: var(--blue-700); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.a-tag button { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: none; color: inherit; cursor: pointer; }
+.a-tag button:hover { background: var(--blue-100); }

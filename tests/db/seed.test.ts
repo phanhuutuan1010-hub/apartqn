@@ -53,8 +53,11 @@ describe('seed → public views', () => {
     const rows = await asAnon<PublicListingRow>('select * from public.public_listings order by code');
     const got = rows.map((r) => toListing(r, SB));
     const strip = (x: Record<string, unknown>) => {
-      const { photos, thumbs, desc, photoCount, ...rest } = x;
+      const { photos, thumbs, desc, photoCount, verifiedAt, publishedAt, ...rest } = x;
       void photos; void thumbs; void desc;
+      // set by the import (now()), not part of the handoff data
+      expect(typeof verifiedAt === 'string' || verifiedAt === undefined).toBe(true);
+      expect(typeof publishedAt === 'string' || publishedAt === undefined).toBe(true);
       return { ...rest, photoCount };
     };
     expect(got.map(strip)).toEqual(

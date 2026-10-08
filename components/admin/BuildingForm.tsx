@@ -3,9 +3,10 @@
 import { useActionState, useState } from 'react';
 import { saveBuilding, type BuildingResult } from '@/lib/admin/buildingActions';
 import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
+import { TagInput } from './TagInput';
 
 export type BuildingData = {
-  id: string | null; slug: string; name: string; street: string; ward_new: string | null; ward_old: string | null;
+  id: string | null; slug: string; name: string; aliases: string[]; street: string; ward_new: string | null; ward_old: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
   desc_vi: string | null; desc_en: string | null; desc_ru: string | null; sort: number; is_demo: boolean;
@@ -29,6 +30,11 @@ export function BuildingForm({ b, photos }: { b: BuildingData; photos?: React.Re
             <input className="input a-mono" name={b.id ? undefined : 'slug'} defaultValue={b.slug} disabled={!!b.id} pattern="[a-z0-9-]{2,40}" />{err('slug')}
           </label>
           <label className={cls('sort')}>Thứ tự hiển thị<input className="input" name="sort" inputMode="numeric" defaultValue={b.sort} /></label>
+          <div className={cls('aliases', 'span4')}>
+            <label htmlFor="b-aliases">Tên gọi khác <span className="hint">tên khách hay gõ khi tìm (viết tắt, không dấu, tiếng Nga…), Enter để thêm, tối đa 20</span></label>
+            <TagInput id="b-aliases" name="aliases" defaultValue={b.aliases ?? []} placeholder="vd. Altara, Алтара" />
+            {err('aliases')}
+          </div>
           <label className={cls('street', 'span2')}>Đường / khu<input className="input" name="street" defaultValue={b.street} maxLength={120} /></label>
           <label className={cls('ward_new')}>Phường (mới) <span className="hint">sau sáp nhập 2025</span><input className="input" name="ward_new" defaultValue={s(b.ward_new)} /></label>
           <label className={cls('ward_old')}>Phường (cũ)<input className="input" name="ward_old" defaultValue={s(b.ward_old)} /></label>

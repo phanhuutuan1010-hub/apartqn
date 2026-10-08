@@ -8,7 +8,7 @@ import { alternates, OG_LOCALE } from '@/lib/seo';
 import { DEMO } from '@/data/site';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { SearchBar } from '@/components/SearchBar';
+import { SmartSearch } from '@/components/SmartSearch';
 import { ListingCard } from '@/components/ListingCard';
 import { BuildingCard } from '@/components/BuildingCard';
 import { DemoBadge } from '@/components/Badges';
@@ -54,7 +54,7 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
             <Image src="/images/hero.webp" alt={t('heroTitle').replace(/ /g, ' ')} fill priority fetchPriority="high" sizes="(min-width:1024px) 480px, 100vw" />
           </div>
           <div className={styles.search}>
-            <SearchBar buildings={buildings.map((b) => ({ id: b.id, name: b.name }))} listings={listings} />
+            <SmartSearch listings={listings} />
           </div>
         </section>
 

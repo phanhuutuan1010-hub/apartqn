@@ -44,5 +44,34 @@ export const consignSchema = z.object({
   website,
 });
 
-export const leadSchema = z.discriminatedUnion('type', [viewingSchema, consignSchema]);
+const mil = z.string().regex(/^(\d{1,4}(\.\d)?)?$/).optional();
+/** results-page filters at the time of the request (lib/filters.ts names) */
+export const searchCriteria = z.object({
+  b: z.string().regex(/^[a-z0-9-]{0,40}$/).optional(),
+  beds: z.enum(['', '0', '1', '2', '3']).optional(),
+  rent: z.enum(['', 'r0', 'r1', 'r2', 'r3']).optional(),
+  furn: z.enum(['', 'full', 'basic', 'empty']).optional(),
+  pmin: mil,
+  pmax: mil,
+  vw: z.enum(['', 'sea', 'city', 'river', 'lagoon']).optional(),
+  pets: z.boolean().optional(),
+  car: z.boolean().optional(),
+  date: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional(),
+  q: z.string().trim().max(80).optional(),
+}).strip();
+
+/** "Nhờ tìm giúp" from a results page with no match */
+export const searchRequestSchema = z.object({
+  type: z.literal('search_request'),
+  name,
+  phone,
+  need: z.string().trim().max(500).optional().default(''),
+  query: z.string().trim().max(80).optional().default(''),
+  criteria: searchCriteria.optional().default({}),
+  locale,
+  page,
+  website,
+});
+
+export const leadSchema = z.discriminatedUnion('type', [viewingSchema, consignSchema, searchRequestSchema]);
 export type Lead = z.infer<typeof leadSchema>;

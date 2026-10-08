@@ -44,7 +44,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             <div className="a-grid">
               <div className="a-field">Điện thoại<span style={{ fontSize: 16, fontWeight: 700 }}><a href={`tel:${l.phone}`}>{l.phone}</a></span></div>
               <div className="a-field">Căn quan tâm
-                <span style={{ fontSize: 16, fontWeight: 700 }}>{l.listings?.code ? <Link href={`/admin/can-ho/${l.listings.id}`}>{l.listings.code}</Link> : '—'}</span>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>{l.listings?.code ? <Link href={`/admin/can-ho/${l.listings.id}`}>{l.listings.code}</Link> : l.search ? <span className="a-badge blue">Nhờ tìm giúp</span> : '—'}</span>
               </div>
               <div className="a-field">Ngày muốn xem<span style={{ fontSize: 15 }}>{l.preferred_date ?? '—'}</span></div>
               <div className="a-field">Thời gian thuê<span style={{ fontSize: 15 }}>{l.duration_months ?? '—'}</span></div>

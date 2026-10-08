@@ -1,0 +1,69 @@
+/* card: < 768 stacked (sheet trigger + buttons) · ≥ 768 one row (combobox · Tìm · Bộ lọc) */
+.form { display: flex; flex-direction: column; gap: 10px; padding: 14px; margin: 0; background: var(--white); border-radius: var(--r-panel); box-shadow: var(--sh-search); }
+.field { position: relative; min-width: 0; }
+
+.desk { display: none; }
+.mob { display: flex; align-items: center; gap: 10px; width: 100%; height: 52px; padding: 0 14px; border: 1px solid var(--gray-300); border-radius: var(--r-md); background: var(--white); text-align: left; font-size: 16px; cursor: text; min-width: 0; }
+.mob:focus-visible { border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-100); outline: none; }
+.mobPh, .mobValue { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mobPh { color: var(--gray-500); }
+.mobValue { color: var(--ink-900); font-weight: 500; }
+.lead { flex: none; color: var(--gray-500); }
+
+.input { flex: 1 1 auto; min-width: 0; height: 100%; border: 0; outline: none; background: transparent; padding: 0 4px 0 10px; font: inherit; font-size: 16px; font-weight: 500; color: var(--ink-900); }
+.input::placeholder { color: var(--gray-500); font-weight: 400; opacity: 1; }
+.input::-webkit-search-cancel-button, .input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.clearBtn { flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: var(--r-md); background: none; color: var(--gray-500); cursor: pointer; }
+.clearBtn:hover { color: var(--ink-900); background: var(--gray-50); }
+
+.actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.submit { width: 100%; }
+.filters { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 16px; border: 1.5px solid var(--gray-300); border-radius: var(--r-md); background: var(--white); color: var(--blue-500); font-size: 15px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.filters:hover { background: var(--blue-50); border-color: var(--blue-200); }
+.fIcon { display: flex; flex-direction: column; gap: 3px; }
+.fIcon span { height: 2px; background: currentColor; }
+.fIcon span:nth-child(1) { width: 14px; }
+.fIcon span:nth-child(2) { width: 10px; margin-left: 2px; }
+.fIcon span:nth-child(3) { width: 6px; margin-left: 4px; }
+
+@media (min-width: 768px) {
+  .form { flex-direction: row; align-items: stretch; gap: 8px; padding: 8px; }
+  .field { flex: 1 1 auto; }
+  .mob { display: none; }
+  .desk { display: flex; align-items: center; height: 60px; padding-left: 16px; padding-right: 6px; border: 1px solid var(--gray-300); border-radius: var(--r-card); background: var(--white); }
+  .desk:focus-within { border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-100); }
+  .actions { display: flex; }
+  .submit, .filters { height: 60px; border-radius: var(--r-card); }
+  .submit { width: auto; padding: 0 28px; }
+}
+
+/* ── suggestions (shared by the desktop popup and the mobile sheet) */
+.popup { position: absolute; top: calc(100% + 8px); left: 0; right: 0; z-index: 40; max-height: min(64vh, 560px); overflow-y: auto; overscroll-behavior: contain; padding: 6px 0; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--r-card); box-shadow: var(--sh-panel); }
+.list { display: flex; flex-direction: column; min-width: 0; }
+.group { min-width: 0; }
+.group + .group { margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--gray-100); }
+.gLabel { padding: 10px 16px 4px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--gray-500); }
+.opt { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 16px; cursor: pointer; min-width: 0; }
+.optSmall { display: flex; padding: 4px 16px 10px 46px; cursor: pointer; }
+.on { background: var(--blue-50); }
+.ico { flex: none; color: var(--gray-500); }
+.main { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.title, .sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.title { font-size: 15px; font-weight: 600; line-height: 1.35; color: var(--ink-900); }
+.sub { font-size: 13px; line-height: 1.35; color: var(--gray-700); }
+.mark { background: none; color: var(--blue-600); font-weight: 800; }
+.thumb { flex: none; width: 56px; height: 42px; border-radius: 8px; overflow: hidden; background: repeating-linear-gradient(135deg, #DCE4F2 0 8px, #E8EEF7 8px 16px); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.clearRecent { font-size: 13px; font-weight: 600; color: var(--blue-500); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 16px 10px; }
+.chip { display: inline-flex; align-items: center; min-height: 36px; max-width: 100%; padding: 0 14px; border: 1px solid var(--gray-300); border-radius: var(--r-pill); font-size: 14px; font-weight: 600; color: var(--ink-900); background: var(--white); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip.on { border-color: var(--blue-500); }
+.none, .hint { margin: 0; padding: 8px 16px 12px; font-size: 14px; line-height: 1.5; color: var(--gray-700); overflow-wrap: anywhere; }
+
+/* ── mobile full-screen sheet */
+.sheet { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; height: 100dvh; background: var(--white); }
+.sheetHead { display: flex; align-items: center; gap: 4px; padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 12px) 8px calc(env(safe-area-inset-left) + 4px); border-bottom: 1px solid var(--gray-200); }
+.back { flex: none; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; background: none; color: var(--ink-900); border-radius: var(--r-md); cursor: pointer; }
+.sheetField { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; height: 48px; margin: 0; padding-left: 4px; border: 1px solid var(--gray-300); border-radius: var(--r-md); }
+.sheetField:focus-within { border-color: var(--blue-500); box-shadow: 0 0 0 3px var(--blue-100); }
+.sheetBody { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 4px env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 16px) env(safe-area-inset-left); }

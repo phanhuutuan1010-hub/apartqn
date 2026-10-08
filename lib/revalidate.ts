@@ -1,6 +1,9 @@
 import 'server-only';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { LOCALES } from '@/i18n/routing';
+
+/** cache tag of /search-index.json */
+export const SEARCH_INDEX_TAG = 'search-index';
 
 /**
  * Refresh the public pages that show a listing / building (all locales), plus results, home and sitemap.
@@ -14,4 +17,7 @@ export function revalidatePublic({ code, building }: { code?: string | null; bui
     if (building) revalidatePath(`/${l}/toa-nha/${building}`);
   }
   revalidatePath('/sitemap.xml');
+  // expire now (no stale window): the next visitor's search box gets the change
+  revalidateTag(SEARCH_INDEX_TAG, { expire: 0 });
+  revalidatePath('/search-index.json');
 }

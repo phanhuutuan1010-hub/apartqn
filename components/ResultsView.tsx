@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -10,6 +10,10 @@ import type { Listing } from '@/lib/types';
 import { apply, EMPTY, parseQuery, toQuery, type Filters, type Sort, type View } from '@/lib/filters';
 import { dFull, F, mil } from '@/lib/format';
 import { useMedia } from '@/lib/useMedia';
+import { textMatches } from '@/lib/search/text';
+import { similarListings } from '@/lib/search/similar';
+import { logSearchMiss } from '@/lib/search/miss';
+import { SearchRequestForm } from './SearchRequestForm';
 import { FilterPanel } from './FilterPanel';
 import { ListingCard } from './ListingCard';
 import type { MapMarker } from './MapView';
@@ -31,6 +35,9 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
   const t = useTranslations();
   const l = useLocale();
   const { f, sort, view } = useMemo(() => parseQuery(new URLSearchParams(query)), [query]);
+  /** what the visitor typed in the search box (only on arrival; dropped once filters change) */
+  const typed = useMemo(() => (new URLSearchParams(query).get('s') ?? '').trim().slice(0, 80), [query]);
+  const [ask, setAsk] = useState(false);
   const [sel, setSel] = useState('');
   const [sheet, setSheet] = useState(false);
   const lg = useMedia('(min-width: 1024px)');
@@ -46,14 +53,33 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
     sync({ ...f, ...patch }, sort, view);
   };
 
-  const matched = useMemo(() => apply(listings, f, sort), [listings, f, sort]);
+  const textOk = useMemo(() => {
+    const ok = new Map(buildings.map((b) => [b.id, textMatches(f.q, { name: b.name, aliases: b.aliases, street: b.street, ward_new: b.ward ?? null, ward_old: b.wardOld ?? null })]));
+    return (x: Listing) => ok.get(x.buildingId) ?? false;
+  }, [buildings, f.q]);
+  const matched = useMemo(() => apply(listings, f, sort, textOk), [listings, f, sort, textOk]);
   const inView = sel ? matched.filter((x) => x.buildingId === sel) : matched;
+  const similar = useMemo(() => (matched.length ? [] : similarListings(listings, f)), [matched.length, listings, f]);
+
+  // a typed search with no match → anonymous demand log (once per query per session)
+  useEffect(() => {
+    if (typed && matched.length === 0) {
+      const { rented, ...criteria } = f;
+      void rented;
+      logSearchMiss(typed, l, criteria);
+    }
+  }, [typed, matched.length, f, l]);
 
   const drawerN = (['beds', 'furn', 'pets', 'car', 'date'] as const).filter((k) => f[k]).length;
   const bedsLabel = (v: string) => t('sBeds') + ': ' + (v === '0' ? t('studio') : v === '3' ? '3+' : v);
   const pills: { label: string; clear: Partial<Filters> }[] = [];
   if (f.b && bById.get(f.b)) pills.push({ label: bById.get(f.b)!.name, clear: { b: '' } });
+  if (f.q) pills.push({ label: `“${f.q}”`, clear: { q: '' } });
   if (f.rent) pills.push({ label: t(`rent${f.rent.slice(1)}` as 'rent0'), clear: { rent: '' } });
+  if (f.pmin && f.pmax) pills.push({ label: `${mil(+f.pmin * 1e6, l).replace(/ ?(triệu|млн ₫|M ₫)$/, '')}–${mil(+f.pmax * 1e6, l)}`, clear: { pmin: '', pmax: '' } });
+  else if (f.pmax) pills.push({ label: '≤ ' + mil(+f.pmax * 1e6, l), clear: { pmax: '' } });
+  else if (f.pmin) pills.push({ label: '≥ ' + mil(+f.pmin * 1e6, l), clear: { pmin: '' } });
+  if (f.vw) pills.push({ label: t(`v_${f.vw}` as 'v_sea'), clear: { vw: '' } });
   if (f.beds) pills.push({ label: bedsLabel(f.beds), clear: { beds: '' } });
   if (f.furn) pills.push({ label: t(`furn_${f.furn}` as 'furn_full'), clear: { furn: '' } });
   if (f.pets) pills.push({ label: t('pets'), clear: { pets: false } });
@@ -158,14 +184,34 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
 
       <div className={`container ${styles.body}`}>
         <aside className={styles.side}>
-          <FilterPanel variant="sidebar" value={f} listings={listings} onApply={(nf) => setF(nf)} />
+          <FilterPanel variant="sidebar" value={f} listings={listings} textOk={textOk} onApply={(nf) => setF(nf)} />
         </aside>
         <div className={styles.content}>
           {matched.length === 0 ? (
-            <div className={styles.empty}>
-              <span className={styles.emptyT}>{t('noRes')}</span>
-              <span className={styles.emptyS}>{t('noResSub')}</span>
-              <button type="button" className="btn btn-secondary" onClick={clearAll}>{t('clearAll')}</button>
+            <div className={styles.emptyWrap}>
+              <div className={styles.empty}>
+                <span className={styles.emptyT}>{t('noRes')}</span>
+                <span className={styles.emptyS}>{t('noResSub')}</span>
+                <div className={styles.emptyActions}>
+                  {!ask && <button type="button" className="btn btn-blue" onClick={() => setAsk(true)} aria-expanded={false}>{t('srBtn')}</button>}
+                  <button type="button" className="btn btn-secondary" onClick={clearAll}>{t('clearAll')}</button>
+                </div>
+                {ask && (
+                  <section className={styles.ask} aria-labelledby="sr-title">
+                    <h2 id="sr-title" className={styles.askT}>{t('srTitle')}</h2>
+                    <p className={styles.askS}>{t('srSub')}</p>
+                    <SearchRequestForm query={typed} criteria={f} />
+                  </section>
+                )}
+              </div>
+              {similar.length > 0 && (
+                <section aria-labelledby="sim-title">
+                  <h2 id="sim-title" className={styles.simT}>{t('similar')}</h2>
+                  <div className={styles.grid}>
+                    {similar.map((x) => <ListingCard key={x.code} x={x} building={bById.get(x.buildingId)} slider />)}
+                  </div>
+                </section>
+              )}
             </div>
           ) : view === 'list' ? (
             <div className={styles.grid}>
@@ -226,6 +272,7 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
         <FilterSheet
           value={f}
           listings={listings}
+          textOk={textOk}
           onClose={() => setSheet(false)}
           onApply={(nf) => { setSheet(false); setF(nf); }}
         />

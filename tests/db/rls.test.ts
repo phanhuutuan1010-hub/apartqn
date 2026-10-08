@@ -75,6 +75,13 @@ describe('anon', () => {
     expect(msg).toMatch(/permission denied/);
   });
 
+  it('public views carry the search fields (aliases, verified_at, published_at)', async () => {
+    const b = await as('anon', (q) => q(`select aliases from public.public_buildings`));
+    expect(b.rows[0].aliases).toEqual([]);
+    const l = await as('anon', (q) => q(`select verified_at, published_at from public.public_listings`));
+    expect(l.fields.map((f) => f.name)).toEqual(['verified_at', 'published_at']);
+  });
+
   it('reads public_buildings', async () => {
     const r = await as('anon', (q) => q(`select slug, name from public.public_buildings`));
     expect(r.rows).toEqual([{ slug: 'altara', name: 'Altara Residences Quy Nhơn' }]);
@@ -412,5 +419,39 @@ describe('consign assignment + lead notes (migration 7)', () => {
     expect(r[0]).toMatchObject({ by: U.s1, text: 'Đã gọi, hẹn thứ 7' });
     expect(await as(id(U.s2), (q) => denied(q(`select public.add_lead_note($1, 'x')`, [lead1])))).toMatch(/not allowed/);
     expect(await as('anon', (q) => denied(q(`select public.add_lead_note($1, 'x')`, [lead1])))).toMatch(/permission denied/);
+  });
+});
+
+describe('search misses (migration 10)', () => {
+  it('anon logs through the rpc but cannot read or write the table', async () => {
+    await as('anon', async (q) => {
+      await q(`select public.log_search_miss('  Vinhomes   2pn ', 'vi', '{"beds":2}')`);
+      expect(await denied(q(`select * from public.search_misses`))).toMatch(/permission denied/);
+      expect(await denied(q(`insert into public.search_misses (query_norm, locale) values ('xx','vi')`))).toMatch(/permission denied/);
+      expect(await denied(q(`select * from public.search_miss_top()`))).toMatch(/permission denied/);
+    });
+  });
+
+  it('rpc validates length, locale and parsed server-side', async () => {
+    await as('anon', async (q) => {
+      expect(await denied(q(`select public.log_search_miss('a', 'vi')`))).toMatch(/2–80/);
+      expect(await denied(q(`select public.log_search_miss($1, 'vi')`, ['x'.repeat(81)]))).toMatch(/2–80/);
+      expect(await denied(q(`select public.log_search_miss('ok query', 'de')`))).toMatch(/locale/);
+      await q(`select public.log_search_miss('ok query', 'ru', '[1,2]')`); // non-object parsed → stored as {}
+    });
+  });
+
+  it('only admins read; rows hold no user data', async () => {
+    await root(`delete from public.search_misses`);
+    // as() rolls back, so the fixture rows are written by the owner through the same function
+    await root(`select public.log_search_miss('Vinhomes', 'vi'), public.log_search_miss('vinhomes', 'en'), public.log_search_miss('studio gan bien', 'vi')`);
+    const cols = (await root(`select column_name from information_schema.columns where table_name = 'search_misses' order by ordinal_position`)).rows.map((r) => r.column_name);
+    expect(cols).toEqual(['id', 'query_norm', 'locale', 'parsed', 'created_at']);
+    const sales = await as(id(U.s1), (q) => q(`select * from public.search_misses`));
+    expect(sales.rows).toEqual([]);
+    expect((await as(id(U.s1), (q) => q(`select * from public.search_miss_top()`))).rows).toEqual([]);
+    const top = await as(id(U.admin), (q) => q(`select query_norm, n::int, locales from public.search_miss_top(30, 10)`));
+    expect(top.rows[0]).toEqual({ query_norm: 'vinhomes', n: 2, locales: ['en', 'vi'] });
+    await root(`delete from public.search_misses`);
   });
 });

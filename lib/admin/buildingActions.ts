@@ -45,12 +45,15 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
     return { error: 'Kiểm tra lại các ô được đánh dấu.', fieldErrors };
   }
   const v = p.data;
+  const aliases = [...new Map(fd.getAll('aliases').map((a) => String(a).trim().replace(/\s+/g, ' ').slice(0, 60))
+    .filter((a) => a && a.toLowerCase() !== v.name.toLowerCase()).map((a) => [a.toLowerCase(), a])).values()];
+  if (aliases.length > 20) return { error: 'Tối đa 20 tên gọi khác.', fieldErrors: { aliases: 'Tối đa 20' } };
   const amenities = fd.getAll('amenities').map(String).filter((a) => (AMENITIES as readonly string[]).includes(a));
   const default_fees = Object.fromEntries(
     (['mgmt_per_m2', 'moto', 'car', 'net'] as const).filter((k) => v[k] != null).map((k) => [k, v[k]]),
   );
   const row = {
-    name: v.name, street: v.street, ward_new: v.ward_new, ward_old: v.ward_old, lat: v.lat, lng: v.lng,
+    name: v.name, aliases, street: v.street, ward_new: v.ward_new, ward_old: v.ward_old, lat: v.lat, lng: v.lng,
     amenities, default_fees, desc_vi: v.desc_vi, desc_en: v.desc_en, desc_ru: v.desc_ru, sort: v.sort, is_demo: v.is_demo,
   };
   const sb = await supabaseServer();

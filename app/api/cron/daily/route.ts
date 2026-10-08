@@ -16,7 +16,8 @@ const DAY = 86_400_000;
  * 1. keep-alive query (Supabase Free pauses idle projects)
  * 2. available listings not confirmed for > remind days → Telegram reminder to the assignee
  * 3. … for > hide days → status hidden + notify assignee and admins
- * 4. Mondays → backup reminder to admins
+ * 4. search_misses older than 90 days → deleted
+ * 5. Mondays → backup reminder to admins
  */
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -69,7 +70,11 @@ export async function GET(req: NextRequest) {
     admins.forEach((ad) => ad.id !== a?.id && push(ad.telegram_chat_id, `🙈 ĐÃ ẨN ${line(d)} (phụ trách: ${esc(name(d.assigned_to))})`));
   }
 
-  // 4 · Monday backup reminder (Vietnam time)
+  // 4 · unmet-demand log retention: 90 days
+  const { count: missesDeleted, error: mErr } = await sb.from('search_misses').delete({ count: 'exact' }).lt('created_at', new Date(now - 90 * DAY).toISOString());
+  if (mErr) console.error('[cron] search_misses cleanup', mErr);
+
+  // 5 · Monday backup reminder (Vietnam time)
   const vnDay = new Date(now + 7 * 3600_000).getUTCDay();
   const lastBackup = settings.last_backup_at ? Math.floor((now - new Date(settings.last_backup_at).getTime()) / DAY) : null;
   if (vnDay === 1) {
@@ -83,5 +88,5 @@ export async function GET(req: NextRequest) {
     if (await telegram(chat, head + lines.join('\n'))) sent++;
   }
 
-  return NextResponse.json({ ok: true, reminded: toRemind.map((d) => d.code), hidden, backupReminder: vnDay === 1, telegramSent: sent });
+  return NextResponse.json({ ok: true, reminded: toRemind.map((d) => d.code), hidden, backupReminder: vnDay === 1, telegramSent: sent, searchMissesDeleted: missesDeleted ?? 0 });
 }

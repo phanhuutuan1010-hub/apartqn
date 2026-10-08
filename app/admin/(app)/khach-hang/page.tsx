@@ -13,7 +13,7 @@ const PAGE = 25;
 
 type Row = {
   id: string; created_at: string; name: string; phone: string; channel: string; locale: string | null; status: LeadStatus;
-  assigned_to: string | null; message: string | null; listings: { code: string | null } | null; notes: unknown[];
+  assigned_to: string | null; message: string | null; listings: { code: string | null } | null; notes: unknown[]; search: object | null;
 };
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
@@ -23,7 +23,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const page = Math.max(1, Number(sp.page) || 1);
   const sb = await supabaseServer();
 
-  let q = sb.from('leads').select('id, created_at, name, phone, channel, locale, status, assigned_to, message, notes, listings(code)', { count: 'exact' }).eq('status', status);
+  let q = sb.from('leads').select('id, created_at, name, phone, channel, locale, status, assigned_to, message, notes, search, listings(code)', { count: 'exact' }).eq('status', status);
   if (sp.q) {
     const s = sp.q.replace(/[,()%*]/g, ' ').trim();
     if (s) q = q.or(`name.ilike.%${s}%,phone.ilike.%${s}%`);
@@ -72,7 +72,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   <b>{r.name}</b> <span className="a-small a-muted">{r.locale?.toUpperCase()}</span>
                   <div className="a-small"><a href={`tel:${r.phone}`}>{r.phone}</a></div>
                 </td>
-                <td className="nowrap">{r.listings?.code ?? <span className="a-muted">—</span>}</td>
+                <td className="nowrap">{r.listings?.code ?? (r.search ? <span className="a-badge blue">Nhờ tìm</span> : <span className="a-muted">—</span>)}</td>
                 <td className="nowrap">{CHANNEL_LABEL[r.channel] ?? r.channel}</td>
                 <td className="nowrap">{r.assigned_to ? dir.get(r.assigned_to)?.name : <span className="a-muted">Chưa giao</span>}</td>
                 <td className="a-small a-muted">{r.notes.length ? `${r.notes.length} ghi chú` : r.message ? r.message.slice(0, 60) : ''}</td>

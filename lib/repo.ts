@@ -36,6 +36,13 @@ async function fail(what: string, e: { message: string }): Promise<never> {
   throw new Error(`Supabase: ${what} failed — ${e.message}`);
 }
 
+/** Route handlers: a failed load during the build → render per request instead of failing the deploy. */
+export async function onBuildFailure(e: unknown) {
+  if (!IS_BUILD) return;
+  console.warn(`[repo] prerender skipped: ${(e as Error).message}`);
+  await connection();
+}
+
 /** generateStaticParams that never fails the build: if Supabase is unreachable, prerender nothing (pages render on first visit). */
 export async function staticParams<T>(load: () => Promise<T[]>): Promise<T[]> {
   try {

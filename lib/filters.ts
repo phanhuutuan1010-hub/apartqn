@@ -12,18 +12,28 @@ export type Filters = {
   car: boolean; // no data yet — only applied once listings carry `carParking`
   date: string; // YYYY-MM-DD, move-in on or before
   rented: boolean;
+  // from the smart search box
+  pmin: string; // rent ≥, VND millions ("10", "7.5")
+  pmax: string; // rent ≤, VND millions
+  vw: string; // '' | sea | city | river | lagoon
+  q: string; // leftover words → building name / alias / street / ward (see lib/search/suggest.ts textMatches)
 };
 
 export type Sort = 'new' | 'low' | 'high' | 'move';
 export type View = 'list' | 'map';
 
-export const EMPTY: Filters = { b: '', beds: '', rent: '', furn: '', pets: false, car: false, date: '', rented: false };
+export const EMPTY: Filters = { b: '', beds: '', rent: '', furn: '', pets: false, car: false, date: '', rented: false, pmin: '', pmax: '', vw: '', q: '' };
 export const SORTS: Sort[] = ['new', 'low', 'high', 'move'];
 
 export const hasCarData = (all: Listing[]) => all.some((x) => typeof x.carParking === 'boolean');
 
-export const match = (x: Listing, f: Filters) =>
+/** `textOk` checks f.q (needs building data — built by the caller). */
+export const match = (x: Listing, f: Filters, textOk?: (x: Listing) => boolean) =>
   (f.rented || x.status !== 'rented') &&
+  (!f.pmin || x.rent >= Number(f.pmin) * 1e6) &&
+  (!f.pmax || x.rent <= Number(f.pmax) * 1e6) &&
+  (!f.vw || x.view === f.vw) &&
+  (!f.q || !textOk || textOk(x)) &&
   (!f.b || x.buildingId === f.b) &&
   (!f.pets || x.pets) &&
   (!f.car || x.carParking === true) &&
@@ -40,8 +50,8 @@ const CMP: Record<Sort, (a: Listing, b: Listing) => number> = {
 };
 
 /** Filter + sort. Rented listings always sort last. */
-export const apply = (all: Listing[], f: Filters, sort: Sort) =>
-  all.filter((x) => match(x, f)).sort((a, b) => Number(a.status === 'rented') - Number(b.status === 'rented') || CMP[sort](a, b));
+export const apply = (all: Listing[], f: Filters, sort: Sort, textOk?: (x: Listing) => boolean) =>
+  all.filter((x) => match(x, f, textOk)).sort((a, b) => Number(a.status === 'rented') - Number(b.status === 'rented') || CMP[sort](a, b));
 
 /** URL query → state: ?b=&beds=&rent=r0..r3&furn=&pets=1&car=1&date=YYYY-MM-DD&rented=1&sort=&view=map */
 export const parseQuery = (q: URLSearchParams | Record<string, string | string[] | undefined>) => {
@@ -60,6 +70,10 @@ export const parseQuery = (q: URLSearchParams | Record<string, string | string[]
   if (!/^[0-3]$/.test(f.beds)) f.beds = '';
   if (!['full', 'basic', 'empty'].includes(f.furn)) f.furn = '';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(f.date)) f.date = '';
+  if (!/^\d{1,4}(\.\d)?$/.test(f.pmin)) f.pmin = '';
+  if (!/^\d{1,4}(\.\d)?$/.test(f.pmax)) f.pmax = '';
+  if (!['sea', 'city', 'river', 'lagoon'].includes(f.vw)) f.vw = '';
+  f.q = f.q.trim().replace(/\s+/g, ' ').slice(0, 80);
   const s = get('sort') as Sort;
   const sort: Sort = SORTS.includes(s) ? s : 'new';
   const view: View = get('view') === 'map' ? 'map' : 'list';

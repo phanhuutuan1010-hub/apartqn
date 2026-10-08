@@ -34,6 +34,10 @@ export const F = {
   months: (n: number, l: Locale) => (l === 'vi' ? n + ' tháng' : l === 'ru' ? n + ' ' + pl(n, 'месяц', 'месяца', 'месяцев') : n + (n === 1 ? ' month' : ' months')),
   people: (n: number, l: Locale) => (l === 'vi' ? n + ' người' : l === 'ru' ? n + ' ' + pl(n, 'человек', 'человека', 'человек') : n + ' people'),
   showN: (n: number, l: Locale) => (l === 'vi' ? 'Xem ' + n + ' căn' : l === 'ru' ? 'Показать ' + n + ' ' + pl(n, 'квартиру', 'квартиры', 'квартир') : 'Show ' + n + ' apartments'),
+  avail: (n: number, l: Locale) =>
+    n === 0
+      ? (l === 'vi' ? 'Chưa có căn trống' : l === 'ru' ? 'Нет свободных квартир' : 'None available')
+      : l === 'vi' ? n + ' căn còn trống' : l === 'ru' ? n + ' ' + pl(n, 'свободная квартира', 'свободные квартиры', 'свободных квартир') : n + ' available',
   found: (n: number, l: Locale) => (l === 'vi' ? n + ' căn phù hợp' : l === 'ru' ? n + ' ' + pl(n, 'квартира', 'квартиры', 'квартир') : n + (n === 1 ? ' apartment' : ' apartments')),
   perM2: (n: number, l: Locale) => money(n, l) + '/' + m2(l) + perMo(l),
   msgG: (l: Locale) => (l === 'vi' ? 'Chào ApartQN, tôi cần tư vấn thuê căn hộ dài hạn.' : l === 'ru' ? 'Здравствуйте! Нужна консультация по долгосрочной аренде.' : 'Hi ApartQN, I’d like help finding a long-term rental.'),
