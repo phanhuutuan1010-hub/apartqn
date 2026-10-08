@@ -455,3 +455,40 @@ describe('search misses (migration 10)', () => {
     await root(`delete from public.search_misses`);
   });
 });
+
+describe('photo masters + watermark (migration 12)', () => {
+  it('listing-master: private; sales only under their own listing folder; anon nothing', async () => {
+    const r = await as(id(U.s1), async (q) => ({
+      own: (await q(`insert into storage.objects (bucket_id, name) values ('listing-master', $1) returning id`, [`listings/${l1}/m.webp`])).rowCount,
+      other: await denied(q(`insert into storage.objects (bucket_id, name) values ('listing-master', $1)`, [`listings/${l2}/m.webp`])),
+      building: await denied(q(`insert into storage.objects (bucket_id, name) values ('listing-master', 'buildings/altara/m.webp')`)),
+    }));
+    expect(r.own).toBe(1);
+    expect(r.other).toMatch(/row-level security/);
+    expect(r.building).toMatch(/row-level security/);
+    await root(`insert into storage.objects (bucket_id, name) values ('listing-master', $1), ('listing-master', 'buildings/altara/m2.webp')`, [`listings/${l2}/m2.webp`]);
+    const seenBy = async (who: Parameters<typeof as>[0]) => (await as(who, (q) => q(`select name from storage.objects where bucket_id = 'listing-master' order by name`))).rows.map((x) => x.name);
+    expect(await seenBy(id(U.s1))).toEqual([]);
+    expect(await seenBy(id(U.s2))).toEqual([`listings/${l2}/m2.webp`]);
+    expect(await seenBy(id(U.admin))).toEqual(['buildings/altara/m2.webp', `listings/${l2}/m2.webp`]);
+    expect(await as('anon', (q) => denied(q(`insert into storage.objects (bucket_id, name) values ('listing-master', 'buildings/altara/x.webp')`)))).toMatch(/row-level security|permission/);
+    await root(`delete from storage.objects where bucket_id = 'listing-master'`);
+    const b = (await root(`select public from storage.buckets where id = 'listing-master'`)).rows[0];
+    expect(b.public).toBe(false);
+  });
+
+  it('watermark defaults: listing photos on, building photos off', async () => {
+    const r = await root(`insert into public.photos (listing_id, bucket, path) values ($1, 'listing-public', 'listings/x/wm-a.webp') returning watermark`, [l1]);
+    const b = await root(`insert into public.photos (building_id, bucket, path) values ($1, 'listing-public', 'buildings/altara/wm-b.webp') returning watermark`, [B]);
+    expect([r.rows[0].watermark, b.rows[0].watermark]).toEqual([true, false]);
+    await root(`delete from public.photos where path in ('listings/x/wm-a.webp', 'buildings/altara/wm-b.webp')`);
+  });
+
+  it('video_url: YouTube only, exposed in the public view', async () => {
+    expect(await denied(root(`update public.listings set video_url = 'https://vimeo.com/123' where id = $1`, [l1]))).toMatch(/check/);
+    await root(`update public.listings set video_url = 'https://youtu.be/dQw4w9WgXcQ' where id = $1`, [l1]);
+    const v = await as('anon', (q) => q(`select video_url from public.public_listings`));
+    expect(v.rows[0].video_url).toBe('https://youtu.be/dQw4w9WgXcQ');
+    await root(`update public.listings set video_url = null where id = $1`, [l1]);
+  });
+});
