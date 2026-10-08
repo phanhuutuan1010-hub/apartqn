@@ -83,8 +83,10 @@ describe('anon', () => {
   });
 
   it('reads public_buildings', async () => {
-    const r = await as('anon', (q) => q(`select slug, name from public.public_buildings`));
-    expect(r.rows).toEqual([{ slug: 'altara', name: 'Altara Residences Quy Nhơn' }]);
+    const r = await as('anon', (q) => q(`select slug, name from public.public_buildings order by slug`));
+    expect(r.rows).toContainEqual({ slug: 'altara', name: 'Altara Residences Quy Nhơn' });
+    // migration 14 adds 4 real buildings (no address yet)
+    expect(r.rows.map((x) => x.slug)).toEqual(expect.arrayContaining(['simona', 'xuanthuy', 'lamer', 'longthinh']));
   });
 
   it.each([
@@ -532,5 +534,22 @@ describe('per-building codes (migration 13)', () => {
     expect(v.rows[0]).toEqual({ code: code1, legacy_code: 'QN-001' });
     await as(id(U.admin), (q) => q(`update public.listings set legacy_code = 'QN-555' where id = $1`, [l1]));
     expect((await root(`select legacy_code from public.listings where id = $1`, [l1])).rows[0].legacy_code).toBe('QN-001');
+  });
+});
+
+describe('building fees (migration 14)', () => {
+  it('public view shows rates but not the source note; overrides only mgmt/moto/car', async () => {
+    await root(`update public.buildings set mgmt_fee_per_m2 = 12100, motorbike_fee = 60000, fee_source = 'Hoá đơn BQL', fee_verified = true where id = $1`, [B]);
+    const r = await as('anon', (q) => q(`select * from public.public_buildings where slug = 'altara'`));
+    expect(r.rows[0]).toMatchObject({ mgmt_fee_per_m2: 12100, motorbike_fee: 60000, fee_verified: true });
+    expect(Object.keys(r.rows[0])).not.toContain('fee_source');
+    const l = await as('anon', (q) => q(`select mgmt_fee_paid_by from public.public_listings limit 1`));
+    expect(l.rows[0].mgmt_fee_paid_by).toBe('tenant');
+    expect(await denied(root(`update public.listings set fee_overrides = '{"rent": 1}' where id = $1`, [l1]))).toMatch(/check/);
+    expect(await denied(root(`update public.buildings set car_parking = 'maybe' where id = $1`, [B]))).toMatch(/check/);
+  });
+  it('sales cannot change building fees', async () => {
+    const r = await as(id(U.s1), (q) => q(`update public.buildings set mgmt_fee_per_m2 = 1 where id = $1`, [B]));
+    expect(r.rowCount).toBe(0);
   });
 });

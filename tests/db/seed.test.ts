@@ -41,7 +41,8 @@ afterAll(() => c?.end());
 describe('seed → public views', () => {
   it('buildings match the handoff (slug, name, street, amenities, demo)', async () => {
     const rows = await asAnon<PublicBuildingRow>('select * from public.public_buildings order by sort');
-    const got = rows.map((r) => toBuilding(r, SB));
+    const handoff = new Set(BUILDINGS.map((b) => b.id));
+    const got = rows.map((r) => toBuilding(r, SB)).filter((b) => handoff.has(b.id)); // + 4 buildings added by migration 14
     expect(got.map(({ id, name, street, amenities, demo }) => ({ id, name, street, amenities, demo }))).toEqual(
       BUILDINGS.map(({ id, name, street, amenities, demo }) => ({ id, name, street, amenities, demo })),
     );
