@@ -48,7 +48,7 @@ export function NewLeadForm() {
       <div className="a-grid">
         <label className="a-field span2">Tên khách<input className="input" name="name" required maxLength={120} /></label>
         <label className="a-field span2">Số điện thoại<input className="input" name="phone" type="tel" required maxLength={30} /></label>
-        <label className="a-field">Mã căn <span className="hint">không bắt buộc</span><input className="input" name="code" placeholder="QN-001" maxLength={12} /></label>
+        <label className="a-field">Mã căn <span className="hint">không bắt buộc</span><input className="input" name="code" placeholder="ALT-001" maxLength={12} /></label>
         <label className="a-field">Kênh
           <select className="input" name="channel" defaultValue="phone">{Object.entries(CHANNEL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </label>

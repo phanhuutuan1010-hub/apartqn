@@ -12,7 +12,7 @@ const website = z.string().max(200).optional().default('');
 
 export const viewingSchema = z.object({
   type: z.literal('viewing'),
-  code: z.string().trim().regex(/^QN-\d{3,5}$/i),
+  code: z.string().trim().regex(/^[A-Z]{3}-\d{3,5}$/i),
   name,
   phone,
   date: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional().default(''),

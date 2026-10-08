@@ -4,7 +4,7 @@ import { revalidatePublic } from '@/lib/revalidate';
 
 export const runtime = 'nodejs';
 
-const Body = z.object({ pages: z.array(z.string().regex(/^\/(can-ho\/qn-\d{3,}|toa-nha\/[a-z0-9-]{2,40})$/)).max(500) });
+const Body = z.object({ pages: z.array(z.string().regex(/^\/(can-ho\/[a-z]{3}-\d{3,}|toa-nha\/[a-z0-9-]{2,40})$/)).max(500) });
 
 /** Maintenance scripts (photo backfill) → refresh public pages. Auth: `Authorization: Bearer ${CRON_SECRET}`. */
 export async function POST(req: NextRequest) {

@@ -4,14 +4,14 @@ import { norm, translit } from '@/lib/search/normalize';
 import { editDistance, wordScore } from '@/lib/search/fuzzy';
 
 const B: BuildingRef[] = [
-  { slug: 'altara', name: 'Altara Residences Quy Nhơn', aliases: ['Алтара'] },
-  { slug: 'phutai', name: 'Phú Tài Residence' },
-  { slug: 'flc', name: 'FLC Sea Tower Quy Nhơn' },
-  { slug: 'tms', name: 'TMS Luxury Hotel & Residences Quy Nhơn' },
-  { slug: 'hagl', name: 'HAGL Quy Nhơn' },
-  { slug: 'apt', name: 'An Phú Thịnh Garden Tower' },
-  { slug: 'thinhphat', name: 'Thịnh Phát Tower' },
-  { slug: 'ecolife', name: 'Ecolife Riverside' },
+  { slug: 'altara', name: 'Altara Residences Quy Nhơn', aliases: ['Алтара'], prefix: 'ALT' },
+  { slug: 'phutai', name: 'Phú Tài Residence', prefix: 'PTC' },
+  { slug: 'flc', name: 'FLC Sea Tower Quy Nhơn', prefix: 'FLC' },
+  { slug: 'tms', name: 'TMS Luxury Hotel & Residences Quy Nhơn', prefix: 'TMS' },
+  { slug: 'hagl', name: 'HAGL Quy Nhơn', prefix: 'HAG' },
+  { slug: 'apt', name: 'An Phú Thịnh Garden Tower', prefix: 'APT' },
+  { slug: 'thinhphat', name: 'Thịnh Phát Tower', prefix: 'TPT' },
+  { slug: 'ecolife', name: 'Ecolife Riverside', prefix: 'ECO' },
 ];
 const M = 1e6;
 const p = (q: string, bs = B) => parseSearch(q, bs);
@@ -73,11 +73,23 @@ describe('parseSearch · ru', () => {
 });
 
 describe('parseSearch · codes and ambiguity', () => {
-  it('listing code in any form', () => {
-    expect(p('QN-012').code).toBe('QN-012');
-    expect(p('qn12').code).toBe('QN-012');
-    expect(p('xem căn qn 7').code).toBe('QN-007');
+  it('per-building code in any form', () => {
+    expect(p('ALT-001')).toEqual({ code: 'ALT-001', text: '' });
+    expect(p('alt-1').code).toBe('ALT-001');
+    expect(p('alt1').code).toBe('ALT-001');
+    expect(p('Flc012').code).toBe('FLC-012');
+    expect(p('tms-1234').code).toBe('TMS-1234');
+    expect(p('xem căn ptc-5 giúp tôi').code).toBe('PTC-005'); // known prefix inside a sentence
+    expect(p('abc-12', []).code).toBe('ABC-012'); // the whole query looks like a code
+    expect(p('xem bed2 nhé').code).toBeUndefined(); // "bed" is not a building prefix
   });
+  it('old QN codes are kept as legacyCode', () => {
+    expect(p('QN-012')).toEqual({ legacyCode: 'QN-012', text: '' });
+    expect(p('qn12').legacyCode).toBe('QN-012');
+    expect(p('xem căn qn 7').legacyCode).toBe('QN-007');
+    expect(p('qn-1').legacyCode).toBe('QN-001');
+  });
+  it('a bare prefix names its building', () => is('ptc 2pn', { building: 'phutai', beds: 2 }));
   it('two buildings named equally well → no building, text kept', () => {
     const bs = [{ slug: 'sa', name: 'Sunrise A' }, { slug: 'sb', name: 'Sunrise B' }];
     expect(p('sunrise 2pn', bs)).toEqual({ beds: 2, text: 'sunrise' });

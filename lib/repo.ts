@@ -60,10 +60,10 @@ export const getListings = cache(async (): Promise<Listing[]> => {
   return (data as PublicListingRow[]).map((r) => toListing(r, SUPABASE_URL));
 });
 
-/** Accepts the code in any case (QN-001 or qn-001). */
+/** Accepts the code in any case (ALT-001 or alt-001). */
 export const getListing = cache(async (code: string): Promise<Listing | null> => {
   const c = code.toUpperCase();
-  if (!/^QN-\d{3,}$/.test(c)) return null;
+  if (!/^[A-Z]{3}-\d{3,}$/.test(c)) return null;
   const { data, error } = await client().from('public_listings').select('*').eq('code', c).maybeSingle();
   if (error) await fail('public_listings', error);
   return data ? toListing(data as PublicListingRow, SUPABASE_URL) : null;

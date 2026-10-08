@@ -82,9 +82,12 @@ export function SmartSearch({ listings }: { listings: Listing[] }) {
     const [index, e] = await Promise.all([idx ?? loadIndex(), eng ?? loadEngine()]);
     const p = e.parseSearch(q, index?.buildings ?? []);
     if (q) setRecent(pushRecent(q));
-    if (p.code) {
-      if (!index || index.listings.some((x) => x.code === p.code)) return toListing(p.code.toLowerCase());
-      p.text = [p.code.toLowerCase(), p.text].filter(Boolean).join(' '); // unknown code → results show "no match"
+    if (p.code || p.legacyCode) {
+      const hit = index ? e.resolveCode(p, index) : undefined;
+      if (hit) return toListing(hit.slug);
+      // no index (offline): try the page — old QN-### URLs redirect there
+      if (!index) return toListing((p.code ?? p.legacyCode)!.toLowerCase());
+      p.text = [(p.code ?? p.legacyCode)!.toLowerCase(), p.text].filter(Boolean).join(' '); // unknown code → "no match"
     }
     // s = what was typed: shown in "Nhờ tìm giúp" and logged as unmet demand when nothing matches
     toResults({ ...e.parsedToQuery(p), ...(q ? { s: q.slice(0, 80) } : {}) });

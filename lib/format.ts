@@ -66,5 +66,5 @@ export const UNIT_AM: Record<Listing['furn'], string[]> = {
 /** "13,5 triệu" / "13.5M" / "13,5 млн" (no ₫) — mobile contact bar */
 export const milShort = (n: number, l: Locale) => mil(n, l).replace(/ ?₫$/, '');
 
-/** URL slug for a listing code: QN-001 → qn-001 */
+/** URL slug for a listing code: ALT-001 → alt-001 */
 export const codeSlug = (code: string) => code.toLowerCase();

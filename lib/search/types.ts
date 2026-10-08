@@ -5,6 +5,8 @@ export type IndexBuilding = {
   slug: string;
   name: string;
   aliases: string[];
+  /** listing code prefix, e.g. ALT */
+  prefix: string;
   street: string;
   ward_old: string | null;
   ward_new: string | null;
@@ -13,8 +15,10 @@ export type IndexBuilding = {
 
 export type IndexListing = {
   code: string;
-  /** URL slug: qn-001 */
+  /** URL slug: alt-001 */
   slug: string;
+  /** old QN-### code, if any */
+  legacy_code: string | null;
   building_slug: string;
   beds: number;
   rent: number;

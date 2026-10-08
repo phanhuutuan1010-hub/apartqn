@@ -21,13 +21,15 @@ export type Parsed = {
   pets?: true;
   parking?: true;
   view?: ViewKind;
-  /** "QN-001" */
+  /** "ALT-001" (per-building code) */
   code?: string;
+  /** "QN-001" (old code — resolved through legacy_code) */
+  legacyCode?: string;
   /** leftover words, normalised */
   text: string;
 };
 
-export type BuildingRef = { slug: string; name: string; aliases?: string[] };
+export type BuildingRef = { slug: string; name: string; aliases?: string[]; /** listing code prefix, e.g. ALT */ prefix?: string };
 
 // letter/digit boundaries that also work for Cyrillic (\b does not)
 const L = '(?<![\\p{L}\\p{N}])';
@@ -102,7 +104,7 @@ function prepare(bs: BuildingRef[]): Prepared[] {
   if (!p) {
     p = bs.map((b) => ({
       slug: b.slug,
-      names: [b.name, ...(b.aliases ?? [])].map((n) => {
+      names: [b.name, ...(b.aliases ?? []), ...(b.prefix ? [b.prefix] : [])].map((n) => {
         const all = splitWords(n.normalize('NFC'));
         return { all, key: all.filter((w) => !GENERIC.has(w.w)) };
       }),
@@ -152,9 +154,20 @@ export function parseSearch(raw: string, buildings: BuildingRef[] = []): Parsed 
   // the whole site is Quy Nhơn: the city / province name never narrows anything
   take('quy nhon|qui nhon|quynhon|qn city|binh dinh|gia lai|куинь?он|куи ньон|куинен', () => {});
 
-  // listing code → direct navigation
+  // listing codes → direct navigation: ALT-001 / alt1 (the whole query, or a known building prefix), old QN-001
+  const code = (pre: string, n: string) => `${pre.toUpperCase()}-${String(Number(n)).padStart(3, '0')}`;
+  const whole = /^([a-z]{3})-?(\d{1,4})$/.exec(s.trim());
+  if (whole && whole[1] !== 'qn') {
+    p.code = code(whole[1], whole[2]);
+    s = ' ';
+  }
+  const prefixes = new Set(buildings.map((b) => b.prefix?.toLowerCase()).filter(Boolean));
+  take('([a-z]{3})-?(\\d{1,4})', (m) => {
+    if (!prefixes.has(m[1])) return false;
+    p.code ??= code(m[1], m[2]);
+  });
   take('qn[\\s-]?(\\d{1,5})', (m) => {
-    p.code ??= 'QN-' + m[1].padStart(3, '0');
+    p.legacyCode ??= 'QN-' + m[1].padStart(3, '0');
   });
 
   // price: range, then max / min, then a bare amount with a unit (= budget)

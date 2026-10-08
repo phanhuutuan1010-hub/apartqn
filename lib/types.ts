@@ -26,6 +26,8 @@ export type Building = {
   demo: boolean;
   /** other names people search for (any script) */
   aliases: string[];
+  /** listing code prefix (ALT → ALT-001) */
+  prefix: string;
 };
 
 export type Listing = {
@@ -67,6 +69,8 @@ export type Listing = {
   carParking?: boolean;
   /** unlisted YouTube link (videos are never uploaded) */
   videoUrl?: string;
+  /** old QN-### code (redirects, search) */
+  legacyCode?: string;
   desc: Descriptions;
   demo: boolean;
   /** ISO timestamps (search ranking) */

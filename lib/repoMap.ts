@@ -12,6 +12,8 @@ export type PublicBuildingRow = {
   desc_vi: string | null; desc_en: string | null; desc_ru: string | null; is_demo: boolean; photos: PhotoRow[] | null;
   /** missing before migration 9 */
   aliases?: string[] | null;
+  /** missing before migration 13 */
+  code_prefix?: string | null;
 };
 
 export type PublicListingRow = {
@@ -26,6 +28,8 @@ export type PublicListingRow = {
   verified_at?: string | Date | null; published_at?: string | Date | null;
   /** missing before migration 12 */
   video_url?: string | null;
+  /** missing before migration 13 */
+  legacy_code?: string | null;
 };
 
 /** Public URL of an object in the listing-public bucket */
@@ -62,6 +66,7 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
     desc: desc(r),
     demo: r.is_demo,
     aliases: r.aliases ?? [],
+    prefix: r.code_prefix ?? '',
   };
 }
 
@@ -104,6 +109,7 @@ export function toListing(r: PublicListingRow, supabaseUrl: string): Listing {
     desc: desc(r),
     demo: r.is_demo,
     ...(r.video_url ? { videoUrl: r.video_url } : {}),
+    ...(r.legacy_code ? { legacyCode: r.legacy_code } : {}),
     ...(r.verified_at != null ? { verifiedAt: iso(r.verified_at) } : {}),
     ...(r.published_at != null ? { publishedAt: iso(r.published_at) } : {}),
   };

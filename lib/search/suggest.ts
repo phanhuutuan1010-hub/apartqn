@@ -91,22 +91,30 @@ export function suggest(raw: string, idx: SearchIndex): Suggestions {
     out.areas = [...areas.values()].sort((a, c) => c.s - a.s || c.available - a.available).slice(0, MAX_AREAS).map(({ s, ...a }) => (void s, a));
   }
 
-  // Mã căn: "qn-0", "qn12", "012"
-  const m = /^(?:qn)?[\s-]?(\d{1,5})?$/.exec(q.replace(/\s+/g, ''));
-  if (parsed.code || (m && (q.startsWith('qn') || m[1]))) {
-    // typed digits are a prefix ("qn-01" → QN-01x) and, zero-padded, an exact code (QN-001)
-    const digits = m ? m[1] ?? '' : parsed.code!.slice(3);
+  // Mã căn: "alt", "alt-0", "alt12", "012", old "qn-01"
+  const compact = q.replace(/\s+/g, '');
+  const m = /^(?:([a-z]{3})-?|(qn)-?)?(\d{1,4})?$/.exec(compact);
+  const prefix = m?.[1] && idx.buildings.some((b) => b.prefix.toLowerCase() === m[1]) ? m[1].toUpperCase() : undefined;
+  const legacy = !!m?.[2];
+  const exact = (x: IndexListing) => (!!parsed.code && x.code === parsed.code) || (!!parsed.legacyCode && x.legacy_code === parsed.legacyCode);
+  if (parsed.code || parsed.legacyCode || (m && (prefix || legacy || m[3]))) {
+    // typed digits are a prefix ("alt-01" → ALT-01x) and, zero-padded, an exact code (ALT-001)
+    const digits = m?.[3] ?? '';
     const nz = digits.replace(/^0+/, '');
-    const exact = (x: IndexListing) => x.code === parsed.code;
+    const num = (c: string) => c.slice(c.indexOf('-') + 1);
+    const numOk = (c: string) => !digits || num(c).startsWith(digits) || (!!nz && num(c).replace(/^0+/, '').startsWith(nz));
     out.codes = idx.listings
-      .filter((x) => exact(x) || (!!m && (x.code.slice(3).startsWith(digits) || (!!nz && x.code.slice(3).replace(/^0+/, '').startsWith(nz)))))
+      .filter((x) => exact(x) || (!!m && (
+        prefix ? x.code.startsWith(prefix + '-') && numOk(x.code)
+          : legacy ? !!x.legacy_code && numOk(x.legacy_code)
+            : !!digits && numOk(x.code))))
       .sort((a, c) => Number(exact(c)) - Number(exact(a)) || a.code.localeCompare(c.code))
       .slice(0, MAX_CODES)
       .map((x) => ({ x, building: bySlug.get(x.building_slug) }));
   }
 
   // Căn phù hợp: available only; at least half of what was asked; most criteria → newest confirmation → newest
-  if (!parsed.code) {
+  if (!parsed.code && !parsed.legacyCode) {
     out.listings = idx.listings
       .filter((x) => x.status === 'available')
       .map((x) => ({ x, b: bySlug.get(x.building_slug), ...criteriaScore(x, parsed, bySlug.get(x.building_slug)) }))
@@ -124,7 +132,7 @@ export const buildingList = (idx: SearchIndex) =>
 
 /** How many listings the results page would show for this query (same rules: rented hidden, every criterion met). */
 export function countResults(p: Parsed, idx: SearchIndex): number {
-  if (p.code) return idx.listings.some((x) => x.code === p.code) ? 1 : 0;
+  if (p.code || p.legacyCode) return resolveCode(p, idx) ? 1 : 0;
   const bySlug = new Map(idx.buildings.map((b) => [b.slug, b]));
   return idx.listings.filter((x) => {
     if (x.status === 'rented') return false;
@@ -132,3 +140,7 @@ export function countResults(p: Parsed, idx: SearchIndex): number {
     return n === of; // nothing asked → everything matches, like the unfiltered results page
   }).length;
 }
+
+/** The listing a parsed code points to (new code, or an old QN-### through legacy_code). */
+export const resolveCode = (p: Parsed, idx: SearchIndex) =>
+  idx.listings.find((x) => (!!p.code && x.code === p.code) || (!!p.legacyCode && x.legacy_code === p.legacyCode));
