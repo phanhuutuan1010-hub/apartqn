@@ -1,23 +1,22 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/admin/session';
-import { refresh } from '@/lib/admin/refresh';
-import { revalidatePublic } from '@/lib/revalidate';
 import { vnError } from '@/lib/admin/errors';
+import { BUCKET, movePhoto, refreshOwner, removeFiles, setPhotoWatermark, type PhotoOwner, type PhotoRow } from '@/lib/admin/photoPipeline';
 
 /** Whose photos: a listing (public + internal) or a building (public only, admin). */
-export type PhotoOwner = { kind: 'listing'; id: string } | { kind: 'building'; id: string };
+export type { PhotoOwner };
 type Res = { ok?: boolean; error?: string };
 
 const Owner = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('listing'), id: z.string().uuid() }),
   z.object({ kind: z.literal('building'), id: z.string().uuid() }),
 ]);
+// internal photos only: public ones are rendered server-side (POST /admin/photos/process) so they always carry the watermark rules
 const Uploaded = z.array(z.object({
-  bucket: z.enum(['listing-public', 'listing-internal']),
+  bucket: z.literal('listing-internal'),
   path: z.string().max(300),
   thumb_path: z.string().max(300),
   width: z.number().int().positive().max(10000),
@@ -36,31 +35,36 @@ export async function photoPrefix(owner: PhotoOwner): Promise<string | null> {
   return data ? `buildings/${data.slug}/` : null;
 }
 
-async function after(owner: PhotoOwner) {
-  if (owner.kind === 'listing') return refresh(owner.id);
+const after = async (owner: PhotoOwner) => refreshOwner(await supabaseServer(), owner);
+
+/** Signed upload URL for one clean master (listing-master, private). The photo id is fixed here. */
+export async function prepareMasterUpload(owner: PhotoOwner): Promise<{ photoId?: string; path?: string; token?: string; error?: string }> {
+  await requireStaff();
+  const prefix = await photoPrefix(owner);
+  if (!prefix) return { error: 'Không xác định được thư mục ảnh.' };
+  const photoId = crypto.randomUUID();
+  const path = `${prefix}${photoId}.webp`;
   const sb = await supabaseServer();
-  const { data } = await sb.from('buildings').select('slug').eq('id', owner.id).maybeSingle();
-  if (data) revalidatePublic({ building: data.slug });
-  revalidatePath(`/admin/toa-nha/${owner.id}`);
+  const { data, error } = await sb.storage.from(BUCKET.master).createSignedUploadUrl(path);
+  if (error || !data) return { error: 'Không tạo được link tải ảnh: ' + (error?.message ?? '') };
+  return { photoId, path, token: data.token };
 }
 
-/** Files are already uploaded by the browser (storage RLS); record them. */
+/** Internal (never public, never watermarked) listing photos uploaded straight to listing-internal. */
 export async function registerPhotos(owner: PhotoOwner, items: z.infer<typeof Uploaded>): Promise<Res> {
   await requireStaff();
   const o = Owner.safeParse(owner), parsed = Uploaded.safeParse(items);
   if (!o.success || !parsed.success) return { error: 'Dữ liệu ảnh không hợp lệ.' };
   const prefix = await photoPrefix(o.data);
   if (!prefix || parsed.data.some((p) => !p.path.startsWith(prefix) || !p.thumb_path.startsWith(prefix))) return { error: 'Đường dẫn ảnh không hợp lệ.' };
-  if (o.data.kind === 'building' && parsed.data.some((p) => p.bucket !== 'listing-public')) return { error: 'Ảnh toà nhà luôn công khai.' };
+  if (o.data.kind === 'building') return { error: 'Ảnh toà nhà luôn công khai.' };
   const sb = await supabaseServer();
-  const { data: existing } = await sb.from('photos').select('sort, is_cover').eq(col(o.data), o.data.id);
+  const { data: existing } = await sb.from('photos').select('sort').eq(col(o.data), o.data.id);
   const start = Math.max(-1, ...(existing ?? []).map((p) => p.sort)) + 1;
-  const hasCover = (existing ?? []).some((p) => p.is_cover);
   const rows = parsed.data.map((p, i) => ({
     [col(o.data)]: o.data.id, bucket: p.bucket, path: p.path, thumb_path: p.thumb_path, width: p.width, height: p.height,
-    visibility: p.bucket === 'listing-public' ? 'public' : 'internal',
+    visibility: 'internal', watermark: false,
     sort: start + i,
-    is_cover: !hasCover && i === 0 && p.bucket === 'listing-public',
   }));
   const { error } = await sb.from('photos').insert(rows);
   if (error) return { error: vnError(error) };
@@ -94,7 +98,7 @@ export async function setCover(owner: PhotoOwner, photoId: string): Promise<Res>
   return { ok: true };
 }
 
-/** Listing photos only: public ↔ internal moves both files between buckets, then updates the row. */
+/** Listing photos only: public ↔ internal (public = clean master + rendered files; internal = clean files only). */
 export async function setVisibility(owner: PhotoOwner, photoId: string, visibility: 'public' | 'internal'): Promise<Res> {
   await requireStaff();
   if (owner.kind !== 'listing') return { error: 'Ảnh toà nhà luôn công khai.' };
@@ -102,13 +106,28 @@ export async function setVisibility(owner: PhotoOwner, photoId: string, visibili
   const { data: p } = await sb.from('photos').select('*').eq('id', photoId).eq('listing_id', owner.id).maybeSingle();
   if (!p) return { error: 'Không tìm thấy ảnh.' };
   if (p.visibility === visibility) return { ok: true };
-  const from = p.bucket as string, to = visibility === 'public' ? 'listing-public' : 'listing-internal';
-  for (const path of [p.path, p.thumb_path].filter(Boolean) as string[]) {
-    const { error } = await sb.storage.from(from).move(path, path, { destinationBucket: to });
-    if (error) return { error: 'Không chuyển được ảnh: ' + error.message };
+  try {
+    await movePhoto(sb, p as PhotoRow, visibility);
+  } catch (e) {
+    return { error: 'Không chuyển được ảnh: ' + (e as Error).message };
   }
-  const { error } = await sb.from('photos').update({ bucket: to, visibility, ...(visibility === 'internal' ? { is_cover: false } : {}) }).eq('id', photoId);
-  if (error) return { error: vnError(error) };
+  await after(owner);
+  return { ok: true };
+}
+
+/** "Gắn watermark" on/off for one public photo → its public files are re-rendered from the clean master. */
+export async function setWatermark(owner: PhotoOwner, photoId: string, on: boolean): Promise<Res> {
+  const me = await requireStaff();
+  if (owner.kind === 'building' && me.role !== 'admin') return { error: 'Chỉ quản trị viên sửa ảnh toà nhà.' };
+  const sb = await supabaseServer();
+  const { data: p } = await sb.from('photos').select('*').eq('id', photoId).eq(col(owner), owner.id).maybeSingle();
+  if (!p) return { error: 'Không tìm thấy ảnh.' };
+  if (p.visibility !== 'public') return { error: 'Ảnh nội bộ không gắn watermark.' };
+  try {
+    await setPhotoWatermark(sb, p as PhotoRow, on);
+  } catch (e) {
+    return { error: 'Không tạo lại được ảnh: ' + (e as Error).message };
+  }
   await after(owner);
   return { ok: true };
 }
@@ -120,7 +139,8 @@ export async function deletePhoto(owner: PhotoOwner, photoId: string): Promise<R
   if (!p) return { error: 'Không tìm thấy ảnh.' };
   const { error } = await sb.from('photos').delete().eq('id', photoId);
   if (error) return { error: vnError(error) };
-  await sb.storage.from(p.bucket).remove([p.path, p.thumb_path].filter(Boolean) as string[]);
+  await removeFiles(sb, p.bucket, [p.path, p.thumb_path]);
+  await removeFiles(sb, BUCKET.master, [p.master_path]);
   await after(owner);
   return { ok: true };
 }

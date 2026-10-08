@@ -28,12 +28,12 @@ export default async function BuildingEditPage({ params, searchParams }: { param
   if (!isNew) {
     const [{ data }, { data: ph }] = await Promise.all([
       sb.from('buildings').select('*').eq('id', id).maybeSingle(),
-      sb.from('photos').select('id, path, thumb_path, visibility, is_cover, width, height').eq('building_id', id).order('sort'),
+      sb.from('photos').select('id, path, thumb_path, visibility, is_cover, width, height, watermark').eq('building_id', id).order('sort'),
     ]);
     if (!data) notFound();
     b = data as BuildingData;
     meta = data;
-    photos = (ph ?? []).map((p) => ({ id: p.id, visibility: 'public', is_cover: p.is_cover, width: p.width, height: p.height, url: publicPhotoUrl(SUPABASE_URL, p.thumb_path ?? p.path) }));
+    photos = (ph ?? []).map((p) => ({ id: p.id, visibility: 'public', is_cover: p.is_cover, watermark: p.watermark, width: p.width, height: p.height, url: publicPhotoUrl(SUPABASE_URL, p.thumb_path ?? p.path) }));
   }
   const dir = await staffDirectory();
 

@@ -16,3 +16,5 @@
 .tools button:disabled { opacity: .35; cursor: default; }
 .tools button:hover:not(:disabled) { background: var(--white); color: var(--blue-500); }
 .tools .danger:hover:not(:disabled) { color: var(--error); }
+.tools button.on { background: var(--blue-500); color: var(--white); }
+.tools button.on:hover:not(:disabled) { background: var(--blue-600); color: var(--white); }

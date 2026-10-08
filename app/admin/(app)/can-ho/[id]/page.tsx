@@ -23,7 +23,7 @@ export default async function EditListingPage({ params, searchParams }: { params
   const [{ data: row }, { data: buildings }, { data: photoRows }, dir] = await Promise.all([
     sb.from('listings').select('*, unit:units(building_id, floor, unit_no, owner_name, owner_phone, owner_notes, assigned_to)').eq('id', id).maybeSingle(),
     sb.from('buildings').select('id, name, slug, default_fees').order('sort'),
-    sb.from('photos').select('id, bucket, path, thumb_path, visibility, is_cover, sort, width, height').eq('listing_id', id).order('sort'),
+    sb.from('photos').select('id, bucket, path, thumb_path, visibility, is_cover, sort, width, height, watermark').eq('listing_id', id).order('sort'),
     staffDirectory(),
   ]);
   if (!row) notFound(); // not found OR not yours (RLS)
@@ -38,7 +38,7 @@ export default async function EditListingPage({ params, searchParams }: { params
     (data ?? []).forEach((d) => d.signedUrl && d.path && signed.set(d.path, d.signedUrl));
   }
   const photos: PhotoView[] = (photoRows ?? []).map((p) => ({
-    id: p.id, visibility: p.visibility, is_cover: p.is_cover, width: p.width, height: p.height,
+    id: p.id, visibility: p.visibility, is_cover: p.is_cover, width: p.width, height: p.height, watermark: p.watermark,
     url: p.visibility === 'public' ? publicPhotoUrl(SUPABASE_URL, p.thumb_path ?? p.path) : signed.get(p.thumb_path ?? p.path) ?? '',
   }));
 

@@ -1,16 +1,18 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Star, Trash2, Upload } from 'lucide-react';
-import { deletePhoto, photoPrefix, registerPhotos, reorderPhotos, setCover, setVisibility, type PhotoOwner } from '@/lib/admin/photoActions';
+import { ArrowLeft, ArrowRight, Droplet, Eye, EyeOff, Lock, Star, Trash2, Upload } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { deletePhoto, photoPrefix, prepareMasterUpload, registerPhotos, reorderPhotos, setCover, setVisibility, setWatermark, type PhotoOwner } from '@/lib/admin/photoActions';
 import styles from './PhotoManager.module.css';
 
-export type PhotoView = { id: string; url: string; visibility: 'public' | 'internal'; is_cover: boolean; width: number | null; height: number | null };
+export type PhotoView = { id: string; url: string; visibility: 'public' | 'internal'; is_cover: boolean; width: number | null; height: number | null; watermark: boolean };
 
 const MAX_PHOTOS = 40;
 
 export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: PhotoView[] }) {
   const isBuilding = owner.kind === 'building';
+  const router = useRouter();
   const [order, setOrder] = useState<string[] | null>(null);
   const [target, setTarget] = useState<'public' | 'internal'>('public');
   const [busy, setBusy] = useState<string | null>(null);
@@ -43,11 +45,39 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
     // upload-only code (Supabase browser client + pica resizer, ~250 kB) loads on first upload, not with the form
     const [{ supabaseBrowser }, { toWebp }] = await Promise.all([import('@/lib/supabase/browser'), import('@/lib/admin/imageWebp')]);
     const sb = supabaseBrowser();
-    const bucket = target === 'public' || isBuilding ? 'listing-public' : 'listing-internal';
+    const failed: string[] = [];
+
+    if (target === 'public' || isBuilding) {
+      // clean master (private bucket) → the server renders the public, watermarked files — one photo per request
+      for (const [i, f] of imgs.entries()) {
+        setBusy(`Đang tải ảnh ${i + 1}/${imgs.length}…`);
+        try {
+          const master = await toWebp(f, 1600, 0.88);
+          const slot = await prepareMasterUpload(owner);
+          if (!slot.photoId || !slot.path || !slot.token) throw new Error(slot.error ?? 'không tạo được link tải');
+          const up = await sb.storage.from('listing-master').uploadToSignedUrl(slot.path, slot.token, master.blob, { contentType: 'image/webp' });
+          if (up.error) throw new Error(up.error.message);
+          setBusy(`Đang xử lý ảnh ${i + 1}/${imgs.length}…`);
+          const r = await fetch('/admin/photos/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ owner, photoId: slot.photoId }),
+          });
+          const j = (await r.json().catch(() => ({}))) as { error?: string };
+          if (!r.ok) throw new Error(j.error ?? `lỗi ${r.status}`);
+        } catch (e) {
+          failed.push(`${f.name}: ${(e as Error).message}`);
+        }
+      }
+      setBusy(null);
+      if (failed.length) setErr('Không tải được: ' + failed.join(' · '));
+      router.refresh(); // a route handler cannot refresh this page by itself
+      return;
+    }
+
     const prefix = await photoPrefix(owner);
     if (!prefix) { setBusy(null); setErr('Không xác định được thư mục ảnh.'); return; }
-    const done: { bucket: typeof bucket; path: string; thumb_path: string; width: number; height: number }[] = [];
-    const failed: string[] = [];
+    const done: { bucket: 'listing-internal'; path: string; thumb_path: string; width: number; height: number }[] = [];
     for (const [i, f] of imgs.entries()) {
       setBusy(`Đang xử lý ảnh ${i + 1}/${imgs.length}…`);
       try {
@@ -55,10 +85,10 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
         const id = crypto.randomUUID();
         const path = `${prefix}${id}.webp`, thumbPath = `${prefix}thumbs/${id}.webp`;
         for (const [p, b] of [[path, full.blob], [thumbPath, thumb.blob]] as const) {
-          const { error } = await sb.storage.from(bucket).upload(p, b, { contentType: 'image/webp', cacheControl: '31536000', upsert: false });
-          if (error) throw error;
+          const { error } = await sb.storage.from('listing-internal').upload(p, b, { contentType: 'image/webp', cacheControl: '31536000', upsert: false });
+          if (error) throw new Error(error.message);
         }
-        done.push({ bucket, path, thumb_path: thumbPath, width: full.width, height: full.height });
+        done.push({ bucket: 'listing-internal', path, thumb_path: thumbPath, width: full.width, height: full.height });
       } catch (e) {
         failed.push(`${f.name}: ${(e as Error).message}`);
       }
@@ -101,7 +131,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
         <div>
           <b>Kéo thả ảnh vào đây</b> hoặc{' '}
           <button type="button" className={styles.link} onClick={() => input.current?.click()} disabled={!!busy}>chọn tệp</button>
-          <div className="a-small a-muted">Tự nén WebP 1600px + ảnh nhỏ 600px · tối đa {MAX_PHOTOS} ảnh</div>
+          <div className="a-small a-muted">Tự nén WebP 1600px + ảnh nhỏ 600px · ảnh công khai {isBuilding ? 'không gắn' : 'tự gắn'} watermark ApartQN (bật/tắt từng ảnh bằng nút giọt nước) · tối đa {MAX_PHOTOS} ảnh</div>
         </div>
         {!isBuilding && <div className={styles.target} role="radiogroup" aria-label="Tải lên dưới dạng">
           {(['public', 'internal'] as const).map((t) => (
@@ -133,6 +163,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
               <div className={styles.tags}>
                 {p.is_cover && <span className="a-badge blue"><Star size={12} aria-hidden /> Bìa</span>}
                 {p.visibility === 'internal' && <span className="a-badge warn"><Lock size={12} aria-hidden /> Nội bộ</span>}
+                {p.visibility === 'public' && p.watermark && <span className="a-badge gray" title="Ảnh công khai có watermark ApartQN"><Droplet size={12} aria-hidden /> Watermark</span>}
               </div>
               <div className={styles.tools}>
                 <button type="button" title="Sang trái" aria-label="Sang trái" onClick={() => move(p.id, -1)} disabled={i === 0}><ArrowLeft size={15} /></button>
@@ -148,6 +179,18 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
                 >
                   {p.visibility === 'public' ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>}
+                {p.visibility === 'public' && (
+                  <button
+                    type="button"
+                    aria-pressed={p.watermark}
+                    title={p.watermark ? 'Gắn watermark: đang bật — bấm để tắt' : 'Gắn watermark: đang tắt — bấm để bật'}
+                    aria-label="Gắn watermark"
+                    className={p.watermark ? styles.on : undefined}
+                    onClick={() => act(() => setWatermark(owner, p.id, !p.watermark))}
+                  >
+                    <Droplet size={15} />
+                  </button>
+                )}
                 <button type="button" title="Xoá ảnh" aria-label="Xoá ảnh" className={styles.danger} onClick={() => confirm('Xoá ảnh này?') && act(() => deletePhoto(owner, p.id))}><Trash2 size={15} /></button>
               </div>
             </li>
