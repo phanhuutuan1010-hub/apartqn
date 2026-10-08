@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/db-migrate.mts",
     "db:seed": "node --env-file-if-exists=.env.local --import tsx scripts/seed.mts",
-    "admin:create": "node --env-file-if-exists=.env.local --import tsx scripts/create-admin.mts"
+    "admin:create": "node --env-file-if-exists=.env.local --import tsx scripts/create-admin.mts",
+    "photos:watermark": "node --env-file-if-exists=.env.local --import tsx scripts/photos-watermark.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -25,6 +26,7 @@
     "react-leaflet": "^5.0.0",
     "resend": "^6.29.0",
     "server-only": "^0.0.1",
+    "sharp": "^0.35.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -37,7 +39,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "pg": "^8.23.0",
-    "sharp": "^0.35.4",
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.1"
