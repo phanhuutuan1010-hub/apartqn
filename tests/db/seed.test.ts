@@ -31,7 +31,7 @@ async function asAnon<T>(sql: string): Promise<T[]> {
 beforeAll(async () => {
   const out1 = runSeed();
   const out2 = runSeed();
-  expect(out1).toContain('+ listing QN-001');
+  expect(out1).toContain('+ listing QN-001 → ALT-001');
   expect(out2).not.toMatch(/^\+ /m); // second run changes nothing
   c = new pg.Client({ connectionString: process.env.TEST_SEED_DB_URL });
   await c.connect();
@@ -50,10 +50,14 @@ describe('seed → public views', () => {
   });
 
   it('listings match the handoff field by field (incl. rented, demo flag, dates)', async () => {
-    const rows = await asAnon<PublicListingRow>('select * from public.public_listings order by code');
-    const got = rows.map((r) => toListing(r, SB));
+    const rows = await asAnon<PublicListingRow & { legacy_code: string }>('select * from public.public_listings order by legacy_code');
+    // new per-building codes, old ones kept as legacy_code
+    const PREFIX = Object.fromEntries(BUILDINGS.map((b) => [b.id, b.prefix]));
+    rows.forEach((r) => expect(r.code).toMatch(new RegExp(`^${PREFIX[r.building_slug]}-[0-9]{3}$`)));
+    const got = rows.map((r) => ({ ...toListing(r, SB), code: r.legacy_code }));
     const strip = (x: Record<string, unknown>) => {
-      const { photos, thumbs, desc, photoCount, verifiedAt, publishedAt, ...rest } = x;
+      const { photos, thumbs, desc, photoCount, verifiedAt, publishedAt, legacyCode, ...rest } = x;
+      void legacyCode;
       void photos; void thumbs; void desc;
       // set by the import (now()), not part of the handoff data
       expect(typeof verifiedAt === 'string' || verifiedAt === undefined).toBe(true);
@@ -79,8 +83,8 @@ describe('seed → public views', () => {
     expect(r.rows[0].n).toBe(0);
   });
 
-  it('next code continues after the imported ones', async () => {
-    const r = await c.query(`select last_value::int v from public.listing_code_seq`);
-    expect(r.rows[0].v).toBe(9);
+  it('per-building counters continue after the imported codes', async () => {
+    const r = await c.query(`select code_prefix, code_seq from public.buildings where slug = 'altara'`);
+    expect(r.rows[0]).toEqual({ code_prefix: 'ALT', code_seq: 2 });
   });
 });

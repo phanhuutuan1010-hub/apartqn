@@ -51,7 +51,7 @@ beforeAll(async () => {
 afterAll(close);
 
 describe('fixtures', () => {
-  it('assigns QN code on first publish', () => expect(code1).toMatch(/^QN-\d{3}$/));
+  it('assigns a per-building code on first publish', () => expect(code1).toBe('ALT-001'));
 });
 
 describe('anon', () => {
@@ -145,7 +145,7 @@ describe('sales (assignee scope)', () => {
   });
 
   it('cannot set a listing code', async () => {
-    const msg = await as(id(U.s2), (q) => denied(q(`update public.listings set code='QN-999' where id=$1`, [l2])));
+    const msg = await as(id(U.s2), (q) => denied(q(`update public.listings set code='ALT-999' where id=$1`, [l2])));
     expect(msg).toMatch(/assigned automatically/);
   });
 
@@ -234,7 +234,7 @@ describe('sales with can_publish', () => {
   it('submit_listing publishes immediately with a new code', async () => {
     const r = await as(id(U.pub), (q) => q(`select * from public.submit_listing($1)`, [lP]));
     expect(r.rows[0].status).toBe('available');
-    expect(r.rows[0].code).toMatch(/^QN-\d{3}$/);
+    expect(r.rows[0].code).toMatch(/^ALT-\d{3}$/);
     expect(r.rows[0].code).not.toBe(code1);
   });
 });
@@ -279,7 +279,7 @@ describe('admin', () => {
       return (await q(`select * from public.approve_listing($1)`, [l2])).rows[0];
     });
     expect(approved.status).toBe('available');
-    expect(approved.code).toMatch(/^QN-\d{3}$/);
+    expect(approved.code).toMatch(/^ALT-\d{3}$/);
     const rejected = await as(id(U.admin), async (q) => {
       await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.s2, role: 'authenticated' })]);
       await q(`select * from public.submit_listing($1)`, [l2]);
@@ -292,11 +292,11 @@ describe('admin', () => {
 
   it('admin can publish a complete draft by direct status change', async () => {
     const r = await as(id(U.admin), async (q) => (await q(`update public.listings set status='reserved' where id=$1 returning code`, [l3])).rows[0]);
-    expect(r.code).toMatch(/^QN-\d{3}$/);
+    expect(r.code).toMatch(/^ALT-\d{3}$/);
   });
 
   it('code is permanent even for admin', async () => {
-    const msg = await as(id(U.admin), (q) => denied(q(`update public.listings set code='QN-777' where id=$1`, [l1])));
+    const msg = await as(id(U.admin), (q) => denied(q(`update public.listings set code='ALT-777' where id=$1`, [l1])));
     expect(msg).toMatch(/permanent/);
   });
 
@@ -490,5 +490,47 @@ describe('photo masters + watermark (migration 12)', () => {
     const v = await as('anon', (q) => q(`select video_url from public.public_listings`));
     expect(v.rows[0].video_url).toBe('https://youtu.be/dQw4w9WgXcQ');
     await root(`update public.listings set video_url = null where id = $1`, [l1]);
+  });
+});
+
+describe('per-building codes (migration 13)', () => {
+  it('prefix defaults from the slug, is unique and frozen once codes exist; counter is system-owned', async () => {
+    expect((await root(`select code_prefix from public.buildings where id = $1`, [B])).rows[0].code_prefix).toBe('ALT');
+    expect(await denied(root(`insert into public.buildings (slug, name, code_prefix) values ('altara-2', 'X', 'ALT')`))).toMatch(/unique|duplicate/);
+    expect(await denied(root(`insert into public.buildings (slug, name, code_prefix) values ('bad', 'X', 'AB1')`))).toMatch(/check/);
+    expect(await as(id(U.admin), (q) => denied(q(`update public.buildings set code_prefix = 'ALX' where id = $1`, [B])))).toMatch(/tiền tố/);
+    const seq = async () => (await root(`select code_seq from public.buildings where id = $1`, [B])).rows[0].code_seq;
+    const before = await seq();
+    await as(id(U.admin), (q) => q(`update public.buildings set code_seq = 0, name = name where id = $1`, [B]));
+    expect(await seq()).toBe(before);
+  });
+
+  it('numbers are never reused (delete) and grow to 4 digits after 999', async () => {
+    const b2 = (await root(`insert into public.buildings (slug, name) values ('ecolife', 'Ecolife Riverside') returning id, code_prefix`)).rows[0];
+    expect(b2.code_prefix).toBe('ECO');
+    const mk = async (no: string) => {
+      const u = (await root(`insert into public.units (building_id, floor, unit_no) values ($1, 3, $2) returning id`, [b2.id, no])).rows[0].id;
+      const l = (await root(`insert into public.listings (unit_id) values ($1) returning id`, [u])).rows[0].id;
+      await root(`update public.listings set ${COMPLETE} where id = $1`, [l]);
+      return (await root(`update public.listings set status = 'available' where id = $1 returning id, code`, [l])).rows[0];
+    };
+    const a = await mk('a1');
+    expect(a.code).toBe('ECO-001');
+    await root(`delete from public.listings where id = $1`, [a.id]);
+    expect((await mk('a2')).code).toBe('ECO-002');
+    await root(`update public.buildings set code_seq = 999 where id = $1`, [b2.id]);
+    expect((await mk('a3')).code).toBe('ECO-1000');
+    // the prefix is free to change only while no listing carries a code
+    expect(await denied(root(`update public.buildings set code_prefix = 'ECX' where id = $1`, [b2.id]))).toMatch(/tiền tố/);
+  });
+
+  it('legacy_code: public in the view, not writable by staff', async () => {
+    await root(`alter table public.listings disable trigger guard`);
+    await root(`update public.listings set legacy_code = 'QN-001' where id = $1`, [l1]);
+    await root(`alter table public.listings enable trigger guard`);
+    const v = await as('anon', (q) => q(`select code, legacy_code from public.public_listings where code = $1`, [code1]));
+    expect(v.rows[0]).toEqual({ code: code1, legacy_code: 'QN-001' });
+    await as(id(U.admin), (q) => q(`update public.listings set legacy_code = 'QN-555' where id = $1`, [l1]));
+    expect((await root(`select legacy_code from public.listings where id = $1`, [l1])).rows[0].legacy_code).toBe('QN-001');
   });
 });

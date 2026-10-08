@@ -27,23 +27,22 @@ await db.connect();
 const bIds = new Map<string, string>();
 for (const [i, b] of BUILDINGS.entries()) {
   const r = await db.query(
-    `insert into public.buildings (slug, name, street, amenities, is_demo, sort)
-     values ($1, $2, $3, $4, $5, $6)
+    `insert into public.buildings (slug, name, street, amenities, is_demo, sort, code_prefix)
+     values ($1, $2, $3, $4, $5, $6, $7)
      on conflict (slug) do update set slug = excluded.slug  -- no-op, returns id
      returning id, (xmax = 0) as inserted`,
-    [b.id, b.name, b.street, b.amenities, b.demo, i],
+    [b.id, b.name, b.street, b.amenities, b.demo, i, b.prefix],
   );
   bIds.set(b.id, r.rows[0].id);
   console.log(`${r.rows[0].inserted ? '+' : '·'} building ${b.id}`);
 }
 
-// ── units + listings (demo units: unit_no "DEMO-<code>", no owner data) ──
-let maxCode = 0;
-for (const x of LISTINGS) {
-  maxCode = Math.max(maxCode, Number(x.code.slice(3)));
-  const exists = await db.query('select 1 from public.listings where code = $1', [x.code]);
+// ── units + listings (demo units: unit_no "DEMO-<old code>", no owner data) ──
+// The handoff's QN-### codes become legacy_code; the trigger assigns {PREFIX}-{NNN} per building, in publish order.
+for (const x of [...LISTINGS].sort((a, b) => a.updated.localeCompare(b.updated) || a.code.localeCompare(b.code))) {
+  const exists = await db.query('select code from public.listings where legacy_code = $1', [x.code]);
   if (exists.rowCount) {
-    console.log(`· listing ${x.code}`);
+    console.log(`· listing ${x.code} → ${exists.rows[0].code}`);
     continue;
   }
   await db.query('begin');
@@ -54,7 +53,7 @@ for (const x of LISTINGS) {
       [bIds.get(x.buildingId), x.floor, `DEMO-${x.code}`],
     );
     await db.query(
-      `insert into public.listings (unit_id, code, status, area, beds, baths, dir, view, furn, rent, deposit, cycle, mgmt,
+      `insert into public.listings (unit_id, legacy_code, status, area, beds, baths, dir, view, furn, rent, deposit, cycle, mgmt,
          elec, water, moto, car, net, min_term, max_occ, pets, temp_reg, car_parking, verified, verified_at, video, move_in,
          placeholder_photos, is_demo, published_at, created_at, updated_at)
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25::date,$26,$27,$28,$29,
@@ -63,16 +62,14 @@ for (const x of LISTINGS) {
         x.elec, x.water, x.moto, x.car, x.net, x.minTerm, x.maxOcc, x.pets, x.tempReg, x.carParking ?? null, x.verified,
         x.updated, x.video, x.moveIn, x.photoCount, x.demo],
     );
+    const { rows } = await db.query('select code from public.listings where legacy_code = $1', [x.code]);
     await db.query('commit');
-    console.log(`+ listing ${x.code}`);
+    console.log(`+ listing ${x.code} → ${rows[0]?.code}`);
   } catch (e) {
     await db.query('rollback');
     throw e;
   }
 }
-// next code continues after the imported ones (never goes backwards)
-await db.query(`select setval('public.listing_code_seq', greatest($1, (select last_value from public.listing_code_seq)), true)`, [maxCode]);
-console.log(`sequence ≥ ${maxCode} → next code QN-${String(maxCode + 1).padStart(3, '0')}`);
 
 // ── building photos → storage bucket listing-public ──
 if (withPhotos) {
