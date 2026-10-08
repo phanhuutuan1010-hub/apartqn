@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { changeStatus, confirmAvailable } from '@/lib/admin/listingActions';
 import { STATUS_LABEL, type ListingStatusAll } from '@/lib/admin/labels';
 
@@ -16,7 +15,6 @@ export function allowedStatuses(from: ListingStatusAll, role: 'admin' | 'sales',
 }
 
 export function ListingRowActions({ id, status, role, canPublish }: { id: string; status: ListingStatusAll; role: 'admin' | 'sales'; canPublish: boolean }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<{ t: 'ok' | 'error'; m: string } | null>(null);
   const options = allowedStatuses(status, role, canPublish);
@@ -25,7 +23,6 @@ export function ListingRowActions({ id, status, role, canPublish }: { id: string
     start(async () => {
       const r = await fn();
       setMsg(r.error ? { t: 'error', m: r.error } : { t: 'ok', m: r.ok ?? '' });
-      router.refresh();
     });
 
   return (

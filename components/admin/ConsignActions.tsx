@@ -2,13 +2,11 @@
 
 import { useActionState, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { assignConsign, rejectConsign } from '@/lib/admin/consignActions';
 
 type Opt = { value: string; label: string };
 
 export function ConsignActions({ id, buildingId, floor, staff, buildings }: { id: string; buildingId: string | null; floor: string | null; staff: Opt[]; buildings: Opt[] }) {
-  const router = useRouter();
   const [state, action, pending] = useActionState(assignConsign, {});
   const [mode, setMode] = useState<'idle' | 'assign' | 'reject'>('idle');
   const [reason, setReason] = useState('');
@@ -38,7 +36,7 @@ export function ConsignActions({ id, buildingId, floor, staff, buildings }: { id
         </label>
         {rej && <span className="a-small" style={{ color: 'var(--error)' }}>{rej}</span>}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" className="a-btn a-btn-danger" disabled={busy} onClick={() => start(async () => { const r = await rejectConsign(id, reason); if (r.error) setRej(r.error); else router.refresh(); })}>Từ chối</button>
+          <button type="button" className="a-btn a-btn-danger" disabled={busy} onClick={() => start(async () => { const r = await rejectConsign(id, reason); if (r.error) setRej(r.error); })}>Từ chối</button>
           <button type="button" className="a-btn a-btn-ghost" onClick={() => setMode('idle')}>Huỷ</button>
         </div>
       </div>

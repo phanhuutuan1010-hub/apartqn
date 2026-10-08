@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { approveListing, rejectListing } from '@/lib/admin/approvalActions';
 
 export function ApprovalActions({ id }: { id: string }) {
-  const router = useRouter();
   const [busy, start] = useTransition();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
@@ -14,7 +12,6 @@ export function ApprovalActions({ id }: { id: string }) {
     start(async () => {
       const r = await fn();
       setMsg(r.error ? { t: 'error', m: r.error } : { t: 'ok', m: r.ok ?? '' });
-      if (r.ok) router.refresh();
     });
 
   return (

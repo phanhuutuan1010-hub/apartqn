@@ -19,14 +19,15 @@ export default async function EditListingPage({ params, searchParams }: { params
   const me = await requireStaff();
   const sb = await supabaseServer();
 
-  const { data: listing } = await sb.from('listings').select('*').eq('id', id).maybeSingle();
-  if (!listing) notFound(); // not found OR not yours (RLS)
-  const [{ data: unit }, { data: buildings }, { data: photoRows }, dir] = await Promise.all([
-    sb.from('units').select('building_id, floor, unit_no, owner_name, owner_phone, owner_notes, assigned_to').eq('id', listing.unit_id).single(),
+  // one round trip: listing + its unit (join) in parallel with buildings, photos and the staff directory
+  const [{ data: row }, { data: buildings }, { data: photoRows }, dir] = await Promise.all([
+    sb.from('listings').select('*, unit:units(building_id, floor, unit_no, owner_name, owner_phone, owner_notes, assigned_to)').eq('id', id).maybeSingle(),
     sb.from('buildings').select('id, name, slug, default_fees').order('sort'),
     sb.from('photos').select('id, bucket, path, thumb_path, visibility, is_cover, sort, width, height').eq('listing_id', id).order('sort'),
     staffDirectory(),
   ]);
+  if (!row) notFound(); // not found OR not yours (RLS)
+  const { unit, ...listing } = row as typeof row & { unit: UnitData | null };
   if (!unit) notFound();
 
   // thumbnails: public URL, or short-lived signed URL for internal photos

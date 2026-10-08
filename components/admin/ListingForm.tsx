@@ -1,7 +1,6 @@
 'use client';
 
 import { useActionState, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { saveListing, type ActionResult } from '@/lib/admin/listingActions';
 import { DIRS, FURNS, VIEWS, dirLabel, fmtVnd, furnLabel, parseVnd, viewLabel } from '@/lib/admin/labels';
@@ -26,7 +25,6 @@ type Props = {
 const s = (v: unknown) => (v == null ? '' : String(v));
 
 export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, canPublish, photos }: Props) {
-  const router = useRouter();
   const [state, action, pending] = useActionState<ActionResult, FormData>(saveListing.bind(null, L.id), {});
   const [updatedAt, setUpdatedAt] = useState(L.updated_at);
   const [tab, setTab] = useState<'vi' | 'en' | 'ru'>('vi');
@@ -44,9 +42,6 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
     if (state.updatedAt) setUpdatedAt(state.updatedAt);
     if (state.ok) setDirty(false);
   }
-  useEffect(() => {
-    if (state.ok) router.refresh();
-  }, [state, router]);
 
   // warn before leaving with unsaved changes
   useEffect(() => {

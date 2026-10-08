@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   const warnBackup = settings?.backup_warn_days ?? 7;
 
   const head = { count: 'exact' as const, head: true };
-  const [pending, due, trEn, trRu, leadsNew, consignNew, all] = await Promise.all([
+  const [pending, due, trEn, trRu, leadsNew, consignNew, all, missRes] = await Promise.all([
     sb.from('admin_listings').select('id', head).eq('status', 'pending'),
     sb.from('admin_listings').select('id', head).in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind)),
     sb.from('admin_listings').select('id', head).in('status', ['available', 'reserved', 'rented']).or('has_en.eq.false,en_outdated.eq.true'),
@@ -28,10 +28,10 @@ export default async function DashboardPage() {
     sb.from('leads').select('id', head).eq('status', 'new'),
     isAdmin ? sb.from('consign_inbox').select('id', head).eq('status', 'new') : Promise.resolve({ count: 0 }),
     sb.from('admin_listings').select('status'),
+    // unmet demand: searches that found nothing (admins only — RLS returns nothing to sales)
+    isAdmin ? sb.rpc('search_miss_top', { p_days: 30, p_limit: 8 }) : Promise.resolve({ data: null }),
   ]);
-  // unmet demand: searches that found nothing (admins only — RLS returns nothing to sales)
-  const { data: misses } = isAdmin ? await sb.rpc('search_miss_top', { p_days: 30, p_limit: 8 }) : { data: null };
-  const top = (misses ?? []) as { query_norm: string; n: number }[];
+  const top = (missRes.data ?? []) as { query_norm: string; n: number }[];
   const byStatus = new Map<ListingStatusAll, number>();
   (all.data ?? []).forEach((r) => byStatus.set(r.status, (byStatus.get(r.status) ?? 0) + 1));
   const backupDays = daysSince(settings?.last_backup_at);

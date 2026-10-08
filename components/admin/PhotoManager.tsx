@@ -1,10 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Star, Trash2, Upload } from 'lucide-react';
-import { supabaseBrowser } from '@/lib/supabase/browser';
-import { toWebp } from '@/lib/admin/imageWebp';
 import { deletePhoto, photoPrefix, registerPhotos, reorderPhotos, setCover, setVisibility, type PhotoOwner } from '@/lib/admin/photoActions';
 import styles from './PhotoManager.module.css';
 
@@ -14,7 +11,6 @@ const MAX_PHOTOS = 40;
 
 export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: PhotoView[] }) {
   const isBuilding = owner.kind === 'building';
-  const router = useRouter();
   const [order, setOrder] = useState<string[] | null>(null);
   const [target, setTarget] = useState<'public' | 'internal'>('public');
   const [busy, setBusy] = useState<string | null>(null);
@@ -33,7 +29,6 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
       const r = await fn();
       if (r.error) setErr(r.error);
       setOrder(null);
-      router.refresh();
     });
 
   async function upload(files: File[]) {
@@ -44,10 +39,13 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
       return;
     }
     setErr(null);
+    setBusy('Đang chuẩn bị…');
+    // upload-only code (Supabase browser client + pica resizer, ~250 kB) loads on first upload, not with the form
+    const [{ supabaseBrowser }, { toWebp }] = await Promise.all([import('@/lib/supabase/browser'), import('@/lib/admin/imageWebp')]);
     const sb = supabaseBrowser();
     const bucket = target === 'public' || isBuilding ? 'listing-public' : 'listing-internal';
     const prefix = await photoPrefix(owner);
-    if (!prefix) { setErr('Không xác định được thư mục ảnh.'); return; }
+    if (!prefix) { setBusy(null); setErr('Không xác định được thư mục ảnh.'); return; }
     const done: { bucket: typeof bucket; path: string; thumb_path: string; width: number; height: number }[] = [];
     const failed: string[] = [];
     for (const [i, f] of imgs.entries()) {
@@ -72,7 +70,6 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
     }
     setBusy(null);
     if (failed.length) setErr('Không tải được: ' + failed.join(' · '));
-    router.refresh();
   }
 
   const move = (id: string, d: -1 | 1) => {

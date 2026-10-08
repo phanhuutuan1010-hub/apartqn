@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { Copy } from 'lucide-react';
 import { resetLink, transferAll, updateStaff } from '@/lib/admin/userActions';
 
@@ -11,7 +10,6 @@ export type StaffRow = {
 };
 
 export function UsersTable({ users, meId }: { users: StaffRow[]; meId: string }) {
-  const router = useRouter();
   const [busy, start] = useTransition();
   const [msg, setMsg] = useState<{ t: 'ok' | 'error'; m: string; link?: string } | null>(null);
   const [transfer, setTransfer] = useState<{ from: string; to: string } | null>(null);
@@ -20,7 +18,6 @@ export function UsersTable({ users, meId }: { users: StaffRow[]; meId: string })
     start(async () => {
       const r = await fn();
       setMsg(r.error ? { t: 'error', m: r.error } : { t: 'ok', m: r.ok ?? '', link: r.link });
-      router.refresh();
     });
   const name = (id: string) => { const u = users.find((x) => x.id === id); return u?.full_name || u?.email || '—'; };
 

@@ -1,14 +1,12 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import { addLeadNote, createLead, reassignLead, setLeadStatus } from '@/lib/admin/leadActions';
 import { CHANNEL_LABEL, LEAD_STATUS, LEAD_STATUSES, type LeadStatus } from '@/lib/admin/leadLabels';
 
 type Opt = { value: string; label: string };
 
 export function LeadControls({ id, status, assignedTo, staff, isAdmin }: { id: string; status: LeadStatus; assignedTo: string | null; staff: Opt[]; isAdmin: boolean }) {
-  const router = useRouter();
   const [busy, start] = useTransition();
   const [note, setNote] = useState('');
   const [msg, setMsg] = useState<{ t: 'ok' | 'error'; m: string } | null>(null);
@@ -16,7 +14,7 @@ export function LeadControls({ id, status, assignedTo, staff, isAdmin }: { id: s
     start(async () => {
       const r = await fn();
       setMsg(r.error ? { t: 'error', m: r.error } : { t: 'ok', m: r.ok ?? '' });
-      if (r.ok) { after?.(); router.refresh(); }
+      if (r.ok) after?.();
     });
 
   return (
