@@ -73,7 +73,6 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
         <section id="buildings" className={styles.band}>
           <div className={`container ${styles.bandInner}`}>
             <h2 className="h2">{t('bldTitle')}</h2>
-            <p className={styles.bandSub}>{t('bldSub')}</p>
             <div className={styles.blds}>
               {buildings.map((b) => <BuildingCard key={b.id} b={b} listings={listings} />)}
             </div>
