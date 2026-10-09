@@ -20,11 +20,10 @@ export default async function DashboardPage() {
   const warnBackup = settings?.backup_warn_days ?? 7;
 
   const head = { count: 'exact' as const, head: true };
-  const [pending, due, trEn, trRu, leadsNew, consignNew, all, missRes] = await Promise.all([
+  const [pending, due, trEn, leadsNew, consignNew, all, missRes] = await Promise.all([
     sb.from('admin_listings').select('id', head).eq('status', 'pending'),
     sb.from('admin_listings').select('id', head).in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind)),
     sb.from('admin_listings').select('id', head).in('status', ['available', 'reserved', 'rented']).or('has_en.eq.false,en_outdated.eq.true'),
-    sb.from('admin_listings').select('id', head).in('status', ['available', 'reserved', 'rented']).or('has_ru.eq.false,ru_outdated.eq.true'),
     sb.from('leads').select('id', head).eq('status', 'new'),
     isAdmin ? sb.from('consign_inbox').select('id', head).eq('status', 'new') : Promise.resolve({ count: 0 }),
     sb.from('admin_listings').select('status'),
@@ -39,7 +38,7 @@ export default async function DashboardPage() {
   const tiles: Tile[] = [
     ...(isAdmin ? [{ href: '/admin/duyet-tin', label: 'Chờ duyệt', value: pending.count ?? 0, hint: 'tin sales gửi lên', icon: <ClipboardCheck size={18} />, tone: (pending.count ? 'warn' : undefined) as Tile['tone'] }] : []),
     { href: '/admin/can-ho?v=due', label: 'Cần xác nhận còn trống', value: due.count ?? 0, hint: `quá ${remind} ngày chưa xác nhận`, icon: <CalendarClock size={18} />, tone: due.count ? 'warn' : undefined },
-    { href: '/admin/can-ho?tr=en', label: 'Cần dịch', value: `EN ${trEn.count ?? 0} · RU ${trRu.count ?? 0}`, hint: 'tin đang đăng thiếu / cũ bản dịch', icon: <Languages size={18} />, tone: (trEn.count || trRu.count) ? 'warn' : undefined },
+    { href: '/admin/can-ho?tr=en', label: 'Cần dịch', value: `EN ${trEn.count ?? 0}`, hint: 'tin đang đăng thiếu / cũ bản tiếng Anh', icon: <Languages size={18} />, tone: trEn.count ? 'warn' : undefined },
     { href: '/admin/khach-hang?status=new', label: 'Lead mới', value: leadsNew.count ?? 0, hint: 'chưa liên hệ', icon: <UserRound size={18} />, tone: leadsNew.count ? 'warn' : undefined },
     ...(isAdmin ? [{ href: '/admin/cho-xu-ly', label: 'Ký gửi mới', value: consignNew.count ?? 0, hint: 'chờ giao cho sales', icon: <Inbox size={18} />, tone: (consignNew.count ? 'warn' : undefined) as Tile['tone'] }] : []),
     ...(isAdmin ? [{

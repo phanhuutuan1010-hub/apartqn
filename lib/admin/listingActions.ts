@@ -84,7 +84,7 @@ const SaveSchema = z.object({
   mgmt_fee_paid_by: z.preprocess((v) => (v ? v : 'tenant'), z.enum(['tenant', 'owner'])),
   min_term: int(1, 120), max_occ: int(1, 20), pets: bool, temp_reg: bool, car_parking: tri,
   video_url: z.preprocess((v) => (typeof v === 'string' && v.trim() ? normaliseYoutube(v) ?? 'invalid' : null), z.string().regex(YOUTUBE_RE, 'Chỉ nhận link YouTube (youtube.com hoặc youtu.be)').nullable()),
-  desc_vi: text(8000), desc_en: text(8000), desc_ru: text(8000),
+  desc_vi: text(8000), desc_en: text(8000),
   expected_updated_at: z.string().min(1),
 });
 

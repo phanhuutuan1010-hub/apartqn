@@ -74,11 +74,20 @@ async function admin(req: NextRequest) {
   return done(res);
 }
 
+/** Russian was retired: /ru and /ru/* → 301 to the English page (localized segments mapped, query kept). */
+const RU_SEGMENTS: Record<string, string> = { kvartiry: 'apartments', zdaniya: 'buildings', 'sdat-kvartiru': 'list-your-apartment' };
+function ruPath(path: string) {
+  const m = /^\/ru(\/.*)?$/i.exec(path);
+  if (!m) return null;
+  const rest = (m[1] ?? '').replace(/^\/([^/]+)/, (_, seg: string) => '/' + (RU_SEGMENTS[seg.toLowerCase()] ?? seg));
+  return '/en' + rest.replace(/\/$/, '');
+}
+
 /** Old QN-### listing URLs → 301 to the per-building code (looked up once per instance via legacy_code). */
-const LEGACY = /^(\/(?:en|ru))?\/(can-ho|apartments|kvartiry)\/(qn-\d{1,5})\/?$/i;
+const LEGACY = /^(\/en)?\/(can-ho|apartments)\/(qn-\d{1,5})\/?$/i;
 const legacyCache = new Map<string, string | null>();
-async function legacyRedirect(req: NextRequest) {
-  const m = LEGACY.exec(req.nextUrl.pathname);
+async function legacyRedirect(req: NextRequest, path = req.nextUrl.pathname) {
+  const m = LEGACY.exec(path);
   if (!m) return null;
   const old = m[3].toUpperCase().replace(/^QN-(\d+)$/, (_, n: string) => `QN-${n.padStart(3, '0')}`);
   if (!legacyCache.has(old)) {
@@ -103,6 +112,15 @@ async function legacyRedirect(req: NextRequest) {
 
 export default async function proxy(req: NextRequest) {
   if (req.nextUrl.pathname === '/admin' || req.nextUrl.pathname.startsWith('/admin/')) return admin(req);
+  const en = ruPath(req.nextUrl.pathname);
+  if (en) {
+    // an old QN-### code goes straight to its new code (one hop)
+    const legacy = await legacyRedirect(req, en);
+    if (legacy) return legacy;
+    const to = req.nextUrl.clone();
+    to.pathname = en;
+    return NextResponse.redirect(to, 301);
+  }
   return (await legacyRedirect(req)) ?? intl(req);
 }
 

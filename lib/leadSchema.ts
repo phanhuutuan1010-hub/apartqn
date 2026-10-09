@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const MAX_PHOTOS = 10;
 
-const locale = z.enum(['vi', 'en', 'ru']);
+const locale = z.enum(['vi', 'en']);
 const phone = z.string().trim().min(6).max(30).regex(/^[0-9+()\-.\s]+$/);
 const name = z.string().trim().min(1).max(120);
 const page = z.string().trim().max(500).optional().default('');

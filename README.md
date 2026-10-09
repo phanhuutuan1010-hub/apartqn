@@ -1,6 +1,6 @@
 # ApartQN
 
-Long-term apartment rentals in central Quy Nhơn — Next.js 16 (App Router) · TypeScript · CSS Modules · next-intl (vi / en / ru) · Supabase · Vercel.
+Long-term apartment rentals in central Quy Nhơn — Next.js 16 (App Router) · TypeScript · CSS Modules · next-intl (vi / en) · Supabase · Vercel.
 
 Design handoff (spec, tokens, prototypes, screenshots, deploy notes): [`_handoff/`](_handoff/README.md).
 
@@ -39,8 +39,8 @@ npm test                     # RLS / RPC / seed / unit tests (embedded Postgres,
 
 | Page | |
 |---|---|
-| Tổng quan | pending approvals, listings needing "còn trống" confirmation, missing EN/RU translations, new leads, new consign requests, days since last backup (red after 7) |
-| Căn hộ | table with URL filters/sort/pagination, quick status change, "✓ Còn trống"; form with unit / costs / terms / 🔒 owner source / photos / VI-EN-RU descriptions, duplicate check, "Đăng ngay" or "Gửi duyệt" |
+| Tổng quan | pending approvals, listings needing "còn trống" confirmation, missing EN translations, new leads, new consign requests, days since last backup (red after 7) |
+| Căn hộ | table with URL filters/sort/pagination, quick status change, "✓ Còn trống"; form with unit / costs / terms / 🔒 owner source / photos / VI-EN descriptions, duplicate check, "Đăng ngay" or "Gửi duyệt" |
 | Duyệt tin | approve (assigns the permanent QN code) or reject with a reason |
 | Chờ xử lý | website consign requests → assign to sales (creates unit + prefilled draft, copies photos as internal) or reject |
 | Khách hàng | leads by status, notes timeline, reassign, manual lead |
@@ -82,7 +82,7 @@ Manual run: `curl -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/c
 
 ### Descriptions & translations
 
-Each listing/building has `desc_vi/en/ru`. A page only shows the description in its own language. When EN/RU (or VI) is missing, listing pages show a summary generated from structured fields via i18n templates (`sum*` keys) — Vietnamese text never appears on EN/RU pages. The admin table flags missing or outdated (older than VI) translations.
+Each listing/building has `desc_vi/en` (a legacy `desc_ru` column is kept in the DB but no longer edited or shown — Russian was retired; `/ru/*` 301-redirects to `/en/*`). A page only shows the description in its own language. When EN (or VI) is missing, listing pages show a summary generated from structured fields via i18n templates (`sum*` keys) — Vietnamese text never appears on EN pages. The admin table flags missing or outdated (older than VI) EN translations. The search box still understands Russian keywords and Cyrillic building aliases.
 
 ## API error codes (`/api/lead`)
 

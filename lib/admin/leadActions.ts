@@ -47,7 +47,7 @@ const NewLead = z.object({
   phone: z.string().trim().min(6, 'SĐT không hợp lệ').max(30).regex(/^[0-9+()\-.\s]+$/, 'SĐT không hợp lệ'),
   code: z.string().trim().max(12).optional(),
   channel: z.enum(['phone', 'zalo', 'telegram', 'whatsapp', 'walk_in', 'other', 'web']),
-  locale: z.enum(['vi', 'en', 'ru']),
+  locale: z.enum(['vi', 'en']),
   message: z.string().trim().max(2000).optional(),
 });
 

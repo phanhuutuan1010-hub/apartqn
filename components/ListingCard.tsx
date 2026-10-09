@@ -2,7 +2,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import type { Building } from '@/lib/types';
 import type { Listing } from '@/lib/types';
-import { codeSlug, dShort, F, m2, money, total } from '@/lib/format';
+import { codeSlug, dShort, F, M2, money, total } from '@/lib/format';
 import { StatusBadge, VerifiedBadge } from './Badges';
 import { CardPhotos } from './CardPhotos';
 import { Photo } from './Photo';
@@ -52,7 +52,7 @@ export function ListingCard({ x, building, slider = false, priority = false, siz
         <div className={styles.est}>{t('estMonthly')}: <b>{money(total(x), l)}</b></div>
         <Link href={{ pathname: '/can-ho/[code]', params: { code: codeSlug(x.code) } }} className={styles.link}>
           <span className="visually-hidden">{title} · </span>
-          {[F.beds(x.beds, l), `${x.area} ${m2(l)}`, F.floor(x.floor, l)].join(' · ')}
+          {[F.beds(x.beds, l), `${x.area} ${M2}`, F.floor(x.floor, l)].join(' · ')}
         </Link>
         {building && <div className={styles.bname}>{building.name}</div>}
         <div className={styles.move}>{t('moveInFrom')} {dShort(x.moveIn, l)}</div>

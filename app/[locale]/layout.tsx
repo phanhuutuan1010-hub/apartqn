@@ -7,7 +7,7 @@ import { routing } from '@/i18n/routing';
 import { SITE_URL } from '@/data/site';
 import '../globals.css';
 
-// Self-hosted Noto Sans subset (Latin + Vietnamese + Cyrillic, variable 400–800) — see app/fonts/README.md
+// Self-hosted Noto Sans subset (Latin + Vietnamese, variable 400–800) — see app/fonts/README.md
 const noto = localFont({
   src: '../fonts/NotoSans-subset.woff2',
   weight: '400 800',

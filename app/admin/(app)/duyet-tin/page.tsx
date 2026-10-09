@@ -13,14 +13,14 @@ export default async function ApprovalPage() {
   const sb = await supabaseServer();
   const [{ data: rows }, dir] = await Promise.all([
     sb.from('listings')
-      .select('id, rent, area, beds, baths, dir, view, furn, move_in, mgmt, desc_vi, desc_en, desc_ru, submitted_at, updated_by, units(floor, unit_no, assigned_to, buildings(name)), photos(path, thumb_path, visibility, is_cover, sort)')
+      .select('id, rent, area, beds, baths, dir, view, furn, move_in, mgmt, desc_vi, desc_en, submitted_at, updated_by, units(floor, unit_no, assigned_to, buildings(name)), photos(path, thumb_path, visibility, is_cover, sort)')
       .eq('status', 'pending')
       .order('submitted_at', { ascending: true }),
     staffDirectory(),
   ]);
   type Row = {
     id: string; rent: number; area: number; beds: number; baths: number; dir: string; view: string; furn: string; move_in: string; mgmt: number;
-    desc_vi: string | null; desc_en: string | null; desc_ru: string | null; submitted_at: string | null; updated_by: string | null;
+    desc_vi: string | null; desc_en: string | null; submitted_at: string | null; updated_by: string | null;
     units: { floor: number; unit_no: string; assigned_to: string | null; buildings: { name: string } };
     photos: { path: string; thumb_path: string | null; visibility: string; is_cover: boolean; sort: number }[];
   };
@@ -61,7 +61,7 @@ export default async function ApprovalPage() {
                 {!pub.length && <span className="a-badge red">Chưa có ảnh công khai</span>}
               </div>
               <div className="a-small a-muted" style={{ marginTop: 6 }}>
-                {pub.length} ảnh công khai{internal ? ` · ${internal} ảnh nội bộ` : ''} · Mô tả: {['vi', 'en', 'ru'].map((l) => (r[`desc_${l}` as 'desc_vi'] ? l.toUpperCase() + ' ✓' : l.toUpperCase() + ' —')).join(' · ')}
+                {pub.length} ảnh công khai{internal ? ` · ${internal} ảnh nội bộ` : ''} · Mô tả: {['vi', 'en'].map((l) => (r[`desc_${l}` as 'desc_vi'] ? l.toUpperCase() + ' ✓' : l.toUpperCase() + ' —')).join(' · ')}
               </div>
               {r.desc_vi && <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--gray-700)', whiteSpace: 'pre-line', maxHeight: 88, overflow: 'hidden' }}>{r.desc_vi}</p>}
             </div>

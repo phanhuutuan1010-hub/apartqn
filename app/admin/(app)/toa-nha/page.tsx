@@ -11,7 +11,7 @@ export default async function BuildingsPage() {
   await requireAdmin();
   const sb = await supabaseServer();
   const [{ data: buildings }, { data: listings }, { data: photos }] = await Promise.all([
-    sb.from('buildings').select('id, slug, name, street, ward_new, lat, lng, amenities, default_fees, desc_en, desc_ru, is_demo, updated_at').order('sort'),
+    sb.from('buildings').select('id, slug, name, street, ward_new, lat, lng, amenities, default_fees, desc_en, is_demo, updated_at').order('sort'),
     sb.from('admin_listings').select('building_id, status'),
     sb.from('photos').select('building_id').not('building_id', 'is', null),
   ]);
@@ -45,7 +45,7 @@ export default async function BuildingsPage() {
                 <td className="num">{count(b.id, () => true)}</td>
                 <td>{Object.keys(b.default_fees ?? {}).length ? <span className="a-badge ok">Có</span> : <span className="a-badge outline">Chưa</span>}</td>
                 <td className="nowrap">
-                  <span className={`a-badge ${b.desc_en ? 'ok' : 'outline'}`}>EN</span> <span className={`a-badge ${b.desc_ru ? 'ok' : 'outline'}`}>RU</span>
+                  <span className={`a-badge ${b.desc_en ? 'ok' : 'outline'}`}>EN</span>
                 </td>
                 <td className="nowrap a-small">{fmtDateTime(b.updated_at)}</td>
               </tr>

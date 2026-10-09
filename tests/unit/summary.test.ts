@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { createTranslator } from 'next-intl';
 import vi from '@/i18n/vi.json';
 import en from '@/i18n/en.json';
-import ru from '@/i18n/ru.json';
 import { listingDescription } from '@/lib/summary';
 import { toCsv } from '@/lib/admin/csv';
 import { consignSchema } from '@/lib/leadSchema';
@@ -14,7 +13,7 @@ const base: Listing = {
   minTerm: 6, maxOcc: 4, pets: true, tempReg: true, verified: true, video: false, status: 'available', moveIn: '2026-10-05',
   updated: '2026-09-21', photos: [], thumbs: [], photoCount: 0, desc: { vi: 'Căn góc, view biển đẹp, bếp mới.' }, demo: true,
 };
-const tr = (locale: 'vi' | 'en' | 'ru', messages: object) =>
+const tr = (locale: 'vi' | 'en', messages: object) =>
   createTranslator({ locale, messages }) as unknown as Parameters<typeof listingDescription>[3];
 const VI_CHARS = /[ăâđêôơưàảãáạằẳẵắặầẩẫấậèẻẽéẹềểễếệìỉĩíịòỏõóọồổỗốộờởỡớợùủũúụừửữứựỳỷỹýỵ]/i;
 
@@ -23,13 +22,13 @@ describe('listing description', () => {
     expect(listingDescription(base, 'Altara Residences Quy Nhơn', 'vi', tr('vi', vi))).toEqual({ text: base.desc.vi, generated: false });
   });
 
-  it('en/ru without translation → generated summary, never Vietnamese text', () => {
-    for (const [l, m] of [['en', en], ['ru', ru]] as const) {
+  it('en without translation → generated summary, never Vietnamese text', () => {
+    for (const [l, m] of [['en', en]] as const) {
       const d = listingDescription(base, 'Altara Residences', l, tr(l, m));
       expect(d.generated).toBe(true);
       expect(d.text).not.toContain(base.desc.vi);
       expect(d.text).not.toMatch(VI_CHARS);
-      expect(d.text).toMatch(/68 (m²|м²)/);
+      expect(d.text).toMatch(/68 m²/);
       expect(d.text).not.toMatch(/\{|\}/); // all placeholders filled
     }
   });

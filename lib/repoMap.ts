@@ -10,7 +10,7 @@ type PhotoRow = { path: string; thumb: string | null };
 export type PublicBuildingRow = {
   slug: string; name: string; street: string; ward_new: string | null; ward_old: string | null;
   lat: number | string | null; lng: number | string | null; amenities: string[];
-  desc_vi: string | null; desc_en: string | null; desc_ru: string | null; is_demo: boolean; photos: PhotoRow[] | null;
+  desc_vi: string | null; desc_en: string | null; is_demo: boolean; photos: PhotoRow[] | null;
   /** missing before migration 9 */
   aliases?: string[] | null;
   /** missing before migration 13 */
@@ -26,7 +26,7 @@ export type PublicListingRow = {
   net: number | string; min_term: number | string; max_occ: number | string; pets: boolean; temp_reg: boolean;
   car_parking: boolean | null; verified: boolean; video: boolean; status: string; move_in: string | Date;
   updated_at: string | Date; placeholder_photos: number | string; is_demo: boolean;
-  desc_vi: string | null; desc_en: string | null; desc_ru: string | null; photos: PhotoRow[] | null;
+  desc_vi: string | null; desc_en: string | null; photos: PhotoRow[] | null;
   /** missing before migration 9 */
   verified_at?: string | Date | null; published_at?: string | Date | null;
   /** missing before migration 12 */
@@ -43,8 +43,8 @@ export const publicPhotoUrl = (supabaseUrl: string, path: string) =>
 
 const n = (v: number | string | null | undefined) => (v == null ? 0 : Number(v));
 const text = (v: string | null) => (v && v.trim() ? v.trim() : undefined);
-const desc = (r: { desc_vi: string | null; desc_en: string | null; desc_ru: string | null }): Descriptions => ({
-  vi: text(r.desc_vi), en: text(r.desc_en), ru: text(r.desc_ru),
+const desc = (r: { desc_vi: string | null; desc_en: string | null }): Descriptions => ({
+  vi: text(r.desc_vi), en: text(r.desc_en),
 });
 
 /** YYYY-MM-DD in Vietnam time */

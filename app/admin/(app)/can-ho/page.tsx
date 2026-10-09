@@ -19,7 +19,7 @@ const SORTS: Record<string, string> = {
 type Row = {
   id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string;
   beds: number | null; rent: number | null; assigned_to: string | null; verified_at: string | null;
-  has_vi: boolean; has_en: boolean; has_ru: boolean; en_outdated: boolean; ru_outdated: boolean;
+  has_vi: boolean; has_en: boolean; en_outdated: boolean;
   photo_count: number; is_demo: boolean; rejection_reason: string | null;
 };
 
@@ -50,7 +50,6 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   if (sp.b) q = q.eq('building_slug', sp.b);
   if (sp.a && me.role === 'admin') q = sp.a === 'none' ? q.is('assigned_to', null) : q.eq('assigned_to', sp.a);
   if (sp.tr === 'en') q = q.or('has_en.eq.false,en_outdated.eq.true');
-  if (sp.tr === 'ru') q = q.or('has_ru.eq.false,ru_outdated.eq.true');
   if (sp.v === 'due') q = q.in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind));
   const sortCol = SORTS[sp.sort ?? ''] ?? 'updated_at';
   const asc = sp.sort ? sp.dir === 'asc' : false;
@@ -78,7 +77,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           { kind: 'select', key: 'b', label: 'Toà nhà', options: (buildings ?? []).map((b) => ({ value: b.slug, label: b.name })) },
           ...(me.role === 'admin' ? [{ kind: 'select' as const, key: 'a', label: 'Phụ trách', options: [{ value: 'none', label: '— Chưa giao' }, ...staffOptions] }] : []),
           { kind: 'select', key: 'v', label: 'Xác nhận', options: [{ value: 'due', label: `Cần xác nhận (> ${remind} ngày)` }] },
-          { kind: 'select', key: 'tr', label: 'Dịch', options: [{ value: 'en', label: 'Thiếu / cũ EN' }, { value: 'ru', label: 'Thiếu / cũ RU' }] },
+          { kind: 'select', key: 'tr', label: 'Dịch', options: [{ value: 'en', label: 'Thiếu / cũ EN' }] },
         ]}
       />
 
@@ -129,7 +128,6 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
                   </td>
                   <td className="nowrap" style={{ display: 'flex', gap: 4, alignItems: 'center', minHeight: 52 }}>
                     <TrBadge lang="EN" has={r.has_en} outdated={r.en_outdated} />
-                    <TrBadge lang="RU" has={r.has_ru} outdated={r.ru_outdated} />
                   </td>
                   <td style={{ minWidth: 190 }}>
                     <ListingRowActions id={r.id} status={r.status} role={me.role} canPublish={me.can_publish} />

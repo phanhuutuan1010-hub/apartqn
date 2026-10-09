@@ -53,7 +53,7 @@ export function NewLeadForm() {
           <select className="input" name="channel" defaultValue="phone">{Object.entries(CHANNEL_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
         </label>
         <label className="a-field">Ngôn ngữ
-          <select className="input" name="locale" defaultValue="vi"><option value="vi">Tiếng Việt</option><option value="en">English</option><option value="ru">Русский</option></select>
+          <select className="input" name="locale" defaultValue="vi"><option value="vi">Tiếng Việt</option><option value="en">English</option></select>
         </label>
         <div />
         <label className="a-field span4">Nhu cầu / ghi chú<textarea className="input" name="message" rows={3} style={{ minHeight: 80 }} maxLength={2000} /></label>

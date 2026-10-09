@@ -65,7 +65,7 @@ export function NewListingForm({ buildings, staff, isAdmin, meId, from }: { buil
       {from && (
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <input type="hidden" name="from" value={from.id} />
-          <p className="a-small a-muted" style={{ margin: 0 }}>Sẽ chép: diện tích, phòng, hướng, nội thất, giá và phí (kể cả ghi đè), điều kiện thuê, mô tả VI/EN/RU. Không chép mã, tầng, số căn, xác nhận còn trống — căn mới là Nháp.</p>
+          <p className="a-small a-muted" style={{ margin: 0 }}>Sẽ chép: diện tích, phòng, hướng, nội thất, giá và phí (kể cả ghi đè), điều kiện thuê, mô tả VI/EN. Không chép mã, tầng, số căn, xác nhận còn trống — căn mới là Nháp.</p>
           <label className="a-check"><input type="checkbox" name="copy_photos" /> Sao chép ảnh</label>
           {from.ownerVisible && <label className="a-check"><input type="checkbox" name="same_owner" /> Cùng chủ nhà (chép tên, số điện thoại, ghi chú chủ nhà)</label>}
         </div>

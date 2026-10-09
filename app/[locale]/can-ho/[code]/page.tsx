@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { getBuilding, getBuildings, getListing, getListings, staticParams } from '@/lib/repo';
-import { codeSlug, dFull, F, m2, mil, money, total, UNIT_AM } from '@/lib/format';
+import { codeSlug, dFull, F, M2, mil, money, total, UNIT_AM } from '@/lib/format';
 import { listingDescription } from '@/lib/summary';
 import { alternates, OG_LOCALE } from '@/lib/seo';
 import { Header } from '@/components/Header';
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const b = await getBuilding(x.buildingId);
   const t = await getTranslations({ locale });
   const title = `${F.bedsLong(x.beds, locale)} · ${t(`v_${x.view}`)} – ${b?.name}, ${mil(x.rent, locale)}${t('perMonth')} | ApartQN`;
-  const description = `${x.code} · ${x.area} ${m2(locale)} · ${F.floor(x.floor, locale)} · ${t('estMonthly')}: ${money(total(x), locale)}. ${t('fAbout')}`;
+  const description = `${x.code} · ${x.area} ${M2} · ${F.floor(x.floor, locale)} · ${t('estMonthly')}: ${money(total(x), locale)}. ${t('fAbout')}`;
   const image = x.photos[0] ?? b?.photos[0];
   return {
     title: { absolute: title },
@@ -56,15 +56,14 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
   if (!b) notFound();
   const t = await getTranslations();
   const m = (n: number) => money(n, l);
-  const cap = (v: string) => (l === 'ru' ? v[0].toUpperCase() + v.slice(1) : v);
   const title = F.bedsLong(x.beds, l) + ' · ' + t(`v_${x.view}`);
   const bById = new Map(buildings.map((y) => [y.id, y]));
   const videoId = youtubeId(x.videoUrl);
   const desc = listingDescription(x, b.name, l, t as unknown as Parameters<typeof listingDescription>[3]);
 
   const facts: [string, string][] = [
-    [t('area'), `${x.area} ${m2(l)}`], [t('bedrooms'), String(x.beds)], [t('baths'), String(x.baths)], [t('floor'), String(x.floor)],
-    [t('direction'), cap(t(`d_${x.dir}`))], [t('view'), t(`v_${x.view}`)], [t('furniture'), t(`furn_${x.furn}`)], [t('building'), b.name],
+    [t('area'), `${x.area} ${M2}`], [t('bedrooms'), String(x.beds)], [t('baths'), String(x.baths)], [t('floor'), String(x.floor)],
+    [t('direction'), t(`d_${x.dir}`)], [t('view'), t(`v_${x.view}`)], [t('furniture'), t(`furn_${x.furn}`)], [t('building'), b.name],
   ];
   const terms: [string, string][] = [
     [t('deposit'), F.months(x.deposit, l)], [t('cycle'), t(`cy_${x.cycle}`)], [t('minTerm'), F.months(x.minTerm, l)], [t('maxOcc'), F.people(x.maxOcc, l)],

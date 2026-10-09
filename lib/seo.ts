@@ -15,4 +15,4 @@ export function alternates(locale: Locale, href: Href): Metadata['alternates'] {
   return { canonical: absUrl(locale, href), languages };
 }
 
-export const OG_LOCALE: Record<Locale, string> = { vi: 'vi_VN', en: 'en_US', ru: 'ru_RU' };
+export const OG_LOCALE: Record<Locale, string> = { vi: 'vi_VN', en: 'en_US' };

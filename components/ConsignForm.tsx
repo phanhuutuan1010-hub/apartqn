@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { compressImage } from '@/lib/compressImage';
-import { F, m2 } from '@/lib/format';
+import { F, M2 } from '@/lib/format';
 import styles from './Forms.module.css';
 
 const MAX = 10;
@@ -121,7 +121,7 @@ export function ConsignForm({ buildings }: Props) {
       </label>
       <div className={styles.three}>
         <label className="field">{t('floor')}<input className="input" name="floor" inputMode="numeric" maxLength={4} placeholder="12" /></label>
-        <label className="field">{t('area')}, {m2(l)}<input className="input" name="area" inputMode="decimal" maxLength={6} placeholder="65" /></label>
+        <label className="field">{t('area')}, {M2}<input className="input" name="area" inputMode="decimal" maxLength={6} placeholder="65" /></label>
         <label className="field">{t('bedrooms')}<input className="input" name="beds" inputMode="numeric" maxLength={2} placeholder="2" /></label>
       </div>
       <label className="field">{t('cfRent')}

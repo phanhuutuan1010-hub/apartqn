@@ -10,13 +10,13 @@ export type BuildingData = {
   id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; ward_new: string | null; ward_old: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
-  desc_vi: string | null; desc_en: string | null; desc_ru: string | null; sort: number; is_demo: boolean;
+  desc_vi: string | null; desc_en: string | null; sort: number; is_demo: boolean;
 } & BuildingFees;
 
 /** `codedListings`: listings of this building that already carry a code → the prefix is frozen. */
 export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData; photos?: React.ReactNode; codedListings?: number }) {
   const [state, action, pending] = useActionState<BuildingResult, FormData>(saveBuilding.bind(null, b.id), {});
-  const [tab, setTab] = useState<'vi' | 'en' | 'ru'>('vi');
+  const [tab, setTab] = useState<'vi' | 'en'>('vi');
   const fe = state.fieldErrors ?? {};
   const cls = (k: string, extra = '') => `a-field ${extra} ${fe[k] ? 'invalid' : ''}`;
   const err = (k: string) => fe[k] && <span className="err">{fe[k]}</span>;
@@ -131,15 +131,15 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
       <section className="a-card">
         <h2 className="a-section-title">Mô tả</h2>
         <div className="a-tabs" role="tablist">
-          {(['vi', 'en', 'ru'] as const).map((k) => (
+          {(['vi', 'en'] as const).map((k) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} className={`a-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>
               {k.toUpperCase()}{k !== 'vi' && !b[`desc_${k}`] && <span className="a-badge outline">thiếu</span>}
             </button>
           ))}
         </div>
-        {(['vi', 'en', 'ru'] as const).map((k) => (
+        {(['vi', 'en'] as const).map((k) => (
           <label key={k} className="a-field" style={{ display: tab === k ? 'flex' : 'none' }}>
-            {k === 'vi' ? 'Mô tả tiếng Việt' : k === 'en' ? 'English description' : 'Описание на русском'}
+            {k === 'vi' ? 'Mô tả tiếng Việt' : 'English description'}
             <textarea className="input" name={`desc_${k}`} rows={6} lang={k} defaultValue={s(b[`desc_${k}`])} />
           </label>
         ))}

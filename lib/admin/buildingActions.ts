@@ -34,7 +34,7 @@ const Schema = z.object({
   electricity_rate: vnd, electricity_vat_pct: pct, water_rate: vnd, water_vat_pct: pct,
   water_extra_note: txt(300), fee_source: txt(300), fee_updated_on: date,
   fee_verified: z.preprocess((v) => v === 'on', z.boolean()),
-  desc_vi: txt(8000), desc_en: txt(8000), desc_ru: txt(8000),
+  desc_vi: txt(8000), desc_en: txt(8000),
   sort: z.coerce.number().int().min(0).max(999),
   is_demo: z.preprocess((v) => v === 'on', z.boolean()),
 }).refine((v) => (v.lat == null) === (v.lng == null), { message: 'Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai', path: ['lat'] });
@@ -73,7 +73,7 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, v[k]])) as BuildingFees;
   const row = {
     name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street, ward_new: v.ward_new, ward_old: v.ward_old, lat: v.lat, lng: v.lng,
-    amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, desc_ru: v.desc_ru, sort: v.sort, is_demo: v.is_demo,
+    amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo,
   };
   const sb = await supabaseServer();
   if (!id) {

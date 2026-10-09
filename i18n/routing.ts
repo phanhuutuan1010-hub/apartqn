@@ -1,17 +1,17 @@
 import { defineRouting } from 'next-intl/routing';
 
 export const routing = defineRouting({
-  locales: ['vi', 'en', 'ru'],
+  locales: ['vi', 'en'],
   defaultLocale: 'vi',
   localePrefix: 'as-needed',
   // `/` is always Vietnamese; visitors switch language explicitly.
   localeDetection: false,
   pathnames: {
     '/': '/',
-    '/can-ho': { vi: '/can-ho', en: '/apartments', ru: '/kvartiry' },
-    '/can-ho/[code]': { vi: '/can-ho/[code]', en: '/apartments/[code]', ru: '/kvartiry/[code]' },
-    '/toa-nha/[id]': { vi: '/toa-nha/[id]', en: '/buildings/[id]', ru: '/zdaniya/[id]' },
-    '/ky-gui': { vi: '/ky-gui', en: '/list-your-apartment', ru: '/sdat-kvartiru' },
+    '/can-ho': { vi: '/can-ho', en: '/apartments' },
+    '/can-ho/[code]': { vi: '/can-ho/[code]', en: '/apartments/[code]' },
+    '/toa-nha/[id]': { vi: '/toa-nha/[id]', en: '/buildings/[id]' },
+    '/ky-gui': { vi: '/ky-gui', en: '/list-your-apartment' },
   },
 });
 

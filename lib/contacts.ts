@@ -6,15 +6,14 @@ import { F } from '@/lib/format';
 export type ContactKind = 'zalo' | 'call' | 'telegram' | 'whatsapp';
 export type Contact = { k: ContactKind; label: string; href: string; external: boolean };
 
-/** vi Zalo + Call · ru Telegram + WhatsApp · en WhatsApp + Telegram */
+/** vi Zalo + Call · en WhatsApp + Telegram */
 export const CONTACT_ORDER: Record<Locale, [ContactKind, ContactKind]> = {
   vi: ['zalo', 'call'],
-  ru: ['telegram', 'whatsapp'],
   en: ['whatsapp', 'telegram'],
 };
 
 /** Messenger used in the mobile contact bar next to Call */
-export const BAR_MESSENGER: Record<Locale, ContactKind> = { vi: 'zalo', en: 'whatsapp', ru: 'telegram' };
+export const BAR_MESSENGER: Record<Locale, ContactKind> = { vi: 'zalo', en: 'whatsapp' };
 
 export const contactLinks = (l: Locale, callLabel: string, message: string): Record<ContactKind, Contact> => {
   const m = encodeURIComponent(message);

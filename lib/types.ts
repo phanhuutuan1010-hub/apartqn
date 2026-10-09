@@ -5,7 +5,7 @@ export type Furnishing = 'full' | 'basic' | 'empty';
 export type ListingStatus = 'available' | 'reserved' | 'rented';
 export type Direction = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
 export type ViewKind = 'sea' | 'city' | 'river' | 'lagoon';
-export type Descriptions = { vi?: string; en?: string; ru?: string };
+export type Descriptions = { vi?: string; en?: string };
 export type { BuildingFees } from './fees';
 import type { BuildingFees } from './fees';
 

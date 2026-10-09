@@ -77,7 +77,7 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
   if (f.b && bById.get(f.b)) pills.push({ label: bById.get(f.b)!.name, clear: { b: '' } });
   if (f.q) pills.push({ label: `“${f.q}”`, clear: { q: '' } });
   if (f.rent) pills.push({ label: t(`rent${f.rent.slice(1)}` as 'rent0'), clear: { rent: '' } });
-  if (f.pmin && f.pmax) pills.push({ label: `${mil(+f.pmin * 1e6, l).replace(/ ?(triệu|млн ₫|M ₫)$/, '')}–${mil(+f.pmax * 1e6, l)}`, clear: { pmin: '', pmax: '' } });
+  if (f.pmin && f.pmax) pills.push({ label: `${mil(+f.pmin * 1e6, l).replace(/ ?(triệu|M ₫)$/, '')}–${mil(+f.pmax * 1e6, l)}`, clear: { pmin: '', pmax: '' } });
   else if (f.pmax) pills.push({ label: '≤ ' + mil(+f.pmax * 1e6, l), clear: { pmax: '' } });
   else if (f.pmin) pills.push({ label: '≥ ' + mil(+f.pmin * 1e6, l), clear: { pmin: '' } });
   if (f.vw) pills.push({ label: t(`v_${f.vw}` as 'v_sea'), clear: { vw: '' } });

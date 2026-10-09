@@ -1,12 +1,12 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/** What "Nhân bản căn hộ" carries over: specs, fees + overrides, terms, descriptions. Never code / status / verification. */
+/** What "Nhân bản căn hộ" carries over: specs, fees + overrides, terms, VI/EN descriptions. Never code / status / verification. */
 const COPY = [
   'area', 'beds', 'baths', 'dir', 'view', 'furn',
   'rent', 'deposit', 'cycle', 'mgmt', 'moto', 'car', 'net', 'elec', 'water', 'car_parking', 'fee_overrides', 'mgmt_fee_paid_by',
   'min_term', 'max_occ', 'pets', 'temp_reg',
-  'desc_vi', 'desc_en', 'desc_ru',
+  'desc_vi', 'desc_en',
 ] as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

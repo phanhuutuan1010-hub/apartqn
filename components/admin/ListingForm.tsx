@@ -9,7 +9,7 @@ import { effectiveFees, mgmtFormula, type BuildingFees, type OverrideKey, type O
 export type BuildingOpt = { id: string; name: string; default_fees: { net?: number }; fees: BuildingFees };
 export type ListingData = Record<string, unknown> & {
   id: string; status: string; updated_at: string;
-  desc_vi_updated_at: string | null; desc_en_updated_at: string | null; desc_ru_updated_at: string | null;
+  desc_vi_updated_at: string | null; desc_en_updated_at: string | null;
 };
 export type UnitData = { building_id: string; floor: number; unit_no: string; owner_name: string | null; owner_phone: string | null; owner_notes: string | null; assigned_to: string | null };
 
@@ -28,7 +28,7 @@ const s = (v: unknown) => (v == null ? '' : String(v));
 export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, canPublish, photos }: Props) {
   const [state, action, pending] = useActionState<ActionResult, FormData>(saveListing.bind(null, L.id), {});
   const [updatedAt, setUpdatedAt] = useState(L.updated_at);
-  const [tab, setTab] = useState<'vi' | 'en' | 'ru'>('vi');
+  const [tab, setTab] = useState<'vi' | 'en'>('vi');
   const [dirty, setDirty] = useState(false);
   // building + area drive the fees; ov = fields typed by hand ("Ghi đè"), as display strings
   const initialOv = (L.fee_overrides ?? {}) as Overrides;
@@ -118,7 +118,7 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   const cls = (k: string, extra = '') => `a-field ${extra} ${fe[k] ? 'invalid' : ''}`;
   const err = (k: string) => fe[k] && <span className="err">{fe[k]}</span>;
   const draftLike = L.status === 'draft' || L.status === 'hidden';
-  const outdated = (lang: 'en' | 'ru') => {
+  const outdated = (lang: 'en') => {
     const vi = L.desc_vi_updated_at, x = L[`desc_${lang}_updated_at`] as string | null;
     return !!(vi && x && new Date(vi) > new Date(x));
   };
@@ -255,7 +255,7 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
       <section className="a-card">
         <h2 className="a-section-title">Mô tả</h2>
         <div className="a-tabs" role="tablist">
-          {(['vi', 'en', 'ru'] as const).map((k) => (
+          {(['vi', 'en'] as const).map((k) => (
             <button key={k} type="button" role="tab" aria-selected={tab === k} className={`a-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>
               {k.toUpperCase()}
               {k !== 'vi' && !L[`desc_${k}`] && <span className="a-badge outline">thiếu</span>}
@@ -263,14 +263,14 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
             </button>
           ))}
         </div>
-        {(['vi', 'en', 'ru'] as const).map((k) => (
+        {(['vi', 'en'] as const).map((k) => (
           <label key={k} className={cls(`desc_${k}`)} style={{ display: tab === k ? 'flex' : 'none' }}>
-            {k === 'vi' ? 'Mô tả tiếng Việt' : k === 'en' ? 'English description' : 'Описание на русском'}
+            {k === 'vi' ? 'Mô tả tiếng Việt' : 'English description'}
             <textarea className="input" name={`desc_${k}`} rows={7} lang={k} defaultValue={s(L[`desc_${k}`])} />
             {err(`desc_${k}`)}
           </label>
         ))}
-        <p className="a-small a-muted" style={{ margin: '10px 0 0' }}>Trang EN/RU chỉ hiện mô tả của đúng ngôn ngữ đó. Thiếu bản dịch → website hiện tóm tắt tự động từ các trường ở trên.</p>
+        <p className="a-small a-muted" style={{ margin: '10px 0 0' }}>Trang EN chỉ hiện mô tả tiếng Anh. Thiếu bản dịch → website hiện tóm tắt tự động từ các trường ở trên.</p>
       </section>
 
       {/* ── actions ── */}
