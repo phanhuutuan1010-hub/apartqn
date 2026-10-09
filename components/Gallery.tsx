@@ -38,6 +38,8 @@ const SMALL = '(min-width:1240px) 300px, (min-width:768px) 20vw, 50vw';
 export function Gallery({ photos, meta, count = 0, alt, tone = 'unit', videoHref, labels }: Props) {
   const [open, setOpen] = useState<number | null>(null);
   const [gi, setGi] = useState(0);
+  // phones: only slides up to 2 past the furthest one seen get an image (100-photo buildings stay light)
+  const [far, setFar] = useState(0);
   const n = photos.length;
   const ph = n === 0 ? Math.max(1, count) : 0;
   const shown = Math.min(n, 5);
@@ -56,11 +58,11 @@ export function Gallery({ photos, meta, count = 0, alt, tone = 'unit', videoHref
     <div className={styles.wrap}>
       {/* phones */}
       <div className={styles.mob}>
-        <div className={styles.track} onScroll={(e) => { const el = e.currentTarget; const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (i !== gi) setGi(i); }}>
+        <div className={styles.track} onScroll={(e) => { const el = e.currentTarget; const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth)); if (i !== gi) setGi(i); if (i > far) setFar(i); }}>
           {n > 0
             ? photos.map((src, i) => (
               <button key={i} type="button" className={styles.slide} onClick={() => setOpen(i)} aria-label={`${labels.showAll} · ${i + 1}/${n}`}>
-                <Photo src={src} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes="100vw" priority={i === 0} blur />
+                {i <= far + 2 && <Photo src={src} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes="100vw" priority={i === 0} blur />}
                 {badge(i)}
               </button>
             ))
