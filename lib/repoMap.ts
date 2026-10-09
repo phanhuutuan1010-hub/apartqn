@@ -15,6 +15,8 @@ export type PublicBuildingRow = {
   aliases?: string[] | null;
   /** missing before migration 13 */
   code_prefix?: string | null;
+  /** missing before migration 16 */
+  maps_url?: string | null;
   /** fee columns: migration 14 */
   [fee: string]: unknown;
 };
@@ -65,6 +67,7 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
     ward: text(r.ward_new),
     wardOld: text(r.ward_old),
     ...(r.lat != null && r.lng != null ? { lat: n(r.lat), lng: n(r.lng) } : {}),
+    ...(text(r.maps_url ?? null) ? { mapsUrl: text(r.maps_url ?? null) } : {}),
     amenities: r.amenities as BuildingAmenity[],
     photos: photos.map((p) => publicPhotoUrl(supabaseUrl, p.path)),
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),

@@ -70,7 +70,7 @@ export default async function ConsignPage({ params }: PageProps<'/[locale]/ky-gu
             {buildings.map((b) => (
               <Link key={b.id} href={{ pathname: '/toa-nha/[id]', params: { id: b.id } }} className={styles.bld}>
                 <span className={styles.bName}>{b.name}</span>
-                <span className={styles.bStreet}>{b.street} · {b.ward ?? t('ward')}</span>
+                <span className={styles.bStreet}>{b.street}</span>
               </Link>
             ))}
           </div>

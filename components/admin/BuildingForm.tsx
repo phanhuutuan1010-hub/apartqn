@@ -7,7 +7,7 @@ import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
 import { TagInput } from './TagInput';
 
 export type BuildingData = {
-  id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; ward_new: string | null; ward_old: string | null;
+  id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; maps_url: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
   desc_vi: string | null; desc_en: string | null; sort: number; is_demo: boolean;
@@ -66,12 +66,16 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
             <TagInput id="b-aliases" name="aliases" defaultValue={b.aliases ?? []} placeholder="vd. Altara, Алтара" />
             {err('aliases')}
           </div>
-          <label className={cls('street', 'span2')}>Đường / khu<input className="input" name="street" defaultValue={b.street} maxLength={120} /></label>
-          <label className={cls('ward_new')}>Phường (mới) <span className="hint">sau sáp nhập 2025</span><input className="input" name="ward_new" defaultValue={s(b.ward_new)} /></label>
-          <label className={cls('ward_old')}>Phường (cũ)<input className="input" name="ward_old" defaultValue={s(b.ward_old)} /></label>
-          <label className={cls('lat')}>Vĩ độ<input className="input a-mono" name="lat" inputMode="decimal" defaultValue={s(b.lat)} placeholder="13.7…" />{err('lat')}</label>
-          <label className={cls('lng')}>Kinh độ<input className="input a-mono" name="lng" inputMode="decimal" defaultValue={s(b.lng)} placeholder="109.2…" />{err('lng')}</label>
-          <p className="a-small a-muted span2" style={{ margin: 0, alignSelf: 'end' }}>Chỉ nhập toạ độ đã kiểm tra tại chỗ (Google Maps → giữ ngón tay trên toà nhà → chép số). Để trống → website hiện “Đang cập nhật vị trí”.</p>
+          <label className={cls('street', 'span2')}>Địa chỉ<input className="input" name="street" defaultValue={b.street} maxLength={200} placeholder="vd. 01 Trần Hưng Đạo" /></label>
+          <label className={cls('maps_url', 'span2')}>Link Google Maps <span className="hint">Google Maps → bấm vào toà nhà → Chia sẻ → Sao chép đường liên kết</span>
+            <input className="input" name="maps_url" type="url" inputMode="url" defaultValue={s(b.maps_url)} placeholder="https://maps.app.goo.gl/…" />
+            {err('maps_url')}
+            <span className="a-small a-muted">
+              {b.lat != null && b.lng != null
+                ? <>Vị trí trên bản đồ: <a href={`https://www.google.com/maps?q=${b.lat},${b.lng}`} target="_blank" rel="noreferrer">{b.lat.toFixed(5)}, {b.lng.toFixed(5)}</a></>
+                : 'Chưa có vị trí — website hiện “Đang cập nhật vị trí”.'}
+            </span>
+          </label>
           <label className="a-check span4"><input type="checkbox" name="is_demo" defaultChecked={b.is_demo} /> Dữ liệu demo (hiện nhãn DỮ LIỆU DEMO)</label>
         </div>
       </section>

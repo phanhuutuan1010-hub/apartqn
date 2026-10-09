@@ -9,11 +9,11 @@ import { revalidatePublic } from '@/lib/revalidate';
 import { parseVnd, AMENITIES } from '@/lib/admin/labels';
 import { FEE_FIELDS, toBuildingFees, type BuildingFees } from '@/lib/fees';
 import { syncListingFees } from '@/lib/admin/feeSync';
+import { coordsFromMapsUrl, isMapsHost, mapsUrlOk } from '@/lib/maps';
 
 export type BuildingResult = { ok?: string; error?: string; fieldErrors?: Record<string, string> };
 
 const txt = (max: number) => z.preprocess((v) => (typeof v === 'string' && v.trim() ? v.trim() : null), z.string().max(max).nullable());
-const coord = (min: number, max: number) => z.preprocess((v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.'))), z.number().min(min).max(max).nullable());
 const vnd = z.preprocess((v) => parseVnd(v as FormDataEntryValue), z.number().int().min(0).max(100_000_000).nullable());
 // '' = unknown (null) — never 0
 const pct = z.preprocess((v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.'))), z.number().min(0).max(100).nullable());
@@ -24,9 +24,9 @@ const Schema = z.object({
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{2,40}$/, 'Chỉ a-z, 0-9, dấu gạch; 2–40 ký tự').optional(),
   // absent when frozen (the building already has coded listings)
   code_prefix: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Đúng 3 chữ cái A–Z, vd. ALT').optional(),
-  street: z.string().trim().max(120),
-  ward_new: txt(120), ward_old: txt(120),
-  lat: coord(-90, 90), lng: coord(-180, 180),
+  street: z.string().trim().max(200),
+  maps_url: z.preprocess((v) => (typeof v === 'string' && v.trim() ? v.trim() : null),
+    z.string().max(2000).refine(mapsUrlOk, 'Dán link Google Maps (maps.app.goo.gl/… hoặc google.com/maps/…)').nullable()),
   net: vnd,
   // fees (migration 14)
   mgmt_fee_per_m2: vnd, mgmt_fee_vat_pct: pct, motorbike_fee: vnd, motorbike_fee_from_3rd: vnd, car_fee: vnd,
@@ -37,7 +37,31 @@ const Schema = z.object({
   desc_vi: txt(8000), desc_en: txt(8000),
   sort: z.coerce.number().int().min(0).max(999),
   is_demo: z.preprocess((v) => v === 'on', z.boolean()),
-}).refine((v) => (v.lat == null) === (v.lng == null), { message: 'Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai', path: ['lat'] });
+});
+
+/**
+ * Follows a (short) Google Maps link — only through Google hosts, at most 5 hops, 5 s each — and reads the pin from the URL.
+ * null = no coordinates written in the link (never geocoded or guessed).
+ */
+async function resolveMapsCoords(url: string): Promise<{ lat: number; lng: number } | null> {
+  let cur = url;
+  for (let hop = 0; hop <= 5; hop++) {
+    const c = coordsFromMapsUrl(cur);
+    if (c) return c;
+    const u = new URL(cur);
+    // consent interstitial carries the real target in ?continue=
+    const cont = u.hostname === 'consent.google.com' ? u.searchParams.get('continue') : null;
+    if (cont) { cur = cont; continue; }
+    if (!isMapsHost(u.hostname) || hop === 5) return null;
+    const res = await fetch(cur, { redirect: 'manual', signal: AbortSignal.timeout(5000), headers: { 'user-agent': 'Mozilla/5.0' } }).catch(() => null);
+    const next = res?.headers.get('location');
+    if (!next) return null;
+    cur = new URL(next, cur).toString();
+    const h = new URL(cur).hostname;
+    if (!isMapsHost(h) && h !== 'consent.google.com') return null;
+  }
+  return null;
+}
 
 /** Public pages showing this building: its page, home, results, and every listing detail in it. */
 async function refreshBuilding(buildingId: string, slug: string) {
@@ -72,10 +96,20 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   const default_fees = v.net != null ? { net: v.net } : {};
   const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, v[k]])) as BuildingFees;
   const row = {
-    name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street, ward_new: v.ward_new, ward_old: v.ward_old, lat: v.lat, lng: v.lng,
+    name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street,
     amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo,
   };
   const sb = await supabaseServer();
+  // the position comes only from the Maps link and changes only when the link does (older buildings keep their coordinates)
+  const prev = id ? (await sb.from('buildings').select('maps_url').eq('id', id).maybeSingle()).data : null;
+  if (v.maps_url !== (prev?.maps_url ?? null)) {
+    if (!v.maps_url) Object.assign(row, { maps_url: null, lat: null, lng: null });
+    else {
+      const c = await resolveMapsCoords(v.maps_url);
+      if (!c) return { error: 'Không đọc được vị trí từ link này.', fieldErrors: { maps_url: 'Mở Google Maps → bấm vào toà nhà → Chia sẻ → Sao chép đường liên kết' } };
+      Object.assign(row, { maps_url: v.maps_url, lat: c.lat, lng: c.lng });
+    }
+  }
   if (!id) {
     if (!v.slug) return { error: 'Nhập đường dẫn (slug).', fieldErrors: { slug: 'Bắt buộc' } };
     if (!v.code_prefix) return { error: 'Nhập tiền tố mã căn.', fieldErrors: { code_prefix: 'Bắt buộc, 3 chữ cái' } };

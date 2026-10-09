@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { MapPinOff } from 'lucide-react';
+import { ExternalLink, MapPinOff } from 'lucide-react';
 import type { Building } from '@/lib/types';
 import { LazyMap } from './LazyMap';
 import styles from './LocationBlock.module.css';
@@ -8,7 +8,7 @@ import styles from './LocationBlock.module.css';
 export function LocationBlock({ b }: { b: Building }) {
   const t = useTranslations();
   const hasPos = typeof b.lat === 'number' && typeof b.lng === 'number';
-  const addr = `${b.street}, ${b.ward ?? t('ward')}, ${t('city')}`;
+  const addr = [b.street, t('city')].filter(Boolean).join(', ');
   return (
     <>
       <div className={styles.box}>
@@ -22,7 +22,10 @@ export function LocationBlock({ b }: { b: Building }) {
           </div>
         )}
       </div>
-      <div className={styles.addr}>{addr}</div>
+      <div className={styles.addr}>
+        {addr}
+        {b.mapsUrl && <a className={styles.gmaps} href={b.mapsUrl} target="_blank" rel="noopener noreferrer">{t('openMaps')} <ExternalLink size={14} aria-hidden /></a>}
+      </div>
     </>
   );
 }

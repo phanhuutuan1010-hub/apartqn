@@ -59,7 +59,7 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
   const r1k = (n: number) => Math.round(n / 1000) * 1000;
   const msg = F.msgB(b.name, l);
   const cs = contacts(l, t('call'), { message: msg });
-  const fullAddr = `${b.street}, ${b.ward ?? t('ward')}, ${t('city')}`;
+  const fullAddr = [b.street, t('city')].filter(Boolean).join(', ');
   const fees: [string, string][] = [
     [t('mgmtRate'), rng(all.map((x) => r1k(x.mgmt / x.area)), (n) => F.perM2(n, l))],
     [t('motoParkFee'), all.length ? rng(all.map((x) => x.moto), (n) => money(n, l)) + t('perMonth') : '—'],
@@ -158,7 +158,7 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
         <section className={styles.others}>
           <h2 className="h2" style={{ marginBottom: 24 }}>{t('otherBlds')}</h2>
           <div className={styles.blds}>
-            {others.map((o) => <BuildingCard key={o.id} b={o} listings={listings} showWard />)}
+            {others.map((o) => <BuildingCard key={o.id} b={o} listings={listings} />)}
           </div>
         </section>
       </div>

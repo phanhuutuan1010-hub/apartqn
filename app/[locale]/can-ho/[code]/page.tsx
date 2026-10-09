@@ -106,7 +106,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
                 {x.demo && <DemoBadge height={26} />}
               </div>
               <h1 className={styles.h1}>{title}</h1>
-              <div className={styles.addr}>{b.name} · {b.street}, {b.ward ?? t('ward')}</div>
+              <div className={styles.addr}>{b.name}{b.street ? ` · ${b.street}` : ''}</div>
               <div className={styles.meta}>
                 <span className="nowrap">{t('code')}: <b>{x.code}</b></span>
                 <span className="nowrap">{t('updated')}: {dFull(x.updated, l)}</span>

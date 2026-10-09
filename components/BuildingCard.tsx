@@ -7,7 +7,7 @@ import { Photo } from './Photo';
 import styles from './BuildingCard.module.css';
 
 /** name, street, "N căn đang cho thuê", "từ X triệu/tháng" */
-export function BuildingCard({ b, listings, showWard = false }: { b: Building; listings: Listing[]; showWard?: boolean }) {
+export function BuildingCard({ b, listings }: { b: Building; listings: Listing[] }) {
   const t = useTranslations();
   const l = useLocale();
   const ls = listings.filter((x) => x.buildingId === b.id && x.status !== 'rented');
@@ -20,7 +20,7 @@ export function BuildingCard({ b, listings, showWard = false }: { b: Building; l
       </div>
       <div className={styles.body}>
         <Link href={{ pathname: '/toa-nha/[id]', params: { id: b.id } }} className={styles.name}>{b.name}</Link>
-        <div className={styles.street}>{showWard ? `${b.street} · ${b.ward ?? t('ward')}` : b.street}</div>
+        <div className={styles.street}>{b.street}</div>
         <div className={styles.units}>{F.units(ls.length, l)}</div>
         {min > 0 && <div className={styles.from}>{t('from')} {mil(min, l)}{t('perMonth')}</div>}
       </div>

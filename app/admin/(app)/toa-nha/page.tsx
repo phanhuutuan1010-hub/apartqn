@@ -11,7 +11,7 @@ export default async function BuildingsPage() {
   await requireAdmin();
   const sb = await supabaseServer();
   const [{ data: buildings }, { data: listings }, { data: photos }] = await Promise.all([
-    sb.from('buildings').select('id, slug, name, street, ward_new, lat, lng, amenities, default_fees, desc_en, is_demo, updated_at').order('sort'),
+    sb.from('buildings').select('id, slug, name, street, lat, lng, amenities, default_fees, desc_en, is_demo, updated_at').order('sort'),
     sb.from('admin_listings').select('building_id, status'),
     sb.from('photos').select('building_id').not('building_id', 'is', null),
   ]);
@@ -29,7 +29,7 @@ export default async function BuildingsPage() {
       </div>
       <div className="a-table-wrap">
         <table className="a-table">
-          <thead><tr><th>Toà nhà</th><th>Phường</th><th>Vị trí</th><th className="num">Ảnh</th><th className="num">Đang đăng</th><th className="num">Tổng căn</th><th>Phí mặc định</th><th>Dịch</th><th>Sửa lúc</th></tr></thead>
+          <thead><tr><th>Toà nhà</th><th>Vị trí</th><th className="num">Ảnh</th><th className="num">Đang đăng</th><th className="num">Tổng căn</th><th>Phí mặc định</th><th>Dịch</th><th>Sửa lúc</th></tr></thead>
           <tbody>
             {(buildings ?? []).map((b) => (
               <tr key={b.id}>
@@ -38,7 +38,6 @@ export default async function BuildingsPage() {
                   {b.is_demo && <span className="a-badge outline" style={{ marginLeft: 6 }}>demo</span>}
                   <div className="a-small a-muted">{b.street} · <span className="a-mono">/{b.slug}</span></div>
                 </td>
-                <td>{b.ward_new ?? <span className="a-badge warn">Thiếu</span>}</td>
                 <td>{b.lat != null ? <span className="a-badge ok">Có</span> : <span className="a-badge warn">Chưa có</span>}</td>
                 <td className="num">{photoCount(b.id) || <span className="a-badge warn">0</span>}</td>
                 <td className="num">{count(b.id, (s) => s === 'available' || s === 'reserved')}</td>

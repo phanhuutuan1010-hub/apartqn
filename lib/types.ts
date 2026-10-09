@@ -14,11 +14,13 @@ export type Building = {
   id: string;
   name: string;
   street: string;
-  /** current ward (after the 2025 merger); missing → "Phường —" */
+  /** ward (search only; no longer shown or edited) */
   ward?: string;
   wardOld?: string;
   lat?: number;
   lng?: number;
+  /** Google Maps link pasted by the admin */
+  mapsUrl?: string;
   amenities: BuildingAmenity[];
   /** full-size public photo URLs, cover first; empty → striped placeholder */
   photos: string[];
