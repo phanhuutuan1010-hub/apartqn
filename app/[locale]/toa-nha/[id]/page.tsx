@@ -4,7 +4,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { getBuilding, getBuildings, getListings, staticParams } from '@/lib/repo';
-import { F, mil, money } from '@/lib/format';
+import { F, money } from '@/lib/format';
 import { contacts } from '@/lib/contacts';
 import { alternates, OG_LOCALE } from '@/lib/seo';
 import { Header } from '@/components/Header';
@@ -107,10 +107,10 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
           </div>
           <h1 className="h1">{b.name}</h1>
           <div className={styles.addr}>{fullAddr}</div>
-          {avail.length > 0 && (
+          {free > 0 && (
             <div className={styles.range}>
-              <span className={styles.rangeLabel}>{t('rentRange')}</span>
-              <span className={styles.rangeVal}>{rng(avail.map((x) => x.rent), (n) => mil(n, l))}</span>
+              <span className={styles.rangeLabel}>{t('from')}</span>
+              <span className={styles.rangeVal}>{money(Math.min(...all.filter((x) => x.status === 'available').map((x) => x.rent)), l)}</span>
               <span className={styles.rangePer}>{t('perMonth')}</span>
             </div>
           )}

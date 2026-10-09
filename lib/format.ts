@@ -4,12 +4,11 @@ import type { Listing } from '@/lib/types';
 
 const TAG: Record<Locale, string> = { vi: 'vi-VN', en: 'en-US' };
 
-export const money = (n: number, l: Locale) => new Intl.NumberFormat(TAG[l]).format(n) + ' ₫';
+/** The one money format: vi "9.000.000 đ", en "9,000,000 VND". Full numbers — no "9M", no conversion. */
+export const money = (n: number, l: Locale) => new Intl.NumberFormat(TAG[l], { maximumFractionDigits: 0 }).format(n) + (l === 'vi' ? ' đ' : ' VND');
 
-export const mil = (n: number, l: Locale) => {
-  const v = new Intl.NumberFormat(TAG[l], { maximumFractionDigits: 1 }).format(n / 1e6);
-  return l === 'vi' ? v + ' triệu' : v + 'M ₫';
-};
+/** kept as an alias: every price uses the same full format */
+export const mil = money;
 
 // Dates are YYYY-MM-DD strings; format in UTC so server and browser agree.
 const d = (s: string) => new Date(s + 'T00:00:00Z');
@@ -17,7 +16,7 @@ export const dShort = (s: string, l: Locale) => d(s).toLocaleDateString(TAG[l], 
 export const dFull = (s: string, l: Locale) => d(s).toLocaleDateString(TAG[l], { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
 export const M2 = 'm²';
 
-const perMo = (l: Locale) => (l === 'vi' ? '/tháng' : '/mo');
+const perMo = (l: Locale) => (l === 'vi' ? '/tháng' : '/month');
 
 export const F = {
   beds: (n: number, l: Locale) => (l === 'vi' ? n + ' PN' : n + ' bd'),
@@ -38,7 +37,7 @@ export const F = {
   msgB: (n: string, l: Locale) => (l === 'vi' ? 'Chào ApartQN, tôi muốn hỏi về căn hộ tại ' + n + '.' : 'Hi ApartQN, I’d like to ask about apartments at ' + n + '.'),
   msg: (c: string, l: Locale) => (l === 'vi' ? 'Chào ApartQN, tôi quan tâm căn ' + c + '.' : 'Hi ApartQN, I’m interested in apartment ' + c + '.'),
   elecFixed: (l: Locale) => (l === 'vi' ? 'Cố định ' : 'Fixed ') + money(3500, l) + '/kWh',
-  waterPerson: (l: Locale) => money(100000, l) + (l === 'vi' ? '/người/tháng' : ' per person/mo'),
+  waterPerson: (l: Locale) => money(100000, l) + (l === 'vi' ? '/người/tháng' : ' per person/month'),
 };
 
 /** Estimated monthly total — the one place this is computed: rent + management (if the tenant pays it) + one motorbike. */
@@ -57,8 +56,8 @@ export const UNIT_AM: Record<Listing['furn'], string[]> = {
   empty: ['heater', 'balcony'],
 };
 
-/** "13,5 triệu" / "13.5M" (no ₫) — mobile contact bar */
-export const milShort = (n: number, l: Locale) => mil(n, l).replace(/ ?₫$/, '');
+/** mobile contact bar: same full format */
+export const milShort = money;
 
 /** URL slug for a listing code: ALT-001 → alt-001 */
 export const codeSlug = (code: string) => code.toLowerCase();

@@ -6,11 +6,11 @@ import { F, mil } from '@/lib/format';
 import { Photo } from './Photo';
 import styles from './BuildingCard.module.css';
 
-/** name, street, "N căn đang cho thuê", "từ X triệu/tháng" */
+/** name, street, "N căn đang cho thuê", "Từ 9.000.000 đ/tháng" (cheapest available) */
 export function BuildingCard({ b, listings }: { b: Building; listings: Listing[] }) {
   const t = useTranslations();
   const l = useLocale();
-  const ls = listings.filter((x) => x.buildingId === b.id && x.status !== 'rented');
+  const ls = listings.filter((x) => x.buildingId === b.id && x.status === 'available');
   const min = ls.length ? Math.min(...ls.map((x) => x.rent)) : 0;
 
   return (

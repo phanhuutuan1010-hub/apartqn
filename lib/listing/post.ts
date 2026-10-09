@@ -27,7 +27,7 @@ const FURN = {
   en: { full: 'Fully furnished', basic: 'Basic furniture', empty: 'Unfurnished' },
 } as const;
 
-const money = (n: number, l: PostLang) => (l === 'vi' ? new Intl.NumberFormat('vi-VN').format(n) + ' ₫' : new Intl.NumberFormat('en-US').format(n) + ' VND');
+const money = (n: number, l: PostLang) => (l === 'vi' ? new Intl.NumberFormat('vi-VN').format(n) + ' đ' : new Intl.NumberFormat('en-US').format(n) + ' VND');
 const dmy = (iso: string) => iso.split('-').reverse().join('/');
 
 function parts(d: PostData, l: PostLang, today: string) {

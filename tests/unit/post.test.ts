@@ -14,8 +14,8 @@ describe('Tạo bài đăng', () => {
     expect(t).toContain('• Mã căn: ALT-001');
     expect(t).toContain('• Diện tích 68 m² · Tầng 18');
     expect(t).toContain('• Nội thất đầy đủ');
-    expect(t).toContain('• Giá thuê: 13.500.000 ₫/tháng');
-    expect(t).toContain('• Phí quản lý: 822.800 ₫/tháng (khách trả)');
+    expect(t).toContain('• Giá thuê: 13.500.000 đ/tháng');
+    expect(t).toContain('• Phí quản lý: 822.800 đ/tháng (khách trả)');
     expect(t).toContain('• Dọn vào từ 20/10/2026');
     expect(t).toContain('📞 Liên hệ: 0900 000 000');
     expect(t).toContain('🔗 https://apartqn.vercel.app/can-ho/alt-001');
@@ -24,7 +24,7 @@ describe('Tạo bài đăng', () => {
   it('Zalo is short (few lines) and keeps code, price, phone, link', () => {
     const t = buildPost(L, { channel: 'zalo', lang: 'vi', phone: '0900', today });
     expect(t.split('\n').length).toBeLessThanOrEqual(5);
-    expect(t).toMatch(/^Cho thuê ALT-001 · Altara Residences — 2 PN · 68 m² · Tầng 18 · Nội thất đầy đủ · 13\.500\.000 ₫\/tháng/);
+    expect(t).toMatch(/^Cho thuê ALT-001 · Altara Residences — 2 PN · 68 m² · Tầng 18 · Nội thất đầy đủ · 13\.500\.000 đ\/tháng/);
     expect(t).toContain('LH: 0900');
     expect(t).toContain('https://apartqn.vercel.app/can-ho/alt-001');
   });
@@ -41,7 +41,7 @@ describe('Tạo bài đăng', () => {
   it('skips empty fields and never prints placeholders', () => {
     const t = buildPost({ ...L, area: null, floor: null, furn: null, mgmt: null, mgmtPaidBy: null, moveIn: null, url: null }, { channel: 'facebook', lang: 'vi', phone: '', today });
     expect(t).not.toMatch(/Diện tích|Tầng|Nội thất|Phí quản lý|Dọn vào|🔗|📞|undefined|null|NaN/);
-    expect(t).toContain('• Giá thuê: 13.500.000 ₫/tháng');
+    expect(t).toContain('• Giá thuê: 13.500.000 đ/tháng');
   });
 
   it('owner pays the management fee; move-in in the past = available now', () => {
