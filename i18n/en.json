@@ -289,5 +289,8 @@
   "qcCbDone": "Thanks — we'll call you back during business hours.",
   "qcPhoneErr": "Please enter a Vietnamese mobile number (e.g. 0905 123 456).",
   "qcBarCall": "Call",
-  "qcBarForm": "Fill in form ↓"
+  "qcBarForm": "Fill in form ↓",
+  "goneTitle": "This apartment is no longer available",
+  "goneSub": "The apartment you are looking for has been rented out or removed. See other available apartments below.",
+  "goneSee": "See available apartments"
 }

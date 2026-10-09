@@ -12,6 +12,7 @@ import type { PhotoView } from '@/components/admin/PhotoManager';
 import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
 import { ListingRowActions } from '@/components/admin/ListingRowActions';
 import { PostButton } from '@/components/admin/PostButton';
+import { ListingDeleteMenu } from '@/components/admin/ListingDeleteMenu';
 
 export const metadata: Metadata = { title: 'Sửa căn' };
 const BUILDING_COLS = `id, name, slug, aliases, code_prefix, default_fees, ${FEE_FIELDS.join(', ')}`;
@@ -74,6 +75,7 @@ export default async function EditListingPage({ params, searchParams }: { params
           )}
           <PostButton id={id} />
           <ListingRowActions id={id} status={status} role={me.role} canPublish={me.can_publish} />
+          {(me.role === 'admin' || !listing.code) && <ListingDeleteMenu id={id} code={listing.code} label={`${building?.name ?? ''} · tầng ${unit.floor} · căn ${unit.unit_no}`} />}
         </div>
       </div>
 

@@ -634,3 +634,115 @@ describe('consign quick contact (migration 19)', () => {
     await root(`delete from public.contact_clicks`);
   });
 });
+
+describe('soft delete + trash (migration 20)', () => {
+  it('sales: may trash only an own listing that was never published', async () => {
+    expect(await as(id(U.s1), (q) => denied(q(`select public.trash_listing($1)`, [l1])))).toMatch(/quản trị viên/); // own, published
+    expect(await as(id(U.s1), (q) => denied(q(`select public.trash_listing($1)`, [l2])))).toMatch(/quản trị viên|not found/); // not own
+    await as(id(U.s2), async (q) => {
+      await q(`select public.trash_listing($1)`, [l2]); // own draft
+      expect((await q(`select id from public.listings where id = $1`, [l2])).rowCount).toBe(0);
+      expect((await q(`select id from public.admin_listings where id = $1`, [l2])).rowCount).toBe(0);
+      // the undo toast: the person who trashed it may restore within 10 minutes
+      await q(`select public.restore_listing($1)`, [l2]);
+      expect((await q(`select status from public.listings where id = $1`, [l2])).rows[0].status).toBe('draft');
+    });
+  });
+
+  it('admin: trashed listing leaves the site and every admin list; restore brings it back as it was', async () => {
+    await as(id(U.admin), async (q) => {
+      await q(`select public.trash_listing($1)`, [l1]);
+      expect((await q(`select code from public.public_listings`)).rows.map((r) => r.code)).not.toContain(code1);
+      expect((await q(`select id from public.listings where id = $1`, [l1])).rowCount).toBe(0);
+      expect((await q(`select id from public.admin_listings where id = $1`, [l1])).rowCount).toBe(0);
+      const t = await q(`select kind, label from public.trash_items()`);
+      expect(t.rows).toEqual([{ kind: 'listing', label: `${code1} · Altara Residences Quy Nhơn` }]);
+      // invisible rows can't be changed directly, only through the rpc
+      expect((await q(`update public.listings set deleted_at = null where id = $1`, [l1])).rowCount).toBe(0);
+      await q(`select public.restore_listing($1)`, [l1]);
+      expect((await q(`select code, status from public.public_listings where code = $1`, [code1])).rows).toEqual([{ code: code1, status: 'available' }]);
+    });
+  });
+
+  it('nobody sets deleted_at directly; sales and anon cannot use trash / purge', async () => {
+    expect(await as(id(U.admin), (q) => denied(q(`update public.listings set deleted_at = now() where id = $1`, [l2])))).toMatch(/row-level security/);
+    expect(await as(id(U.s1), (q) => denied(q(`select public.trash_items()`)))).toMatch(/admin only/);
+    expect(await as(id(U.s1), (q) => denied(q(`select public.trash_leads(array[$1]::uuid[])`, [lead1])))).toMatch(/admin only/);
+    expect(await as(id(U.s1), (q) => denied(q(`select public.purge_lead($1, true)`, [lead1])))).toMatch(/admin only/);
+    expect(await as(id(U.s1), (q) => denied(q(`select public.trash_building($1)`, [B])))).toMatch(/admin only/);
+    expect(await as('anon', (q) => denied(q(`select public.trash_listing($1)`, [l1])))).toMatch(/permission denied/);
+  });
+
+  it('a sales member cannot restore a listing an admin trashed', async () => {
+    await as(id(U.admin), async (q) => {
+      await q(`select public.trash_listing($1)`, [l2]);
+      await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.s2, role: 'authenticated' })]);
+      expect(await denied(q(`select public.restore_listing($1)`, [l2]))).toMatch(/admin only/);
+    });
+  });
+
+  it('purge: lead keeps the code snapshot, unit goes, files returned, codes are never reused', async () => {
+    await as(id(U.admin), async (q) => {
+      await q(`select public.trash_listing($1)`, [l1]);
+      await q(`reset role`);
+      await q(`insert into public.photos (listing_id, bucket, path, thumb_path, master_path) values ($1, 'listing-public', 'listings/p/a.webp', 'listings/p/thumbs/a.webp', 'listings/p/a.webp')`, [l1]);
+      await q(`set local role authenticated`);
+      const files = (await q(`select public.purge_listing($1) as f`, [l1])).rows[0].f;
+      expect(files).toEqual(expect.arrayContaining([
+        { bucket: 'listing-public', path: 'listings/p/a.webp' }, { bucket: 'listing-public', path: 'listings/p/thumbs/a.webp' }, { bucket: 'listing-master', path: 'listings/p/a.webp' },
+      ]));
+      expect((await q(`select listing_id, listing_code from public.leads where id = $1`, [lead1])).rows[0]).toEqual({ listing_id: null, listing_code: code1 });
+      expect((await q(`select id from public.units where id = $1`, [unit1])).rowCount).toBe(0);
+      // the next publish in the building gets ALT-002, never ALT-001 again
+      expect((await q(`update public.listings set status = 'available' where id = $1 returning code`, [lP])).rows[0].code).toBe('ALT-002');
+    });
+  });
+
+  it('only trashed rows can be purged (leads: also right away for data-removal requests)', async () => {
+    expect(await as(id(U.admin), (q) => denied(q(`select public.purge_listing($1)`, [l2])))).toMatch(/not in the trash/);
+    expect(await as(id(U.admin), (q) => denied(q(`select public.purge_lead($1)`, [lead2])))).toMatch(/not in the trash/);
+    await as(id(U.admin), async (q) => {
+      await q(`select public.purge_lead($1, true)`, [lead2]);
+      expect((await q(`select id from public.leads where id = $1`, [lead2])).rowCount).toBe(0);
+    });
+  });
+
+  it('leads: bulk trash hides them from the assignee; restore brings them back', async () => {
+    await as(id(U.admin), async (q) => {
+      expect((await q(`select public.trash_leads(array[$1, $2]::uuid[]) as n`, [lead1, lead2])).rows[0].n).toBe(2);
+      await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.s1, role: 'authenticated' })]);
+      expect((await q(`select id from public.leads`)).rowCount).toBe(0);
+      await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.admin, role: 'authenticated' })]);
+      expect((await q(`select public.restore_leads(array[$1]::uuid[]) as n`, [lead1])).rows[0].n).toBe(1);
+    });
+  });
+
+  it('building: blocked while it has units; an empty one trashes, restores, and its purged prefix stays reserved', async () => {
+    expect(await as(id(U.admin), (q) => denied(q(`select public.trash_building($1)`, [B])))).toMatch(/còn 4 căn/);
+    await as(id(U.admin), async (q) => {
+      const nb = (await q(`insert into public.buildings (slug, name, code_prefix) values ('emp', 'Empty Tower', 'EMP') returning id`)).rows[0].id;
+      await q(`select public.trash_building($1)`, [nb]);
+      expect((await q(`select slug from public.public_buildings where slug = 'emp'`)).rowCount).toBe(0);
+      await q(`select public.restore_building($1)`, [nb]);
+      expect((await q(`select slug from public.public_buildings where slug = 'emp'`)).rowCount).toBe(1);
+      await q(`select public.trash_building($1)`, [nb]);
+      await q(`select public.purge_building($1)`, [nb]);
+      expect(await denied(q(`insert into public.buildings (slug, name, code_prefix) values ('emp2', 'Empty 2', 'EMP')`))).toMatch(/đã dùng cho một toà nhà đã xoá/);
+    });
+  });
+
+  it('users: holdings block deletion; a deleted profile survives its auth user and loses all access', async () => {
+    expect((await as(id(U.admin), (q) => q(`select * from public.user_holdings($1)`, [U.s1]))).rows[0]).toEqual({ units: 1, open_leads: 1 });
+    expect((await as(id(U.s1), (q) => q(`select * from public.user_holdings($1)`, [U.s1]))).rowCount).toBe(0);
+    await as(id(U.s2), async (q) => {
+      await q(`reset role`);
+      await q(`select set_config('request.jwt.claims', '', true)`);
+      await q(`update public.profiles set full_name = 'Người dùng đã xoá (User s2)', email = null, active = false, deleted_at = now() where id = $1`, [U.s2]);
+      await q(`delete from auth.users where id = $1`, [U.s2]);
+      expect((await q(`select full_name, email from public.profiles where id = $1`, [U.s2])).rows[0]).toEqual({ full_name: 'Người dùng đã xoá (User s2)', email: null });
+      await q(`set local role authenticated`);
+      await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.s2, role: 'authenticated' })]);
+      expect((await q(`select id from public.listings`)).rowCount).toBe(0);
+    });
+  });
+});

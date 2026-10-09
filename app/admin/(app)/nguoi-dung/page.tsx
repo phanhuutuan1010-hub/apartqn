@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
 import { InviteForm } from '@/components/admin/InviteForm';
+import { daysSince } from '@/lib/admin/labels';
 import { UsersTable, type StaffRow } from '@/components/admin/UsersTable';
 
 export const metadata: Metadata = { title: 'Người dùng' };
@@ -9,10 +10,11 @@ export const metadata: Metadata = { title: 'Người dùng' };
 export default async function UsersPage() {
   const me = await requireAdmin();
   const sb = await supabaseServer();
-  const [{ data: users }, { data: units }, { data: leads }] = await Promise.all([
-    sb.from('profiles').select('id, email, full_name, role, can_publish, active, created_at').order('active', { ascending: false }).order('created_at'),
+  const [{ data: users }, { data: units }, { data: leads }, { data: settings }] = await Promise.all([
+    sb.from('profiles').select('id, email, full_name, role, can_publish, active, created_at').is('deleted_at', null).order('active', { ascending: false }).order('created_at'),
     sb.from('units').select('assigned_to'),
     sb.from('leads').select('assigned_to').not('status', 'in', '(won,lost)'),
+    sb.from('settings').select('last_backup_at').maybeSingle(),
   ]);
   const tally = (rows: { assigned_to: string | null }[] | null) => {
     const m = new Map<string, number>();
@@ -32,7 +34,7 @@ export default async function UsersPage() {
       </div>
       <InviteForm />
       <div style={{ marginTop: 16 }}>
-        <UsersTable users={rows} meId={me.id} />
+        <UsersTable users={rows} meId={me.id} backupDays={daysSince(settings?.last_backup_at)} />
       </div>
     </div>
   );

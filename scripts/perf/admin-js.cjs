@@ -26,5 +26,5 @@ for (const m of routes.sort()) {
     total = 0;
     all.forEach((f) => (total += sizeOf(f)[1]));
   }
-  console.log(m.split(path.sep).join('/').replace('.next/server/app', '').replace('/page_client-reference-manifest.js', '').padEnd(40), `${(gz / 1024).toFixed(0)} kB gz route`, `(${(raw / 1024).toFixed(0)} kB raw)`, `· first load ${(total / 1024).toFixed(0)} kB gz`, files.size, 'files');
+  console.log(m.split(path.sep).join('/').replace('.next/server/app', '').replace('/page_client-reference-manifest.js', '').padEnd(40), `${(gz / 1024).toFixed(0)} kB gz route`, `(${(raw / 1024).toFixed(0)} kB raw)`, `· first load ${(total / 1024).toFixed(1)} kB gz`, files.size, 'files');
 }

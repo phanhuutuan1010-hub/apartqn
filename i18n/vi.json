@@ -289,5 +289,8 @@
   "qcCbDone": "Đã nhận số của anh/chị. Chúng tôi sẽ gọi lại trong giờ làm việc.",
   "qcPhoneErr": "Số di động chưa đúng (vd. 0905 123 456).",
   "qcBarCall": "Gọi",
-  "qcBarForm": "Điền form ↓"
+  "qcBarForm": "Điền form ↓",
+  "goneTitle": "Căn này hiện không còn",
+  "goneSub": "Căn hộ bạn tìm đã được cho thuê hoặc gỡ khỏi website. Xem các căn đang trống khác bên dưới.",
+  "goneSee": "Xem căn đang trống"
 }

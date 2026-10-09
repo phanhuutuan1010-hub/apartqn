@@ -50,6 +50,9 @@ body.admin { background: var(--gray-50); font-size: 15px; line-height: 1.5; }
 .a-btn-ghost:hover:not(:disabled) { border-color: var(--gray-500); }
 .a-btn-danger { border-color: #F1B8B2; color: var(--error); }
 .a-btn-danger:hover:not(:disabled) { background: var(--red-50); }
+.a-btn-danger-solid { background: var(--error); border-color: var(--error); color: var(--white); }
+.a-btn-danger-solid:hover:not(:disabled) { filter: brightness(.92); }
+.a-btn-danger-solid:disabled { opacity: .45; }
 .a-btn-sm { min-height: 32px; padding: 0 10px; font-size: 13px; }
 
 /* badges */
@@ -130,6 +133,11 @@ a.a-tab { text-decoration: none; }
 
 /* card rows (lists that must read well on a phone: Khách, Hôm nay) */
 .a-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.a-rows-check > li { display: flex; align-items: stretch; gap: 6px; }
+.a-rows-check > li > .a-row { flex: 1; }
+.a-row-pick { flex: 0 0 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.a-row-pick input { width: 20px; height: 20px; }
+.a-rows-check > li:has(.a-row-check:checked) > .a-row { border-color: var(--blue-500); background: var(--blue-50); }
 .a-row { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--r-card); color: var(--ink-900); text-decoration: none; min-width: 0; }
 .a-row:hover { border-color: var(--blue-200); background: #FAFBFD; }
 .a-row-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; }
@@ -152,7 +160,7 @@ a.a-tab { text-decoration: none; }
 .a-menu > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .a-menu > summary::-webkit-details-marker { display: none; }
 .a-menu > div { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 220px; padding: 6px; display: flex; flex-direction: column; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--r-md); box-shadow: 0 12px 32px rgba(16,24,40,.16); }
-details.a-menu > div > button, details.a-menu > div > a { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: none; font-size: 14px; font-weight: 500; color: var(--ink-900); text-align: left; text-decoration: none; cursor: pointer; white-space: nowrap; width: auto; height: auto; }
+details.a-menu > div > button, details.a-menu > div > a { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: none; font-size: 14px; font-weight: 500; color: var(--ink-900); text-align: left; text-decoration: none; cursor: pointer; white-space: nowrap; width: auto; height: auto; }
 details.a-menu > div > button:hover, details.a-menu > div > a:hover { background: var(--gray-100); }
 details.a-menu > div > .danger { color: var(--error); }
 .a-menu.up > div { top: auto; bottom: calc(100% + 4px); }

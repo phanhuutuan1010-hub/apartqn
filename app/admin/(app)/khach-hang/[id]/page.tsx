@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireStaff, staffDirectory } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
-import { fmtDateTime } from '@/lib/admin/labels';
+import { daysSince, fmtDateTime } from '@/lib/admin/labels';
+import { LeadDeleteMenu } from '@/components/admin/LeadDeleteMenu';
 import { CHANNEL_LABEL, LEAD_STATUS, LEAD_TYPE, consignLine, type LeadStatus, type LeadType } from '@/lib/admin/leadLabels';
 import { LeadControls } from '@/components/admin/LeadPanel';
 import { ConsignActions } from '@/components/admin/ConsignActions';
@@ -34,6 +35,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     const { data: s } = await sb.storage.from('consign-inbox').createSignedUrls(l.photo_paths, 3600);
     (s ?? []).forEach((x) => x.path && x.signedUrl && signed.set(x.path, x.signedUrl));
   }
+  const backupDays = isAdmin ? daysSince((await sb.from('settings').select('last_backup_at').maybeSingle()).data?.last_backup_at) : null;
   const canAssign = isAdmin && type === 'consign' && status === 'new' && !l.listing_id && !l.assigned_to;
   const notes = ([...(l.notes as Note[])]).reverse();
 
@@ -50,6 +52,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             {l.updated_by && <> · Sửa lần cuối bởi <b>{dir.get(l.updated_by)?.name}</b> lúc {fmtDateTime(l.updated_at)}</>}
           </div>
         </div>
+        {isAdmin && <LeadDeleteMenu id={id} name={l.name} backupDays={backupDays} />}
       </div>
       <div className="a-split">
         <div>
@@ -82,7 +85,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             <div className="a-grid">
               <div className="a-field">Điện thoại<span style={{ fontSize: 16, fontWeight: 700 }}><a href={`tel:${l.phone}`}>{l.phone}</a></span></div>
               {type !== 'consign' && <div className="a-field">Căn quan tâm
-                <span style={{ fontSize: 16, fontWeight: 700 }}>{l.listings?.code ? <Link href={`/admin/can-ho/${l.listings.id}`}>{l.listings.code}</Link> : l.search ? <span className="a-badge blue">Nhờ tìm giúp</span> : '—'}</span>
+                <span style={{ fontSize: 16, fontWeight: 700 }}>{l.listings?.code ? <Link href={`/admin/can-ho/${l.listings.id}`}>{l.listings.code}</Link> : l.listing_code ? <span title="Tin đã bị xoá">{l.listing_code} <span className="a-badge outline">đã xoá</span></span> : l.search ? <span className="a-badge blue">Nhờ tìm giúp</span> : '—'}</span>
               </div>}
               <div className="a-field">Ngày muốn xem<span style={{ fontSize: 15 }}>{l.preferred_date ?? '—'}</span></div>
               <div className="a-field">Thời gian thuê<span style={{ fontSize: 15 }}>{l.duration_months ?? '—'}</span></div>

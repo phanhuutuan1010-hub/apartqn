@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { requireStaff, staffDirectory } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
-import { fmtDateTime } from '@/lib/admin/labels';
+import { daysSince, fmtDateTime } from '@/lib/admin/labels';
+import { LeadBulk } from '@/components/admin/LeadBulk';
 import { CHANNEL_LABEL, LEAD_STATUS, LEAD_STATUSES, LEAD_TYPE, LEAD_TYPES, consignLine, type LeadStatus, type LeadType } from '@/lib/admin/leadLabels';
 import { Pager } from '@/components/admin/Table';
 import { TableFilters } from '@/components/admin/TableFilters';
@@ -13,7 +14,7 @@ const PAGE = 25;
 
 type Row = {
   id: string; created_at: string; name: string; phone: string; channel: string; locale: string | null; status: LeadStatus; type: LeadType;
-  assigned_to: string | null; message: string | null; listings: { code: string | null } | null; notes: unknown[]; payload: Record<string, string>;
+  assigned_to: string | null; message: string | null; listings: { code: string | null } | null; listing_code: string | null; notes: unknown[]; payload: Record<string, string>;
 };
 
 /** One inbox: rentals (viewings / manual), "Nhờ tìm giúp" and consign requests. RLS: sales see what is assigned to them. */
@@ -25,7 +26,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const page = Math.max(1, Number(sp.page) || 1);
   const sb = await supabaseServer();
 
-  let q = sb.from('leads').select('id, created_at, name, phone, channel, locale, status, type, assigned_to, message, notes, payload, listings(code)', { count: 'exact' }).eq('status', status);
+  let q = sb.from('leads').select('id, created_at, name, phone, channel, locale, status, type, assigned_to, message, notes, payload, listing_code, listings(code)', { count: 'exact' }).eq('status', status);
   if (type) q = q.eq('type', type);
   const countFor = (st: LeadStatus) => {
     const c = sb.from('leads').select('id', { count: 'exact', head: true }).eq('status', st);
@@ -42,6 +43,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     sb.from('buildings').select('id, name'),
     ...LEAD_STATUSES.map(countFor),
   ]);
+  const isAdmin = me.role === 'admin';
+  const backupDays = isAdmin ? daysSince((await sb.from('settings').select('last_backup_at').maybeSingle()).data?.last_backup_at) : null;
   const rows = (data ?? []) as unknown as Row[];
   const bName = new Map((buildings ?? []).map((b) => [b.id, b.name]));
   const href = (patch: Record<string, string | null>) => {
@@ -58,6 +61,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         </div>
         <Link href="/admin/khach-hang/moi" className="a-btn a-btn-primary"><Plus size={16} aria-hidden /> Thêm khách</Link>
       </div>
+      {sp.done && <div className="a-alert ok" style={{ marginBottom: 12 }}>{sp.done.slice(0, 120)}</div>}
       <div className="a-seg" role="group" aria-label="Loại">
         <Link href={href({ type: null })} className={!type ? 'on' : undefined} aria-current={!type ? 'true' : undefined}>Tất cả</Link>
         {LEAD_TYPES.map((t) => (
@@ -79,13 +83,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             : []),
         ]}
       />
-      <ul className="a-rows">
+      {(() => { const list = (
+      <ul className={`a-rows ${isAdmin ? 'a-rows-check' : ''}`}>
         {rows.map((r) => {
           const what = r.type === 'consign'
             ? consignLine(r.payload, bName)
-            : r.listings?.code ?? (r.type === 'search' ? (r.message ?? '').split('\n')[0] : r.message?.slice(0, 80));
+            : r.listings?.code ?? r.listing_code ?? (r.type === 'search' ? (r.message ?? '').split('\n')[0] : r.message?.slice(0, 80));
           return (
             <li key={r.id}>
+              {isAdmin && <label className="a-row-pick"><input type="checkbox" className="a-row-check" value={r.id} aria-label={`Chọn ${r.name}`} /></label>}
               <Link href={`/admin/khach-hang/${r.id}`} className="a-row">
                 <span className="a-row-main">
                   <b>{r.name}</b>
@@ -102,7 +108,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             </li>
           );
         })}
-      </ul>
+      </ul>); return isAdmin ? <LeadBulk backupDays={backupDays}>{list}</LeadBulk> : list; })()}
       {!rows.length && <div className="a-card a-empty">Không có khách ở mục “{LEAD_STATUS[status].label}”{type ? ` · ${LEAD_TYPE[type].label}` : ''}.</div>}
       <Pager page={page} pageSize={PAGE} total={count ?? 0} sp={{ ...sp, status }} basePath="/admin/khach-hang" />
     </div>

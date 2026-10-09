@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, CalendarCheck, ExternalLink, Home, LogOut, MoreHorizontal, SearchX, Settings, UserRound, Users } from 'lucide-react';
+import { Building2, CalendarCheck, ExternalLink, Home, LogOut, MoreHorizontal, SearchX, Settings, Trash2, UserRound, Users } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { signOut } from '@/app/admin/(auth)/actions';
 import styles from './AdminNav.module.css';
 
-const ICONS = { today: CalendarCheck, listings: Home, leads: UserRound, more: MoreHorizontal, buildings: Building2, users: Users, settings: Settings, demand: SearchX };
+const ICONS = { today: CalendarCheck, listings: Home, leads: UserRound, more: MoreHorizontal, buildings: Building2, users: Users, settings: Settings, demand: SearchX, trash: Trash2 };
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; count?: number };
 
 /** pages reached from "Thêm" (the 4th tab) */

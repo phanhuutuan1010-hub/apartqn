@@ -24,6 +24,7 @@ export default async function AdminAppLayout({ children }: { children: React.Rea
         { href: '/admin/nguoi-dung', label: 'Người dùng', icon: 'users' },
         { href: '/admin/cai-dat', label: 'Cài đặt', icon: 'settings' },
         { href: '/admin/nhu-cau', label: 'Nhu cầu chưa đáp ứng', icon: 'demand' },
+        { href: '/admin/thung-rac', label: 'Thùng rác', icon: 'trash' },
       ]
     : [];
   return (

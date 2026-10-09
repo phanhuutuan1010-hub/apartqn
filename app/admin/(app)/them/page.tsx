@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Building2, ChevronRight, ExternalLink, LogOut, SearchX, Settings, UserCog, Users } from 'lucide-react';
+import { Building2, ChevronRight, ExternalLink, LogOut, SearchX, Settings, Trash2, UserCog, Users } from 'lucide-react';
 import { requireStaff } from '@/lib/admin/session';
 import { signOut } from '@/app/admin/(auth)/actions';
 
@@ -16,6 +16,7 @@ export default async function MorePage() {
       { href: '/admin/nguoi-dung', label: 'Người dùng', sub: 'Mời, phân quyền đăng tin, khoá tài khoản', icon: Users },
       { href: '/admin/cai-dat', label: 'Cài đặt', sub: 'Hotline, nhắc việc, xuất dữ liệu', icon: Settings },
       { href: '/admin/nhu-cau', label: 'Nhu cầu chưa đáp ứng', sub: 'Từ khoá khách tìm mà không ra căn', icon: SearchX },
+      { href: '/admin/thung-rac', label: 'Thùng rác', sub: 'Khôi phục hoặc xoá vĩnh viễn (tự xoá sau 30 ngày)', icon: Trash2 },
     ] : []),
     { href: '/admin/tai-khoan', label: 'Tài khoản của tôi', sub: `${me.full_name || me.email} · Telegram, mật khẩu`, icon: UserCog },
   ];

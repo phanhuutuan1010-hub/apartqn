@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Copy } from 'lucide-react';
+import { Copy, MoreHorizontal } from 'lucide-react';
+import { deleteUser } from '@/lib/admin/trashActions';
+import { ConfirmDialog } from './Danger';
 import { resetLink, transferAll, updateStaff } from '@/lib/admin/userActions';
 
 export type StaffRow = {
@@ -9,10 +11,12 @@ export type StaffRow = {
   created_at: string; units: number; openLeads: number;
 };
 
-export function UsersTable({ users, meId }: { users: StaffRow[]; meId: string }) {
+export function UsersTable({ users, meId, backupDays }: { users: StaffRow[]; meId: string; backupDays: number | null }) {
   const [busy, start] = useTransition();
   const [msg, setMsg] = useState<{ t: 'ok' | 'error'; m: string; link?: string } | null>(null);
   const [transfer, setTransfer] = useState<{ from: string; to: string } | null>(null);
+  const [del, setDel] = useState<StaffRow | null>(null);
+  const [delErr, setDelErr] = useState('');
 
   const run = (fn: () => Promise<{ ok?: string; error?: string; link?: string }>) =>
     start(async () => {
@@ -94,6 +98,14 @@ export function UsersTable({ users, meId }: { users: StaffRow[]; meId: string })
                       ) : (
                         <button type="button" className="a-btn a-btn-outline a-btn-sm" disabled={busy} onClick={() => run(() => updateStaff(u.id, { active: true }))}>Mở khoá</button>
                       ))}
+                      {!self && (
+                        <details className="a-menu">
+                          <summary className="a-btn a-btn-ghost a-btn-sm" aria-label="Thao tác khác"><MoreHorizontal size={16} aria-hidden /></summary>
+                          <div role="menu" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute('open')}>
+                            <button type="button" role="menuitem" className="danger" onClick={() => { setDelErr(''); setDel(u); }}>Xoá tài khoản…</button>
+                          </div>
+                        </details>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -102,6 +114,30 @@ export function UsersTable({ users, meId }: { users: StaffRow[]; meId: string })
           </tbody>
         </table>
       </div>
+
+      {/* holdings → hand over first; otherwise typed-email confirm. Khoá stays the normal way to stop someone. */}
+      <ConfirmDialog open={!!del} title={del && (del.units || del.openLeads) ? 'Chuyển giao trước' : `Xoá tài khoản ${del?.full_name || del?.email}?`}
+        confirmLabel={del && (del.units || del.openLeads) ? 'Mở chuyển giao' : 'Xoá tài khoản'} busy={busy} error={delErr}
+        typed={del && !(del.units || del.openLeads) ? del.email : undefined} typedLabel="Nhập email"
+        backupDays={del && !(del.units || del.openLeads) ? backupDays : undefined}
+        onClose={() => setDel(null)}
+        onConfirm={() => {
+          if (!del) return;
+          if (del.units || del.openLeads) { setTransfer({ from: del.id, to: '' }); setDel(null); return; }
+          start(async () => {
+            const r = await deleteUser(del.id, del.email);
+            if (r.error) return setDelErr(r.error);
+            setDel(null);
+            setMsg({ t: 'ok', m: r.ok ?? '' });
+          });
+        }}>
+        {del && (del.units || del.openLeads) ? (
+          <>{del.full_name || del.email} còn <b>{del.units} căn</b> và <b>{del.openLeads} khách đang mở</b>. Chuyển giao cho người khác rồi mới xoá được.</>
+        ) : (
+          <>Người này không đăng nhập được nữa và tài khoản đăng nhập bị xoá hẳn. Tên vẫn hiện ở các bản ghi cũ dưới dạng “Người dùng đã xoá”.
+            Nếu chỉ cần chặn tạm thời, hãy dùng <b>Khoá</b>.</>
+        )}
+      </ConfirmDialog>
     </>
   );
 }

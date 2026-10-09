@@ -8,6 +8,7 @@ import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
 import { fmtDateTime } from '@/lib/admin/labels';
 import { BuildingForm, type BuildingData } from '@/components/admin/BuildingForm';
+import { BuildingDelete } from '@/components/admin/BuildingDelete';
 import type { PhotoView } from '@/components/admin/PhotoManager';
 import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
 
@@ -69,6 +70,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
             <div role="menu">
               <Link role="menuitem" href={`/admin/toa-nha/moi?from=${id}`}><Copy size={14} aria-hidden /> Nhân bản toà nhà</Link>
               <a role="menuitem" href={`/toa-nha/${b.slug}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
+              <BuildingDelete id={id} name={b.name} slug={b.slug} />
             </div>
           </details>
         )}

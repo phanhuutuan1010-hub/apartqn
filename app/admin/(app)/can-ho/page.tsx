@@ -78,6 +78,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
       {error && <div className="a-alert error" style={{ marginBottom: 12 }}>Không tải được dữ liệu: {error.message}</div>}
 
       <ListingsList
+        trashed={sp.trashed && /^[0-9a-f-]{36}$/.test(sp.trashed) ? { id: sp.trashed, label: (sp.label ?? '').slice(0, 40) } : undefined}
         rows={rows.map((r): ListRow => {
           const d = daysSince(r.verified_at);
           const isPublic = r.status === 'available' || r.status === 'reserved';

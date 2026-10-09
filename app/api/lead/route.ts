@@ -32,7 +32,7 @@ async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>) {
   const code = lead.code.toUpperCase();
   const { data: l } = await sb.from('listings')
     .select('id, code, status, units(assigned_to, buildings(name))')
-    .eq('code', code).in('status', ['available', 'reserved', 'rented']).maybeSingle();
+    .eq('code', code).in('status', ['available', 'reserved', 'rented']).is('deleted_at', null).maybeSingle();
   if (!l) return { invalid: true as const };
   const unit = l.units as unknown as { assigned_to: string | null; buildings: { name: string } };
   const adminList = await admins(sb);
