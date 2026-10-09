@@ -196,8 +196,18 @@ describe('sales (assignee scope)', () => {
     expect(r.err).toMatch(/only admins can reassign/);
   });
 
-  it('consign inbox: invisible until assigned', async () => {
+  it('consign leads: invisible until assigned; archive table unreadable', async () => {
+    expect((await as(id(U.s1), (q) => q(`select id from public.leads where type='consign'`))).rowCount).toBe(0);
     expect((await as(id(U.s1), (q) => q(`select id from public.consign_inbox`))).rowCount).toBe(0);
+  });
+
+  it('cannot create consign leads or rewrite a lead request', async () => {
+    const r = await as(id(U.s1), async (q) => [
+      await denied(q(`insert into public.leads (type, name, phone) values ('consign', 'X', '0900')`)),
+      await denied(q(`update public.leads set payload='{"rent":"1"}' where id=$1`, [lead1])),
+      await denied(q(`update public.leads set type='consign' where id=$1`, [lead1])),
+    ]);
+    r.forEach((m) => expect(m).toMatch(/consign leads|change the request/));
   });
 
   it('cannot run admin rpc', async () => {
@@ -264,7 +274,7 @@ describe('admin', () => {
       (await q(`select 1 from public.consign_inbox`)).rowCount,
       (await q(`select 1 from public.profiles`)).rowCount,
     ]);
-    expect(r).toEqual([4, 4, 2, 1, 5]);
+    expect(r).toEqual([4, 4, 3, 1, 5]); // leads: 2 + the consign request (migration 15)
   });
 
   it('admin submit publishes directly', async () => {
@@ -311,11 +321,11 @@ describe('admin', () => {
     expect(msg).toMatch(/missing required fields/);
   });
 
-  it('assigning consign makes it visible to the assignee', async () => {
+  it('assigning a consign lead makes it (and its photos) visible to the assignee', async () => {
     const n = await as(id(U.admin), async (q) => {
-      await q(`update public.consign_inbox set status='assigned', assigned_to=$1 where id=$2`, [U.s1, consign1]);
+      await q(`update public.leads set assigned_to=$1 where id=$2`, [U.s1, consign1]);
       await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.s1, role: 'authenticated' })]);
-      const rows = (await q(`select id from public.consign_inbox`)).rowCount;
+      const rows = (await q(`select id from public.leads where type='consign'`)).rowCount;
       const photo = (await q(`select private.can_read_object('consign-inbox', 'up1/1.jpg') as ok`)).rows[0].ok;
       const other = (await q(`select private.can_read_object('consign-inbox', 'up2/1.jpg') as ok`)).rows[0].ok;
       return [rows, photo, other];
@@ -387,32 +397,56 @@ describe('admin helpers (migration 6)', () => {
   });
 });
 
-describe('consign assignment + lead notes (migration 7)', () => {
+describe('consign leads + lead notes (migrations 7, 15)', () => {
   const newConsign = async () =>
-    (await root(`insert into public.consign_inbox (building_id, floor, area, beds, rent, owner_name, owner_phone)
-                 values ($1, '14', '72,5 m2', '2', '12.000.000 đ', 'Chủ Mới', '0912345678') returning id`, [B])).rows[0].id as string;
+    (await root(`insert into public.leads (type, name, phone, payload) values ('consign', 'Chủ Mới', '0912345678',
+                 jsonb_build_object('building_id', $1::text, 'floor', '14', 'area', '72,5 m2', 'beds', '2', 'rent', '12.000.000 đ')) returning id`, [B])).rows[0].id as string;
+
+  it('consign_inbox rows were copied into leads (same id, request in payload, photos kept)', async () => {
+    const r = (await root(`select type, name, phone, status, assigned_to, payload->>'rent' as rent, photo_paths from public.leads where id=$1`, [consign1])).rows[0];
+    expect(r).toEqual({ type: 'consign', name: 'Chủ ký gửi', phone: '0911', status: 'new', assigned_to: null, rent: '10.000.000', photo_paths: ['up1/1.jpg'] });
+  });
 
   it('admin assigns → unit with owner data + prefilled draft, visible to the assignee', async () => {
     const c = await newConsign();
     const r = await as(id(U.admin), async (q) => {
-      const lid = (await q(`select public.assign_consign($1, $2, $3, 14, '14-08') as id`, [c, U.s2, B])).rows[0].id;
+      const lid = (await q(`select public.assign_consign_lead($1, $2, $3, 14, '14-08') as id`, [c, U.s2, B])).rows[0].id;
       const l = (await q(`select status, rent, area, beds, code, assigned_to from public.admin_listings where id=$1`, [lid])).rows[0];
-      const inbox = (await q(`select status, assigned_to, listing_id from public.consign_inbox where id=$1`, [c])).rows[0];
+      const lead = (await q(`select status, assigned_to, listing_id, payload ? 'unit_id' as has_unit from public.leads where id=$1`, [c])).rows[0];
       await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.s2, role: 'authenticated' })]);
       const seen = (await q(`select u.owner_phone from public.units u join public.listings x on x.unit_id=u.id where x.id=$1`, [lid])).rows[0];
-      const again = await denied(q(`select public.assign_consign($1, $2, $3, 15, '1509')`, [c, U.s1, B]));
-      return { lid, l, inbox, seen, again };
+      const lead2 = (await q(`select id from public.leads where id=$1`, [c])).rowCount;
+      const again = await denied(q(`select public.assign_consign_lead($1, $2, $3, 15, '1509')`, [c, U.s1, B]));
+      return { lid, l, lead, seen, lead2, again };
     });
     expect(r.l).toMatchObject({ status: 'draft', rent: '12000000', area: '72.5', beds: 2, code: null, assigned_to: U.s2 });
-    expect(r.inbox).toEqual({ status: 'assigned', assigned_to: U.s2, listing_id: r.lid });
+    expect(r.lead).toEqual({ status: 'new', assigned_to: U.s2, listing_id: r.lid, has_unit: true });
     expect(r.seen).toEqual({ owner_phone: '0912345678' });
+    expect(r.lead2).toBe(1);
     expect(r.again).toMatch(/admin only/);
   });
 
   it('sales cannot assign; cannot assign twice; inactive assignee refused', async () => {
     const c = await newConsign();
-    expect(await as(id(U.s1), (q) => denied(q(`select public.assign_consign($1, $2, $3, 1, '0101')`, [c, U.s1, B])))).toMatch(/admin only/);
-    expect(await as(id(U.admin), (q) => denied(q(`select public.assign_consign($1, $2, $3, 1, '0101')`, [c, U.off, B])))).toMatch(/not an active/);
+    expect(await as(id(U.s1), (q) => denied(q(`select public.assign_consign_lead($1, $2, $3, 1, '0101')`, [c, U.s1, B])))).toMatch(/admin only/);
+    expect(await as(id(U.admin), (q) => denied(q(`select public.assign_consign_lead($1, $2, $3, 1, '0101')`, [c, U.off, B])))).toMatch(/not an active/);
+    expect(await as(id(U.admin), async (q) => {
+      await q(`select public.assign_consign_lead($1, $2, $3, 1, '0101')`, [c, U.s1, B]);
+      return denied(q(`select public.assign_consign_lead($1, $2, $3, 2, '0201')`, [c, U.s1, B]));
+    })).toMatch(/already handled/);
+  });
+
+  it('a late insert into the archive table is mirrored into leads', async () => {
+    const r = await as('service', async (q) => {
+      const cid = (await q(`insert into public.consign_inbox (rent, owner_name, owner_phone) values ('9tr', 'Chủ Muộn', '0999') returning id`)).rows[0].id;
+      return (await q(`select type, name from public.leads where id=$1`, [cid])).rows[0];
+    });
+    expect(r).toEqual({ type: 'consign', name: 'Chủ Muộn' });
+  });
+
+  it('settings.hotline validated; the QN sequence is gone', async () => {
+    expect(await as(id(U.admin), (q) => denied(q(`update public.settings set hotline='call me' where id=1`)))).toMatch(/check constraint/);
+    expect((await root(`select to_regclass('public.listing_code_seq') as s`)).rows[0].s).toBeNull();
   });
 
   it('add_lead_note: assignee appends, others cannot', async () => {
