@@ -24,6 +24,18 @@ export async function saveThresholds(_: Res, fd: FormData): Promise<Res> {
   return { ok: 'Đã lưu.' };
 }
 
+/** Site hotline used in "Tạo bài đăng" (empty → the site's default number). */
+export async function saveHotline(_: Res, fd: FormData): Promise<Res> {
+  await requireAdmin();
+  const v = String(fd.get('hotline') ?? '').trim();
+  if (v && !/^[0-9+() .-]{6,24}$/.test(v)) return { error: 'Số điện thoại chỉ gồm số, dấu cách, + ( ) . - (6–24 ký tự).' };
+  const sb = await supabaseServer();
+  const { error } = await sb.from('settings').update({ hotline: v || null }).eq('id', 1);
+  if (error) return { error: 'Lỗi: ' + error.message };
+  revalidatePath('/admin/cai-dat');
+  return { ok: 'Đã lưu hotline.' };
+}
+
 const Me = z.object({
   full_name: z.string().trim().min(1, 'Nhập họ tên').max(120),
   phone: z.string().trim().max(30).regex(/^[0-9+()\-.\s]*$/, 'SĐT không hợp lệ'),

@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import { saveMyProfile, saveThresholds, testTelegram } from '@/lib/admin/settingsActions';
+import { saveHotline, saveMyProfile, saveThresholds, testTelegram } from '@/lib/admin/settingsActions';
 
 type Res = { ok?: string; error?: string };
 const Msg = ({ s }: { s: Res }) =>
@@ -18,6 +18,21 @@ export function ThresholdsForm({ v }: { v: { verify_remind_days: number; verify_
         <label className="a-field">Tự ẩn tin sau<span className="a-suffix"><input className="input" name="verify_hide_days" inputMode="numeric" defaultValue={v.verify_hide_days} /><span>ngày</span></span></label>
         <label className="a-field">Cảnh báo sao lưu sau<span className="a-suffix"><input className="input" name="backup_warn_days" inputMode="numeric" defaultValue={v.backup_warn_days} /><span>ngày</span></span></label>
       </div>
+      <Msg s={state} />
+      <button className="a-btn a-btn-blue" style={{ marginTop: 14 }} disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>
+    </form>
+  );
+}
+
+export function HotlineForm({ value, fallback }: { value: string | null; fallback: string }) {
+  const [state, action, pending] = useActionState<Res, FormData>(saveHotline, {});
+  return (
+    <form action={action} className="a-card">
+      <h2 className="a-section-title">Hotline</h2>
+      <p className="a-small a-muted" style={{ margin: '-6px 0 12px' }}>Số mặc định trong “Tạo bài đăng” (sales vẫn sửa được trước khi sao chép). Để trống = {fallback}.</p>
+      <label className="a-field" style={{ maxWidth: 320 }}>Số điện thoại
+        <input className="input" name="hotline" type="tel" defaultValue={value ?? ''} placeholder={fallback} maxLength={24} />
+      </label>
       <Msg s={state} />
       <button className="a-btn a-btn-blue" style={{ marginTop: 14 }} disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>
     </form>

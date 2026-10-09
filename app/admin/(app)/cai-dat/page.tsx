@@ -3,7 +3,8 @@ import { DatabaseBackup } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
 import { daysSince, fmtDateTime } from '@/lib/admin/labels';
-import { ThresholdsForm } from '@/components/admin/SettingsForms';
+import { HotlineForm, ThresholdsForm } from '@/components/admin/SettingsForms';
+import { SITE } from '@/data/site';
 
 export const metadata: Metadata = { title: 'Cài đặt' };
 
@@ -32,6 +33,8 @@ export default async function SettingsPage() {
           <button className="a-btn a-btn-blue">Xuất dữ liệu (.zip)</button>
         </form>
       </section>
+
+      <HotlineForm value={s?.hotline ?? null} fallback={SITE.phoneDisplay} />
 
       <ThresholdsForm v={{ verify_remind_days: s?.verify_remind_days ?? 14, verify_hide_days: s?.verify_hide_days ?? 21, backup_warn_days: s?.backup_warn_days ?? 7 }} />
     </div>
