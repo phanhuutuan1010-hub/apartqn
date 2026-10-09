@@ -8,19 +8,22 @@
 .pill input { position: absolute; opacity: 0; pointer-events: none; }
 .pillOn { border-color: var(--blue-500); color: var(--blue-500); background: var(--blue-50); }
 .grid { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
-.item { border-radius: var(--r-md); overflow: hidden; background: var(--white); cursor: grab; border: 1px solid var(--gray-200); display: flex; flex-direction: column; }
+.item { position: relative; border-radius: var(--r-md); background: var(--white); cursor: grab; border: 1px solid var(--gray-200); display: flex; flex-direction: column; }
 .media { position: relative; aspect-ratio: 4 / 3; background: var(--gray-100); }
-.item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.item img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: var(--r-md) var(--r-md) 0 0; }
+.item:has(details[open]) { z-index: 5; }
 .dragging { opacity: .4; }
 .tags { position: absolute; top: 6px; left: 6px; display: flex; gap: 4px; flex-wrap: wrap; }
 .tools { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 2px; justify-content: flex-end; padding: 6px; background: linear-gradient(transparent, rgba(11,21,48,.55)); }
-.tools button { width: 30px; height: 30px; border: 0; border-radius: 8px; background: rgba(255,255,255,.94); color: var(--ink-900); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.tools button, .tools summary { width: 30px; height: 30px; border: 0; border-radius: 8px; background: rgba(255,255,255,.94); color: var(--ink-900); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .tools button:disabled { opacity: .35; cursor: default; }
 .tools button:hover:not(:disabled) { background: var(--white); color: var(--blue-500); }
 .tools .danger:hover:not(:disabled) { color: var(--error); }
 .tools button.on { background: var(--blue-500); color: var(--white); }
 .tools button.on:hover:not(:disabled) { background: var(--blue-600); color: var(--white); }
 .foot { display: flex; align-items: center; min-height: 40px; padding: 4px 8px; border-top: 1px solid var(--gray-100); }
+.pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.dropHint { font-size: 13px; color: var(--gray-500); }
 .wm { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 2px; font-size: 13px; font-weight: 600; color: var(--ink-900); cursor: pointer; }
 .track { position: relative; width: 32px; height: 18px; border-radius: 9px; background: var(--gray-300); transition: background .15s; flex: none; }
 .track span { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--white); transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }

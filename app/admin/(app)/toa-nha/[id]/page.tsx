@@ -1,14 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink, MoreHorizontal } from 'lucide-react';
 import { EMPTY_FEES, FEE_FIELDS, toBuildingFees } from '@/lib/fees';
 import { requireAdmin, staffDirectory } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
 import { fmtDateTime } from '@/lib/admin/labels';
 import { BuildingForm, type BuildingData } from '@/components/admin/BuildingForm';
-import { PhotoManager, type PhotoView } from '@/components/admin/PhotoManager';
+import type { PhotoView } from '@/components/admin/PhotoManager';
+import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
 
 export const metadata: Metadata = { title: 'Toà nhà' };
 
@@ -63,15 +64,18 @@ export default async function BuildingEditPage({ params, searchParams }: { param
           {meta && <div className="a-sub">Sửa lần cuối {meta.updated_by ? <>bởi <b>{dir.get(meta.updated_by)?.name}</b> </> : ''}lúc {fmtDateTime(meta.updated_at)}</div>}
         </div>
         {!isNew && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Link className="a-btn a-btn-ghost a-btn-sm" href={`/admin/toa-nha/moi?from=${id}`}><Copy size={14} aria-hidden /> Nhân bản toà nhà</Link>
-            <a className="a-btn a-btn-ghost a-btn-sm" href={`/toa-nha/${b.slug}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
-          </div>
+          <details className="a-menu">
+            <summary className="a-btn a-btn-ghost a-btn-sm" aria-label="Thao tác với toà nhà"><MoreHorizontal size={16} aria-hidden /></summary>
+            <div role="menu">
+              <Link role="menuitem" href={`/admin/toa-nha/moi?from=${id}`}><Copy size={14} aria-hidden /> Nhân bản toà nhà</Link>
+              <a role="menuitem" href={`/toa-nha/${b.slug}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
+            </div>
+          </details>
         )}
       </div>
       {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo toà nhà. Thêm ảnh bên dưới.</div>}
       {copiedFrom && <div className="a-alert info" style={{ marginBottom: 14 }}>Bản sao từ <b>{copiedFrom}</b>: đã chép phí, tiện ích, mô tả. Nhập tên, đường dẫn, tiền tố mã và địa chỉ rồi bấm Tạo toà nhà.</div>}
-      <BuildingForm b={b} codedListings={coded} photos={isNew ? undefined : <PhotoManager owner={{ kind: 'building', id }} photos={photos} />} />
+      <BuildingForm b={b} codedListings={coded} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
     </div>
   );
 }

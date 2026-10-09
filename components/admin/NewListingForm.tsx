@@ -3,12 +3,13 @@
 import { useActionState, useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { checkDuplicate, createDraft, type ActionResult } from '@/lib/admin/listingActions';
+import { PasteBox, type PasteBuilding } from './PasteBox';
 
 type Opt = { value: string; label: string };
 
 type From = { id: string; building: string; ownerVisible: boolean };
 
-export function NewListingForm({ buildings, staff, isAdmin, meId, from }: { buildings: Opt[]; staff: Opt[]; isAdmin: boolean; meId: string; from?: From }) {
+export function NewListingForm({ buildings, staff, isAdmin, meId, from, pasteBuildings }: { buildings: Opt[]; staff: Opt[]; isAdmin: boolean; meId: string; from?: From; pasteBuildings: PasteBuilding[] }) {
   const [state, action, pending] = useActionState<ActionResult, FormData>(createDraft, {});
   const [v, setV] = useState({ building: from?.building ?? '', floor: '', unit_no: '' });
   const [dup, setDup] = useState<{ name: string; at: string | null } | null>(null);
@@ -25,9 +26,30 @@ export function NewListingForm({ buildings, staff, isAdmin, meId, from }: { buil
     setV((s) => ({ ...s, [k]: e.target.value }));
   };
   const fe = state.fieldErrors ?? {};
+  const [pasted, setPasted] = useState('');
 
   return (
-    <form action={action} className="a-card" style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 720 }}>
+    {!from && (
+      <PasteBox
+        buildings={pasteBuildings}
+        only={['building', 'floor', 'unit_no']}
+        current={() => ({ building: pasteBuildings.find((b) => b.id === v.building)?.slug ?? '', floor: v.floor, unit_no: v.unit_no })}
+        onApply={(x) => {
+          setDup(null);
+          setV((c) => ({
+            building: (x.building && pasteBuildings.find((b) => b.slug === x.building)?.id) || c.building,
+            floor: x.floor ?? c.floor,
+            unit_no: x.unit_no ?? c.unit_no,
+          }));
+        }}
+        onText={setPasted}
+      />
+    )}
+    <form action={action} className="a-card" onSubmit={() => {
+      // the rest of the message (price, area, fees…) is offered again on the next page
+      try { if (pasted.trim()) sessionStorage.setItem('aqn.paste.next', JSON.stringify({ t: Date.now(), text: pasted })); } catch {}
+    }}>
       <div className="a-section-title">Căn nào?</div>
       <div className="a-grid">
         <label className={`a-field span2 ${fe.building ? 'invalid' : ''}`}>Toà nhà
@@ -76,5 +98,6 @@ export function NewListingForm({ buildings, staff, isAdmin, meId, from }: { buil
       </div>
       <p className="a-small a-muted" style={{ margin: '12px 0 0' }}>Căn mới luôn bắt đầu ở trạng thái Nháp. Mã căn (vd. ALT-001) được cấp khi đăng tin lần đầu.</p>
     </form>
+    </div>
   );
 }

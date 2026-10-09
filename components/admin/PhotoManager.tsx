@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, RotateCcw, Star, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, Eye, Lock, MoreHorizontal, RotateCcw, Star, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { deletePhoto, photoPrefix, prepareMasterUpload, registerPhotos, reorderPhotos, setCover, setVisibility, setWatermark, type PhotoOwner } from '@/lib/admin/photoActions';
 import { ACCEPT, classify, MAX_FILES, prepareImage } from '@/lib/admin/imageInput';
@@ -28,6 +28,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
   const [drag, setDrag] = useState<string | null>(null);
   const [, start] = useTransition();
   const input = useRef<HTMLInputElement>(null);
+  const camera = useRef<HTMLInputElement>(null);
 
   const byId = new Map(photos.map((p) => [p.id, p]));
   const list = (order ?? photos.map((p) => p.id)).map((id) => byId.get(id)).filter(Boolean) as PhotoView[];
@@ -145,12 +146,15 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
       >
         <Upload size={22} aria-hidden />
         <div>
-          <b>Kéo thả ảnh vào đây</b> hoặc{' '}
-          <button type="button" className={styles.link} onClick={() => input.current?.click()}>chọn tệp</button>
-          {' · '}JPG, PNG, HEIC, WebP · tối đa {MAX_FILES} ảnh, mỗi ảnh ≤ 25MB
+          <div className={styles.pick}>
+            <button type="button" className="a-btn a-btn-outline" onClick={() => camera.current?.click()}><Camera size={16} aria-hidden /> Chụp ảnh</button>
+            <button type="button" className="a-btn a-btn-ghost" onClick={() => input.current?.click()}>Chọn ảnh</button>
+            <span className={styles.dropHint}>hoặc kéo thả vào đây</span>
+          </div>
+          JPG, PNG, HEIC, WebP · tối đa {MAX_FILES} ảnh mỗi lần, mỗi ảnh ≤ 25MB
           <div className="a-small a-muted">
             Tự xoay đúng chiều, xoá thông tin vị trí (GPS), nén WebP 1600px.{' '}
-            {isBuilding ? 'Ảnh toà nhà mặc định không gắn watermark.' : 'Ảnh công khai tự gắn watermark ApartQN; ảnh nội bộ không bao giờ.'}
+            {isBuilding ? 'Ảnh toà nhà mặc định không gắn watermark.' : 'Ảnh công khai mặc định gắn watermark ApartQN; ảnh nội bộ không bao giờ.'} Bật/tắt từng ảnh ở nút “…”.
           </div>
         </div>
         {!isBuilding && (
@@ -165,6 +169,8 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
           </div>
         )}
         <input ref={input} type="file" accept={ACCEPT} multiple hidden onChange={(e) => { upload(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
+        {/* phones: opens the camera directly; same compress / watermark pipeline */}
+        <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { upload(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
       </div>
 
       {queue.length > 0 && (
@@ -209,38 +215,31 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
                 <div className={styles.tools}>
                   <button type="button" title="Sang trái" aria-label="Sang trái" onClick={() => move(p.id, -1)} disabled={i === 0}><ArrowLeft size={15} /></button>
                   <button type="button" title="Sang phải" aria-label="Sang phải" onClick={() => move(p.id, 1)} disabled={i === list.length - 1}><ArrowRight size={15} /></button>
-                  {p.visibility === 'public' && !p.is_cover && (
-                    <button type="button" title="Đặt làm ảnh bìa" aria-label="Đặt làm ảnh bìa" onClick={() => act(() => setCover(owner, p.id))}><Star size={15} /></button>
-                  )}
-                  {!isBuilding && <button
-                    type="button"
-                    title={p.visibility === 'public' ? 'Chuyển sang nội bộ (ẩn khỏi website)' : 'Chuyển sang công khai'}
-                    aria-label={p.visibility === 'public' ? 'Chuyển sang nội bộ' : 'Chuyển sang công khai'}
-                    onClick={() => act(() => setVisibility(owner, p.id, p.visibility === 'public' ? 'internal' : 'public'))}
-                  >
-                    {p.visibility === 'public' ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>}
-                  <button type="button" title="Xoá ảnh" aria-label="Xoá ảnh" className={styles.danger} onClick={() => confirm('Xoá ảnh này?') && act(() => deletePhoto(owner, p.id))}><Trash2 size={15} /></button>
+                  <details className="a-menu up">
+                    <summary aria-label="Thao tác với ảnh" title="Thao tác"><MoreHorizontal size={16} /></summary>
+                    <div role="menu" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute('open')}>
+                      {p.visibility === 'public' && !p.is_cover && (
+                        <button type="button" role="menuitem" onClick={() => act(() => setCover(owner, p.id))}>Đặt làm ảnh bìa</button>
+                      )}
+                      {!isBuilding && (
+                        <button type="button" role="menuitem" onClick={() => act(() => setVisibility(owner, p.id, p.visibility === 'public' ? 'internal' : 'public'))}>
+                          {p.visibility === 'public' ? 'Chuyển sang nội bộ (ẩn khỏi website)' : 'Chuyển sang công khai'}
+                        </button>
+                      )}
+                      {p.visibility === 'public' && (
+                        <button type="button" role="menuitem" onClick={() => act(() => setWatermark(owner, p.id, !p.watermark))}>
+                          {p.watermark ? 'Tắt watermark' : 'Bật watermark'}
+                        </button>
+                      )}
+                      <button type="button" role="menuitem" className="danger" onClick={() => confirm('Xoá ảnh này?') && act(() => deletePhoto(owner, p.id))}>Xoá ảnh</button>
+                    </div>
+                  </details>
                 </div>
               </div>
               <div className={styles.foot}>
-                {p.visibility === 'public' ? (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={p.watermark}
-                    className={styles.wm}
-                    title={p.watermark
-                      ? 'Đang bật: ảnh trên website có chữ ApartQN mờ ở phần dưới. Bấm để tắt (tạo lại ảnh không watermark).'
-                      : 'Đang tắt: ảnh trên website không có watermark. Bấm để bật (tạo lại ảnh có chữ ApartQN mờ).'}
-                    onClick={() => act(() => setWatermark(owner, p.id, !p.watermark))}
-                  >
-                    <span className={`${styles.track} ${p.watermark ? styles.trackOn : ''}`} aria-hidden><span /></span>
-                    Watermark {p.watermark ? 'bật' : 'tắt'}
-                  </button>
-                ) : (
-                  <span className="a-small a-muted">Không công khai · không watermark</span>
-                )}
+                {p.visibility === 'public'
+                  ? <span className="a-small a-muted">Công khai · watermark {p.watermark ? 'bật' : 'tắt'}</span>
+                  : <span className="a-small a-muted">Nội bộ · không watermark</span>}
               </div>
             </li>
           ))}

@@ -15,9 +15,11 @@ const noto = localFont({
 export const metadata: Metadata = {
   title: { default: 'Quản trị · ApartQN', template: '%s · Quản trị ApartQN' },
   robots: { index: false, follow: false },
+  manifest: '/admin/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'ApartQN QT', statusBarStyle: 'default' },
 };
 
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0039A6' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0039A6', viewportFit: 'cover' };
 
 /** Root layout for /admin (Vietnamese only, never indexed). */
 export default function AdminRootLayout({ children }: { children: React.ReactNode }) {

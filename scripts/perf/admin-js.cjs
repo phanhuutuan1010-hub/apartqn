@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 // Perf measurement helper (read-only). Run: node --env-file=.env.local scripts/perf/admin-js.cjs
-// Client JS per admin route (first load) from the build's client-reference manifests: entryJSFiles + root main files.
+// Client JS per admin route from the build's client-reference manifests: route chunks (entryJSFiles) and total first load (+ root main files).
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
 const root = '.next/server/app/admin';
 const routes = [];
@@ -18,5 +18,13 @@ for (const m of routes.sort()) {
   Object.values(man.entryJSFiles ?? {}).forEach((l) => l.forEach((f) => files.add(f)));
   let raw = 0, gz = 0;
   files.forEach((f) => { const [r, g] = sizeOf(f); raw += r; gz += g; });
-  console.log(m.split(path.sep).join('/').replace('.next/server/app', '').replace('/page_client-reference-manifest.js', '').padEnd(40), `${(gz / 1024).toFixed(0)} kB gz`, `(${(raw / 1024).toFixed(0)} kB)`, files.size, 'files');
+  // + framework / runtime chunks every page loads (rootMainFiles) = total first-load JS
+  const bm = path.join(path.dirname(m), 'page', 'build-manifest.json');
+  let total = gz;
+  if (fs.existsSync(bm)) {
+    const all = new Set([...files, ...JSON.parse(fs.readFileSync(bm, 'utf8')).rootMainFiles]);
+    total = 0;
+    all.forEach((f) => (total += sizeOf(f)[1]));
+  }
+  console.log(m.split(path.sep).join('/').replace('.next/server/app', '').replace('/page_client-reference-manifest.js', '').padEnd(40), `${(gz / 1024).toFixed(0)} kB gz route`, `(${(raw / 1024).toFixed(0)} kB raw)`, `· first load ${(total / 1024).toFixed(0)} kB gz`, files.size, 'files');
 }

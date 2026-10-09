@@ -11,7 +11,7 @@ export default async function NewListingPage({ searchParams }: { searchParams: P
   const { from } = await searchParams;
   const sb = await supabaseServer();
   const [{ data: buildings }, dir, src] = await Promise.all([
-    sb.from('buildings').select('id, name').order('sort'),
+    sb.from('buildings').select('id, name, slug, aliases, code_prefix').order('sort'),
     staffDirectory(),
     // duplicate source: RLS → sales only see their own listings
     from && /^[0-9a-f-]{36}$/.test(from)
@@ -35,6 +35,7 @@ export default async function NewListingPage({ searchParams }: { searchParams: P
         staff={[...dir.values()].filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
         isAdmin={me.role === 'admin'}
         meId={me.id}
+        pasteBuildings={(buildings ?? []).map((b) => ({ id: b.id, slug: b.slug, name: b.name, aliases: b.aliases ?? [], prefix: b.code_prefix ?? undefined }))}
         from={source ? { id: source.id, building: source.building_id, ownerVisible: !!(owner?.owner_name || owner?.owner_phone) } : undefined}
       />
     </div>

@@ -8,11 +8,13 @@ import { publicPhotoUrl } from '@/lib/repoMap';
 import { FEE_FIELDS, toBuildingFees } from '@/lib/fees';
 import { STATUS_LABEL, STATUS_TONE, fmtDateTime, daysSince, type ListingStatusAll } from '@/lib/admin/labels';
 import { ListingForm, type BuildingOpt, type ListingData, type UnitData } from '@/components/admin/ListingForm';
-import { PhotoManager, type PhotoView } from '@/components/admin/PhotoManager';
+import type { PhotoView } from '@/components/admin/PhotoManager';
+import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
 import { ListingRowActions } from '@/components/admin/ListingRowActions';
+import { PostButton } from '@/components/admin/PostButton';
 
 export const metadata: Metadata = { title: 'Sửa căn' };
-const BUILDING_COLS = `id, name, slug, default_fees, ${FEE_FIELDS.join(', ')}`;
+const BUILDING_COLS = `id, name, slug, aliases, code_prefix, default_fees, ${FEE_FIELDS.join(', ')}`;
 
 export default async function EditListingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string; copied?: string; copyError?: string }> }) {
   const { id } = await params;
@@ -70,6 +72,7 @@ export default async function EditListingPage({ params, searchParams }: { params
           {isPublic && listing.code && (
             <a className="a-btn a-btn-ghost a-btn-sm" href={`/can-ho/${listing.code.toLowerCase()}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
           )}
+          <PostButton id={id} />
           <ListingRowActions id={id} status={status} role={me.role} canPublish={me.can_publish} />
         </div>
       </div>
@@ -85,11 +88,12 @@ export default async function EditListingPage({ params, searchParams }: { params
       <ListingForm
         listing={listing as ListingData}
         unit={unit as UnitData}
-        buildings={((buildings ?? []) as unknown as Record<string, unknown>[]).map((x) => ({ id: x.id, name: x.name, default_fees: x.default_fees ?? {}, fees: toBuildingFees(x) }) as BuildingOpt)}
+        buildings={((buildings ?? []) as unknown as Record<string, unknown>[]).map((x) => ({ id: x.id, name: x.name, slug: x.slug, aliases: x.aliases ?? [], prefix: x.code_prefix ?? null, default_fees: x.default_fees ?? {}, fees: toBuildingFees(x) }) as BuildingOpt)}
         staff={[...dir.values()].filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
         isAdmin={me.role === 'admin'}
         canPublish={me.role === 'admin' || me.can_publish}
-        photos={<PhotoManager owner={{ kind: 'listing', id }} photos={photos} />}
+        photos={<PhotoManagerLazy owner={{ kind: 'listing', id }} photos={photos} />}
+        meId={me.id}
       />
     </div>
   );
