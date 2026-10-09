@@ -35,5 +35,6 @@ describe('embed / open URLs', () => {
   it('no coordinates → name + street + city (never invented coordinates)', () => {
     expect(mapsEmbedUrl({ name: 'FLC Sea Tower', street: '1 An Dương Vương' }, 'vi')).toContain('q=FLC%20Sea%20Tower%2C%201%20An%20D');
     expect(mapsOpenUrl({ name: 'TMS', street: '' })).toBe('https://www.google.com/maps/search/?api=1&query=TMS%2C%20Quy%20Nh%C6%A1n');
+    expect(mapsOpenUrl({ name: 'FLC Sea Tower Quy Nhơn', street: '' })).toBe('https://www.google.com/maps/search/?api=1&query=FLC%20Sea%20Tower%20Quy%20Nh%C6%A1n');
   });
 });

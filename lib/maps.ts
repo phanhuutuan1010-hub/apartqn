@@ -42,8 +42,13 @@ export function coordsFromMapsUrl(url: string): { lat: number; lng: number } | n
 
 /** What the map shows: verified coordinates, else the building's name + address (Google finds it — shown as approximate). */
 export type MapTarget = { lat?: number; lng?: number; name: string; street?: string };
-const mapQuery = (t: MapTarget) =>
-  t.lat != null && t.lng != null ? `${t.lat},${t.lng}` : [t.name, t.street, 'Quy Nhơn'].filter(Boolean).join(', ');
+const mapQuery = (t: MapTarget) => {
+  if (t.lat != null && t.lng != null) return `${t.lat},${t.lng}`;
+  const parts = [t.name, t.street].filter(Boolean) as string[];
+  // add the city unless the name / address already says it
+  if (!parts.some((p) => /quy\s*nh[oơ]n/i.test(p))) parts.push('Quy Nhơn');
+  return parts.join(', ');
+};
 export const hasCoords = (t: MapTarget) => t.lat != null && t.lng != null;
 /** keyless Google Maps embed */
 export const mapsEmbedUrl = (t: MapTarget, locale: string) =>
