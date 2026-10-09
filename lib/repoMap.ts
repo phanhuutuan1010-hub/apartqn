@@ -2,10 +2,15 @@
  * Pure mappers: public_* view rows → site types. Kept separate from lib/repo.ts so they can be tested
  * against rows from plain Postgres (bigint/numeric arrive as strings there, numbers via PostgREST).
  */
-import type { Building, BuildingAmenity, Descriptions, Listing } from './types';
+import { PHOTO_TAGS, type Building, type BuildingAmenity, type Descriptions, type Listing, type PhotoMeta, type PhotoTag } from './types';
 import { toBuildingFees } from './fees';
 
-type PhotoRow = { path: string; thumb: string | null };
+type PhotoRow = { path: string; thumb: string | null; w?: number | null; h?: number | null; tag?: string | null; source?: string | null };
+const meta = (p: PhotoRow): PhotoMeta => ({
+  tag: (PHOTO_TAGS as readonly string[]).includes(p.tag ?? '') ? (p.tag as PhotoTag) : 'khac',
+  ...(p.source === 'own' || p.source === 'reference' ? { src: p.source } : {}),
+  ...(p.w && p.h ? { w: Number(p.w), h: Number(p.h) } : {}),
+});
 
 export type PublicBuildingRow = {
   slug: string; name: string; street: string; ward_new: string | null; ward_old: string | null;
@@ -17,6 +22,8 @@ export type PublicBuildingRow = {
   code_prefix?: string | null;
   /** missing before migration 16 */
   maps_url?: string | null;
+  /** missing before migration 17 */
+  video_url?: string | null;
   /** fee columns: migration 14 */
   [fee: string]: unknown;
 };
@@ -71,6 +78,8 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
     amenities: r.amenities as BuildingAmenity[],
     photos: photos.map((p) => publicPhotoUrl(supabaseUrl, p.path)),
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),
+    photoMeta: photos.map(meta),
+    ...(text(r.video_url ?? null) ? { videoUrl: text(r.video_url ?? null) } : {}),
     desc: desc(r),
     demo: r.is_demo,
     aliases: r.aliases ?? [],
@@ -113,6 +122,7 @@ export function toListing(r: PublicListingRow, supabaseUrl: string): Listing {
     updated: vnDate(r.updated_at),
     photos: photos.map((p) => publicPhotoUrl(supabaseUrl, p.path)),
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),
+    photoMeta: photos.map(meta),
     photoCount: photos.length || n(r.placeholder_photos),
     ...(r.car_parking != null ? { carParking: r.car_parking } : {}),
     desc: desc(r),

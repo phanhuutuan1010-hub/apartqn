@@ -9,6 +9,7 @@ import { revalidatePublic } from '@/lib/revalidate';
 import { parseVnd, AMENITIES } from '@/lib/admin/labels';
 import { FEE_FIELDS, toBuildingFees, type BuildingFees } from '@/lib/fees';
 import { syncListingFees } from '@/lib/admin/feeSync';
+import { normaliseYoutube, YOUTUBE_RE } from '@/lib/youtube';
 import { coordsFromMapsUrl, isMapsHost, mapsUrlOk } from '@/lib/maps';
 
 export type BuildingResult = { ok?: string; error?: string; fieldErrors?: Record<string, string> };
@@ -28,6 +29,7 @@ const Schema = z.object({
   street: z.string().trim().max(200),
   maps_url: z.preprocess((v) => (typeof v === 'string' && v.trim() ? v.trim() : null),
     z.string().max(2000).refine(mapsUrlOk, 'Dán link Google Maps (maps.app.goo.gl/… hoặc google.com/maps/…)').nullable()),
+  video_url: z.preprocess((v) => (typeof v === 'string' && v.trim() ? normaliseYoutube(v) ?? 'invalid' : null), z.string().regex(YOUTUBE_RE, 'Chỉ nhận link YouTube (youtube.com hoặc youtu.be)').nullable()),
   // filled from the link (editable by hand)
   lat: coord(-90, 90), lng: coord(-180, 180),
   net: vnd,
@@ -108,7 +110,7 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   const default_fees = v.net != null ? { net: v.net } : {};
   const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, v[k]])) as BuildingFees;
   const row = {
-    name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street,
+    name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street, video_url: v.video_url,
     amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo,
   };
   const sb = await supabaseServer();

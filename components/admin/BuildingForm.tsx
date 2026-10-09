@@ -8,7 +8,7 @@ import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
 import { TagInput } from './TagInput';
 
 export type BuildingData = {
-  id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; maps_url: string | null;
+  id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; maps_url: string | null; video_url: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
   desc_vi: string | null; desc_en: string | null; sort: number; is_demo: boolean;
@@ -69,6 +69,9 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
           </div>
           <label className={cls('street', 'span2')}>Địa chỉ<input className="input" name="street" defaultValue={b.street} maxLength={200} placeholder="vd. 01 Trần Hưng Đạo" /></label>
           <MapsLinkField b={b} cls={cls} err={err} />
+          <label className={cls('video_url', 'span4')}>Video YouTube <span className="hint">tải lên YouTube ở chế độ “Không công khai”, rồi dán link (không tải video lên website)</span>
+            <input className="input" name="video_url" type="url" inputMode="url" placeholder="https://youtu.be/…" defaultValue={s(b.video_url)} maxLength={200} />{err('video_url')}
+          </label>
           <label className="a-check span4"><input type="checkbox" name="is_demo" defaultChecked={b.is_demo} /> Dữ liệu demo (hiện nhãn DỮ LIỆU DEMO)</label>
         </div>
       </section>

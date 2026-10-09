@@ -10,7 +10,10 @@ import { alternates, OG_LOCALE } from '@/lib/seo';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DemoBadge } from '@/components/Badges';
-import { Photo } from '@/components/Photo';
+import { Gallery } from '@/components/Gallery';
+import { YouTubeLite } from '@/components/YouTubeLite';
+import { galleryLabels } from '@/lib/galleryLabels';
+import { youtubeId } from '@/lib/youtube';
 import { ListingCard } from '@/components/ListingCard';
 import { BuildingCard } from '@/components/BuildingCard';
 import { LocationBlock } from '@/components/LocationBlock';
@@ -65,7 +68,17 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
     [t('motoParkFee'), all.length ? rng(all.map((x) => x.moto), (n) => money(n, l)) + t('perMonth') : '—'],
     [t('carParkFee'), all.length ? rng(all.map((x) => x.car), (n) => money(n, l)) + t('perMonth') : '—'],
   ];
-  const gallery = ['building facade', 'pool / common area', 'lobby'];
+  const videoId = youtubeId(b.videoUrl);
+  const free = all.filter((x) => x.status === 'available').length;
+  // quick facts: only what the building record actually says (null → not shown)
+  const fz = b.fees;
+  const qf: [string, string][] = [];
+  if (fz.mgmt_fee_per_m2 != null) qf.push([t('qfMgmt'), F.perM2(fz.mgmt_fee_per_m2, l) + (fz.mgmt_fee_vat_pct ? ` + VAT ${String(fz.mgmt_fee_vat_pct).replace('.', l === 'vi' ? ',' : '.')}%` : '')]);
+  if (fz.motorbike_fee != null) qf.push([t('qfMoto'), money(fz.motorbike_fee, l) + t('perMonth')]);
+  if (fz.car_parking === 'paid' && fz.car_fee != null) qf.push([t('qfCar'), money(fz.car_fee, l) + t('perMonth')]);
+  else if (fz.car_parking === 'free') qf.push([t('qfCar'), t('qfCarFree')]);
+  else if (fz.car_parking === 'none') qf.push([t('qfCar'), t('qfCarNone')]);
+  const keyAm = b.amenities.slice(0, 4);
   const others = buildings.filter((x) => x.id !== b.id).slice(0, 4);
 
   return (
@@ -77,13 +90,15 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
           <Link href={{ pathname: '/', hash: 'buildings' }}>{t('navBlds')}</Link><span aria-hidden>/</span>
           <span aria-current="page" className={styles.crumbCur}>{b.name}</span>
         </nav>
-        <div className={styles.gallery}>
-          {gallery.map((label, i) => (
-            <div key={label} className={`${styles.cell} ${i === 0 ? styles.big : ''}`}>
-              <Photo src={b.photos[i]} alt={`${b.name} · ${i + 1}`} tone="building" sizes={i === 0 ? '(min-width:768px) 66vw, 100vw' : '33vw'} priority={i === 0} />
-            </div>
-          ))}
-        </div>
+        <Gallery photos={b.photos} meta={b.photoMeta} alt={b.name} tone="building" videoHref={videoId ? '#video' : undefined}
+          labels={galleryLabels(t as unknown as Parameters<typeof galleryLabels>[0])} />
+        {(qf.length > 0 || keyAm.length > 0 || free > 0) && (
+          <div className={styles.qf}>
+            {qf.map(([k, v]) => <span key={k} className={styles.qfItem}><span className={styles.qfK}>{k}</span> <b>{v}</b></span>)}
+            {keyAm.map((k) => <span key={k} className={styles.qfItem}>{t(`b_${k}`)}</span>)}
+            {free > 0 && <a href="#units" className={`btn btn-blue ${styles.qfBtn}`}>{t('qfAvail', { n: free })}</a>}
+          </div>
+        )}
 
         <div className={styles.head}>
           <div className={styles.badges}>
@@ -109,7 +124,13 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
                 <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: 'var(--gray-700)', whiteSpace: 'pre-line', maxWidth: '68ch' }} lang={l}>{b.desc[l]}</p>
               </section>
             )}
-            <section className={styles.sec} style={{ paddingTop: 24, paddingBottom: 32 }}>
+            {videoId && (
+              <section className={styles.sec} id="video">
+                <h2 className={styles.h2}>{t('video')}</h2>
+                <YouTubeLite id={videoId} title={b.name} playLabel={t('video')} />
+              </section>
+            )}
+            <section className={styles.sec} id="units" style={{ paddingTop: 24, paddingBottom: 32, scrollMarginTop: 'calc(var(--hdr) + 16px)' }}>
               <h2 className={styles.h2} style={{ marginBottom: 20 }}>{t('bldUnits')}</h2>
               {avail.length ? (
                 <div className={styles.units}>

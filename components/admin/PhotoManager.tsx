@@ -3,11 +3,16 @@
 import { useRef, useState, useTransition } from 'react';
 import { ArrowLeft, ArrowRight, Camera, Eye, Lock, MoreHorizontal, RotateCcw, Star, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { deletePhoto, photoPrefix, prepareMasterUpload, registerPhotos, reorderPhotos, setCover, setVisibility, setWatermark, type PhotoOwner } from '@/lib/admin/photoActions';
+import { deletePhoto, photoPrefix, prepareMasterUpload, registerPhotos, reorderPhotos, setCover, setPhotoMeta, setVisibility, setWatermark, type PhotoOwner } from '@/lib/admin/photoActions';
 import { ACCEPT, classify, MAX_FILES, prepareImage } from '@/lib/admin/imageInput';
 import styles from './PhotoManager.module.css';
 
-export type PhotoView = { id: string; url: string; visibility: 'public' | 'internal'; is_cover: boolean; width: number | null; height: number | null; watermark: boolean };
+export type PhotoView = {
+  id: string; url: string; visibility: 'public' | 'internal'; is_cover: boolean; width: number | null; height: number | null; watermark: boolean;
+  tag: PhotoTagV; source: 'own' | 'reference' | null;
+};
+type PhotoTagV = 'toan-canh' | 'tien-ich' | 'sanh' | 'view' | 'can-ho' | 'khac';
+const TAG_LABEL: Record<PhotoTagV, string> = { 'toan-canh': 'Toàn cảnh', 'tien-ich': 'Tiện ích', sanh: 'Sảnh', view: 'View', 'can-ho': 'Căn hộ', khac: 'Khác' };
 
 /** photos per listing / building */
 const MAX_PHOTOS = 40;
@@ -226,7 +231,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
                           {p.visibility === 'public' ? 'Chuyển sang nội bộ (ẩn khỏi website)' : 'Chuyển sang công khai'}
                         </button>
                       )}
-                      {p.visibility === 'public' && (
+                      {p.visibility === 'public' && (p.watermark || p.source !== 'reference') && (
                         <button type="button" role="menuitem" onClick={() => act(() => setWatermark(owner, p.id, !p.watermark))}>
                           {p.watermark ? 'Tắt watermark' : 'Bật watermark'}
                         </button>
@@ -240,6 +245,21 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
                 {p.visibility === 'public'
                   ? <span className="a-small a-muted">Công khai · watermark {p.watermark ? 'bật' : 'tắt'}</span>
                   : <span className="a-small a-muted">Nội bộ · không watermark</span>}
+                <div className={styles.meta}>
+                  <select className="input" aria-label="Loại ảnh" value={p.tag} onChange={(e) => act(() => setPhotoMeta(owner, p.id, { tag: e.target.value as PhotoTagV }))}>
+                    {(Object.keys(TAG_LABEL) as PhotoTagV[]).map((k) => <option key={k} value={k}>{TAG_LABEL[k]}</option>)}
+                  </select>
+                  <select className="input" aria-label="Nguồn ảnh" value={p.source ?? ''}
+                    onChange={(e) => {
+                      const v = (e.target.value || null) as 'own' | 'reference' | null;
+                      if (v === 'reference' && p.watermark && !confirm('Ảnh tham khảo không gắn watermark — bỏ watermark của ảnh này?')) return;
+                      act(() => setPhotoMeta(owner, p.id, { source: v }));
+                    }}>
+                    <option value="">Nguồn: chưa rõ</option>
+                    <option value="own">Ảnh thực tế</option>
+                    <option value="reference">Ảnh tham khảo</option>
+                  </select>
+                </div>
               </div>
             </li>
           ))}

@@ -123,12 +123,40 @@ export async function setWatermark(owner: PhotoOwner, photoId: string, on: boole
   const { data: p } = await sb.from('photos').select('*').eq('id', photoId).eq(col(owner), owner.id).maybeSingle();
   if (!p) return { error: 'Không tìm thấy ảnh.' };
   if (p.visibility !== 'public') return { error: 'Ảnh nội bộ không gắn watermark.' };
+  if (on && p.source === 'reference') return { error: 'Ảnh tham khảo không gắn watermark.' };
   try {
     await setPhotoWatermark(sb, p as PhotoRow, on);
   } catch (e) {
     return { error: 'Không tạo lại được ảnh: ' + (e as Error).message };
   }
   await after(owner);
+  return { ok: true };
+}
+
+const Meta = z.object({
+  tag: z.enum(['toan-canh', 'tien-ich', 'sanh', 'view', 'can-ho', 'khac']).optional(),
+  source: z.enum(['own', 'reference']).nullable().optional(),
+});
+
+/** Per-photo tag (lightbox tabs) and source (Ảnh thực tế / Ảnh tham khảo). A reference photo loses its watermark first. */
+export async function setPhotoMeta(owner: PhotoOwner, photoId: string, patch: z.infer<typeof Meta>): Promise<Res> {
+  const me = await requireStaff();
+  if (owner.kind === 'building' && me.role !== 'admin') return { error: 'Chỉ quản trị viên sửa ảnh toà nhà.' };
+  const o = Owner.safeParse(owner), m = Meta.safeParse(patch);
+  if (!o.success || !m.success || (!m.data.tag && m.data.source === undefined)) return { error: 'Dữ liệu không hợp lệ.' };
+  const sb = await supabaseServer();
+  const { data: p } = await sb.from('photos').select('*').eq('id', photoId).eq(col(o.data), o.data.id).maybeSingle();
+  if (!p) return { error: 'Không tìm thấy ảnh.' };
+  if (m.data.source === 'reference' && p.watermark) {
+    try {
+      await setPhotoWatermark(sb, p as PhotoRow, false);
+    } catch (e) {
+      return { error: 'Không bỏ được watermark: ' + (e as Error).message };
+    }
+  }
+  const { error } = await sb.from('photos').update(m.data).eq('id', photoId);
+  if (error) return { error: vnError(error) };
+  await after(o.data);
   return { ok: true };
 }
 

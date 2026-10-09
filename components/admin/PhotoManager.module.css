@@ -21,7 +21,9 @@
 .tools .danger:hover:not(:disabled) { color: var(--error); }
 .tools button.on { background: var(--blue-500); color: var(--white); }
 .tools button.on:hover:not(:disabled) { background: var(--blue-600); color: var(--white); }
-.foot { display: flex; align-items: center; min-height: 40px; padding: 4px 8px; border-top: 1px solid var(--gray-100); }
+.foot { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-height: 40px; padding: 6px 8px; border-top: 1px solid var(--gray-100); }
+.meta { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.meta select { height: 36px; min-height: 36px; padding: 0 6px; font-size: 13px; }
 .pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .dropHint { font-size: 13px; color: var(--gray-500); }
 .wm { display: inline-flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 2px; font-size: 13px; font-weight: 600; color: var(--ink-900); cursor: pointer; }

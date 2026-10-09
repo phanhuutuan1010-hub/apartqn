@@ -527,6 +527,21 @@ describe('photo masters + watermark (migration 12)', () => {
     expect(v.rows[0].video_url).toBe('https://youtu.be/dQw4w9WgXcQ');
     await root(`update public.listings set video_url = null where id = $1`, [l1]);
   });
+
+  it('photo tag + source (migration 17): defaults, checks, reference never watermarked, exposed publicly', async () => {
+    const r = await root(`insert into public.photos (building_id, bucket, path) values ($1, 'listing-public', 'buildings/altara/tg-a.webp') returning tag, source, watermark`, [B]);
+    expect(r.rows[0]).toEqual({ tag: 'khac', source: null, watermark: false });
+    // a reference listing photo gets no watermark by default, and can't be given one
+    const ref = await root(`insert into public.photos (listing_id, bucket, path, source) values ($1, 'listing-public', 'listings/x/tg-b.webp', 'reference') returning watermark`, [l1]);
+    expect(ref.rows[0].watermark).toBe(false);
+    expect(await denied(root(`update public.photos set watermark = true where path = 'listings/x/tg-b.webp'`))).toMatch(/photos_reference_no_watermark/);
+    expect(await denied(root(`update public.photos set tag = 'pool' where path = 'buildings/altara/tg-a.webp'`))).toMatch(/check/);
+    await root(`update public.photos set tag = 'sanh', source = 'reference' where path = 'buildings/altara/tg-a.webp'`);
+    const v = await as('anon', (q) => q(`select photos from public.public_buildings where slug = 'altara'`));
+    expect(v.rows[0].photos).toEqual(expect.arrayContaining([expect.objectContaining({ path: 'buildings/altara/tg-a.webp', tag: 'sanh', source: 'reference' })]));
+    expect(await denied(root(`update public.buildings set video_url = 'https://vimeo.com/1' where id = $1`, [B]))).toMatch(/check/);
+    await root(`delete from public.photos where path in ('buildings/altara/tg-a.webp', 'listings/x/tg-b.webp')`);
+  });
 });
 
 describe('per-building codes (migration 13)', () => {

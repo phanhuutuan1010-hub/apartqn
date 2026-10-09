@@ -9,6 +9,11 @@ export type Descriptions = { vi?: string; en?: string };
 export type { BuildingFees } from './fees';
 import type { BuildingFees } from './fees';
 
+export const PHOTO_TAGS = ['toan-canh', 'tien-ich', 'sanh', 'view', 'can-ho', 'khac'] as const;
+export type PhotoTag = (typeof PHOTO_TAGS)[number];
+/** src: own shot / reference image; missing = not stated (no badge) */
+export type PhotoMeta = { tag: PhotoTag; src?: 'own' | 'reference'; w?: number; h?: number };
+
 export type Building = {
   /** URL slug (e.g. "altara") */
   id: string;
@@ -26,6 +31,10 @@ export type Building = {
   photos: string[];
   /** 600px thumbnails, same order as photos */
   thumbs: string[];
+  /** tag / source / size per photo, same order (missing → 'khac', own) */
+  photoMeta?: PhotoMeta[];
+  /** unlisted YouTube link */
+  videoUrl?: string;
   desc: Descriptions;
   demo: boolean;
   /** other names people search for (any script) */
@@ -70,6 +79,7 @@ export type Listing = {
   updated: string;
   photos: string[];
   thumbs: string[];
+  photoMeta?: PhotoMeta[];
   /** photos.length, or the demo placeholder count when there are no photos yet */
   photoCount: number;
   carParking?: boolean;

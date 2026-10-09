@@ -10,7 +10,8 @@ import { alternates, OG_LOCALE } from '@/lib/seo';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DemoBadge, StatusBadge, VerifiedBadge } from '@/components/Badges';
-import { DetailGallery } from '@/components/DetailGallery';
+import { Gallery } from '@/components/Gallery';
+import { galleryLabels } from '@/lib/galleryLabels';
 import { CostBreakdown } from '@/components/CostBreakdown';
 import { ContactBox, MobileContactBar } from '@/components/ContactBox';
 import { ViewingRequestForm } from '@/components/ViewingRequestForm';
@@ -88,13 +89,13 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
           <span aria-current="page" className={styles.crumbCur}>{x.code}</span>
         </nav>
 
-        <DetailGallery
+        <Gallery
           photos={x.photos}
+          meta={x.photoMeta}
           count={x.photoCount}
-          code={x.code}
           alt={`${title} · ${b.name}`}
-          video={!!videoId}
-          labels={{ video: t('video'), showAll: t('showAll'), photosN: F.photos(x.photos.length || x.photoCount, l), close: t('close') }}
+          videoHref={videoId ? '#video' : undefined}
+          labels={galleryLabels(t as unknown as Parameters<typeof galleryLabels>[0])}
         />
 
         <div className={styles.body}>
