@@ -4,12 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
-import type { Building } from '@/lib/types';
-import type { Listing } from '@/lib/types';
-import { apply, EMPTY, parseQuery, toQuery, type Filters, type Sort, type View } from '@/lib/filters';
+import type { Building, Listing } from '@/lib/types';
+import { apply, EMPTY, parseQuery, toQuery, type Filters, type Sort } from '@/lib/filters';
 import { dFull, F, mil } from '@/lib/format';
-import { useMedia } from '@/lib/useMedia';
 import { textMatches } from '@/lib/search/text';
 import { similarListings } from '@/lib/search/similar';
 import { logSearchMiss } from '@/lib/search/miss';
@@ -17,15 +14,13 @@ import { SearchRequestForm } from './SearchRequestForm';
 import { FilterPanel } from './FilterPanel';
 import { SmartSearch } from './SmartSearch';
 import { ListingCard } from './ListingCard';
-import type { MapMarker } from './MapView';
 import styles from './ResultsView.module.css';
 
 const FilterSheet = dynamic(() => import('./FilterSheet'), { ssr: false });
-const MapView = dynamic(() => import('./MapView'), { ssr: false });
 
 type Props = { listings: Listing[]; buildings: Building[] };
 
-/** Reads filters from the URL (?b=&beds=&rent=&furn=&pets=1&date=&rented=1&sort=&view=map). */
+/** Reads filters from the URL (?b=&beds=&rent=&furn=&pets=1&date=&rented=1&sort=). */
 export function ResultsFromUrl(props: Props) {
   const sp = useSearchParams();
   return <ResultsView {...props} query={sp.toString()} />;
@@ -35,31 +30,25 @@ export function ResultsFromUrl(props: Props) {
 export function ResultsView({ listings, buildings, query = '' }: Props & { query?: string }) {
   const t = useTranslations();
   const l = useLocale();
-  const { f, sort, view } = useMemo(() => parseQuery(new URLSearchParams(query)), [query]);
+  const { f, sort } = useMemo(() => parseQuery(new URLSearchParams(query)), [query]);
   /** what the visitor typed in the search box (only on arrival; dropped once filters change) */
   const typed = useMemo(() => (new URLSearchParams(query).get('s') ?? '').trim().slice(0, 80), [query]);
   const [ask, setAsk] = useState(false);
-  const [sel, setSel] = useState('');
   const [sheet, setSheet] = useState(false);
-  const lg = useMedia('(min-width: 1024px)');
   const bById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
 
   // All filter state lives in the URL; Next keeps useSearchParams in sync with history.replaceState.
-  const sync = useCallback((nf: Filters, ns: Sort, nv: View) => {
-    const q = toQuery(nf, ns, nv);
+  const sync = useCallback((nf: Filters, ns: Sort) => {
+    const q = toQuery(nf, ns);
     window.history.replaceState(null, '', window.location.pathname + (q ? '?' + q : ''));
   }, []);
-  const setF = (patch: Partial<Filters>) => {
-    if (patch.b !== undefined) setSel('');
-    sync({ ...f, ...patch }, sort, view);
-  };
+  const setF = (patch: Partial<Filters>) => sync({ ...f, ...patch }, sort);
 
   const textOk = useMemo(() => {
     const ok = new Map(buildings.map((b) => [b.id, textMatches(f.q, { name: b.name, aliases: b.aliases, street: b.street, ward_new: b.ward ?? null, ward_old: b.wardOld ?? null })]));
     return (x: Listing) => ok.get(x.buildingId) ?? false;
   }, [buildings, f.q]);
   const matched = useMemo(() => apply(listings, f, sort, textOk), [listings, f, sort, textOk]);
-  const inView = sel ? matched.filter((x) => x.buildingId === sel) : matched;
   const similar = useMemo(() => (matched.length ? [] : similarListings(listings, f)), [matched.length, listings, f]);
 
   // a typed search with no match → anonymous demand log (once per query per session)
@@ -86,23 +75,7 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
   if (f.pets) pills.push({ label: t('pets'), clear: { pets: false } });
   if (f.car) pills.push({ label: t('carPark'), clear: { car: false } });
   if (f.date) pills.push({ label: t('moveIn') + ': ' + dFull(f.date, l), clear: { date: '' } });
-  const clearAll = () => { setSel(''); sync({ ...EMPTY, rented: f.rented }, sort, view); };
-
-  // Map: one entry per building with matches. Only verified coordinates become markers.
-  const pins = buildings
-    .map((b) => {
-      const ls = matched.filter((x) => x.buildingId === b.id);
-      if (!ls.length) return null;
-      return { b, n: ls.length, min: Math.min(...ls.map((x) => x.rent)) };
-    })
-    .filter((p): p is { b: Building; n: number; min: number } => !!p);
-  const markers: MapMarker[] = pins
-    .filter((p) => typeof p.b.lat === 'number' && typeof p.b.lng === 'number')
-    .map((p) => ({ id: p.b.id, lat: p.b.lat!, lng: p.b.lng!, label: mil(p.min, l), sub: String(p.n), selected: sel === p.b.id }));
-  const unplaced = pins.filter((p) => typeof p.b.lat !== 'number' || typeof p.b.lng !== 'number');
-  const toggleSel = (id: string) => setSel((s) => (s === id ? '' : id));
-  const sb = sel ? bById.get(sel) : undefined;
-  const sbCount = sb ? matched.filter((x) => x.buildingId === sb.id).length : 0;
+  const clearAll = () => sync({ ...EMPTY, rented: f.rented }, sort);
 
   const rentSelect = (
     <label className={`${styles.selWrap} ${styles.mdOnly}`}>
@@ -114,28 +87,10 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
   );
   const sortSelect = (
     <label className={styles.selWrap}>
-      <select aria-label={t('sort')} className={styles.sel} value={sort} onChange={(e) => sync(f, e.target.value as Sort, view)}>
+      <select aria-label={t('sort')} className={styles.sel} value={sort} onChange={(e) => sync(f, e.target.value as Sort)}>
         {(['new', 'low', 'high', 'move'] as const).map((k) => <option key={k} value={k}>{t(`sort_${k}`)}</option>)}
       </select>
     </label>
-  );
-
-  const pinChips = unplaced.length > 0 && (
-    <div className={styles.unplaced}>
-      <span className={styles.pendingNote}>{t('locPending')}</span>
-      <div className={styles.chipRow}>
-        {unplaced.map((p) => (
-          <button key={p.b.id} type="button" aria-pressed={sel === p.b.id} className={`${styles.pin} ${sel === p.b.id ? styles.pinOn : ''}`} onClick={() => toggleSel(p.b.id)}>
-            <span className={styles.pinName}>{p.b.name}</span>
-            <span>{mil(p.min, l)}</span>
-            <span className={styles.pinN}>· {p.n}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-  const map = (
-    <MapView markers={markers} onSelect={toggleSel} ariaLabel={t('mapView')} />
   );
 
   return (
@@ -152,16 +107,9 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
             </button>
             {rentSelect}
             {sortSelect}
-            <div role="group" aria-label={`${t('listView')} / ${t('mapView')}`} className={styles.seg}>
-              {(['list', 'map'] as const).map((k) => (
-                <button key={k} type="button" aria-pressed={view === k} className={`${styles.segBtn} ${view === k ? styles.segOn : ''}`} onClick={() => sync(f, sort, k)}>
-                  {t(k === 'list' ? 'listView' : 'mapView')}
-                </button>
-              ))}
-            </div>
           </div>
           <div className={styles.pillRow}>
-            <span className={styles.found} aria-live="polite">{F.found(inView.length, l)}</span>
+            <span className={styles.found} aria-live="polite">{F.found(matched.length, l)}</span>
             {pills.map((p) => (
               <button key={p.label} type="button" className={styles.pill} onClick={() => setF(p.clear)} aria-label={`${p.label} ×`}>
                 {p.label}<span aria-hidden className={styles.pillX}>×</span>
@@ -207,57 +155,10 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
                 </section>
               )}
             </div>
-          ) : view === 'list' ? (
-            <div className={styles.grid}>
-              {inView.map((x, i) => <ListingCard key={x.code} x={x} building={bById.get(x.buildingId)} slider priority={i === 0} />)}
-            </div>
           ) : (
-            lg ? (
-            <div className={styles.split}>
-              <div className={styles.splitList}>
-                {inView.map((x) => <ListingCard key={x.code} x={x} building={bById.get(x.buildingId)} slider />)}
-              </div>
-              <div className={styles.splitMapCol}>
-                <div className={styles.mapBox}>
-                  {map}
-                  {pinChips}
-                  {sb && (
-                    <div className={styles.selCard}>
-                      <div className={styles.selText}>
-                        <span className={styles.selName}>{sb.name}</span>
-                        <span className={styles.selUnits}>{F.units(sbCount, l)}</span>
-                      </div>
-                      <Link href={{ pathname: '/toa-nha/[id]', params: { id: sb.id } }} className={`btn btn-blue ${styles.selBtn}`}>{t('viewBld')}</Link>
-                      <button type="button" className={styles.selClose} aria-label={t('close')} onClick={() => setSel('')}>×</button>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className={styles.grid}>
+              {matched.map((x, i) => <ListingCard key={x.code} x={x} building={bById.get(x.buildingId)} slider priority={i === 0} />)}
             </div>
-            ) : (
-              <div className={styles.mobMap}>
-                <div className={styles.mobMapBox}>
-                  {map}
-                  {pinChips}
-                </div>
-                {sb && (
-                  <div className={styles.mobSel}>
-                    <div className={styles.selText}>
-                      <span className={styles.mobSelName}>{sb.name}</span>
-                      <span className={styles.selUnits}>{F.units(sbCount, l)}</span>
-                    </div>
-                    <Link href={{ pathname: '/toa-nha/[id]', params: { id: sb.id } }} className="link-more" style={{ fontSize: 14 }}>{t('viewBld')} →</Link>
-                  </div>
-                )}
-                <div className={styles.carousel}>
-                  {inView.map((x) => (
-                    <div key={x.code} className={styles.slide}>
-                      <ListingCard x={x} building={bById.get(x.buildingId)} slider sizes="86vw" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
           )}
         </div>
       </div>

@@ -25,8 +25,3 @@ export const SITE = {
 
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
-/**
- * Initial map viewport (Quy Nhơn city centre) — used only to frame the map.
- * NOT a building position: buildings get markers only once verified lat/lng are added.
- */
-export const MAP_VIEW = { center: [13.772, 109.224] as [number, number], zoom: 14 };

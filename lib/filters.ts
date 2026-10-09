@@ -20,7 +20,6 @@ export type Filters = {
 };
 
 export type Sort = 'new' | 'low' | 'high' | 'move';
-export type View = 'list' | 'map';
 
 export const EMPTY: Filters = { b: '', beds: '', rent: '', furn: '', pets: false, car: false, date: '', rented: false, pmin: '', pmax: '', vw: '', q: '' };
 export const SORTS: Sort[] = ['new', 'low', 'high', 'move'];
@@ -53,7 +52,7 @@ const CMP: Record<Sort, (a: Listing, b: Listing) => number> = {
 export const apply = (all: Listing[], f: Filters, sort: Sort, textOk?: (x: Listing) => boolean) =>
   all.filter((x) => match(x, f, textOk)).sort((a, b) => Number(a.status === 'rented') - Number(b.status === 'rented') || CMP[sort](a, b));
 
-/** URL query → state: ?b=&beds=&rent=r0..r3&furn=&pets=1&car=1&date=YYYY-MM-DD&rented=1&sort=&view=map */
+/** URL query → state: ?b=&beds=&rent=r0..r3&furn=&pets=1&car=1&date=YYYY-MM-DD&rented=1&sort= (an old ?view=map is ignored) */
 export const parseQuery = (q: URLSearchParams | Record<string, string | string[] | undefined>) => {
   const get = (k: string) => {
     if (q instanceof URLSearchParams) return q.get(k) ?? '';
@@ -76,16 +75,14 @@ export const parseQuery = (q: URLSearchParams | Record<string, string | string[]
   f.q = f.q.trim().replace(/\s+/g, ' ').slice(0, 80);
   const s = get('sort') as Sort;
   const sort: Sort = SORTS.includes(s) ? s : 'new';
-  const view: View = get('view') === 'map' ? 'map' : 'list';
-  return { f, sort, view };
+  return { f, sort };
 };
 
-export const toQuery = (f: Partial<Filters>, sort: Sort = 'new', view: View = 'list') => {
+export const toQuery = (f: Partial<Filters>, sort: Sort = 'new') => {
   const q = new URLSearchParams();
   Object.entries(f).forEach(([k, v]) => {
     if (v !== '' && v != null && v !== false) q.set(k, v === true ? '1' : String(v));
   });
   if (sort !== 'new') q.set('sort', sort);
-  if (view !== 'list') q.set('view', view);
   return q.toString();
 };

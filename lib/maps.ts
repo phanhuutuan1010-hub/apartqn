@@ -1,7 +1,7 @@
 /**
  * Google Maps links → coordinates. Only coordinates written in the link itself are used — never geocoded or guessed.
  * Order: the place pin (!3d…!4d…), an explicit point (q= / ll= / query= / /place/lat,lng), then the map centre (@lat,lng)
- * only when zoomed in close (≥ 17z, i.e. within a building or two).
+ * only when zoomed in (≥ 15z).
  */
 const GOOGLE_HOST = /^(?:www\.|maps\.)?google\.(?:com|com\.vn)$/;
 const SHORT_HOST = /^(?:maps\.app\.goo\.gl|goo\.gl)$/;
@@ -36,6 +36,17 @@ export function coordsFromMapsUrl(url: string): { lat: number; lng: number } | n
   const point = s.match(new RegExp(`[?&](?:q|ll|query|destination)=${NUM},\\s*${NUM}`)) ?? s.match(new RegExp(`/(?:place|search|dir)/${NUM},\\s*${NUM}`));
   if (point) return pair(point[1], point[2]);
   const at = s.match(new RegExp(`@${NUM},${NUM},(\\d+(?:\\.\\d+)?)z`));
-  if (at && Number(at[3]) >= 17) return pair(at[1], at[2]);
+  if (at && Number(at[3]) >= 15) return pair(at[1], at[2]);
   return null;
 }
+
+/** What the map shows: verified coordinates, else the building's name + address (Google finds it — shown as approximate). */
+export type MapTarget = { lat?: number; lng?: number; name: string; street?: string };
+const mapQuery = (t: MapTarget) =>
+  t.lat != null && t.lng != null ? `${t.lat},${t.lng}` : [t.name, t.street, 'Quy Nhơn'].filter(Boolean).join(', ');
+export const hasCoords = (t: MapTarget) => t.lat != null && t.lng != null;
+/** keyless Google Maps embed */
+export const mapsEmbedUrl = (t: MapTarget, locale: string) =>
+  `https://www.google.com/maps?q=${encodeURIComponent(mapQuery(t))}&z=16&hl=${locale}&output=embed`;
+/** opens the Google Maps app / site (Maps URLs API) */
+export const mapsOpenUrl = (t: MapTarget) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery(t))}`;

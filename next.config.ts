@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
     deviceSizes: [360, 480, 640, 768, 1024, 1280, 1600, 1920],
   },
   poweredByHeader: false,
+  // the only frames the site embeds are Google Maps (building / listing "Vị trí", admin preview)
+  async headers() {
+    return [{ source: '/:path*', headers: [{ key: 'Content-Security-Policy', value: 'frame-src https://www.google.com https://maps.google.com' }] }];
+  },
   // admin pages merged in the quick-ops cleanup
   async redirects() {
     return [

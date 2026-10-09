@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-// Perf measurement helper (read-only). Run: node --env-file=.env.local scripts/perf/admin-js.cjs
+// Perf measurement helper (read-only). Run: node scripts/perf/admin-js.cjs [.next/server/app/[locale]]
 // Client JS per admin route from the build's client-reference manifests: route chunks (entryJSFiles) and total first load (+ root main files).
 const fs = require('fs'), path = require('path'), zlib = require('zlib');
-const root = '.next/server/app/admin';
+const root = process.argv[2] ?? '.next/server/app/admin';
 const routes = [];
 const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).forEach((e) => {
   const p = path.join(d, e.name);

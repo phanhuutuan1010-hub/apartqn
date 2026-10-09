@@ -1,30 +1,22 @@
-import { useTranslations } from 'next-intl';
-import { ExternalLink, MapPinOff } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { ExternalLink } from 'lucide-react';
 import type { Building } from '@/lib/types';
-import { LazyMap } from './LazyMap';
+import { mapsOpenUrl } from '@/lib/maps';
+import { MapEmbed } from './MapEmbed';
 import styles from './LocationBlock.module.css';
 
-/** Verified coordinates → OSM map with a pin. Otherwise no marker: "Đang cập nhật vị trí". */
+/** Google Maps embed: verified coordinates → pin; otherwise name + address, marked "Vị trí tham khảo". Address + link below. */
 export function LocationBlock({ b }: { b: Building }) {
   const t = useTranslations();
-  const hasPos = typeof b.lat === 'number' && typeof b.lng === 'number';
+  const locale = useLocale();
+  const target = { lat: b.lat, lng: b.lng, name: b.name, street: b.street };
   const addr = [b.street, t('city')].filter(Boolean).join(', ');
   return (
     <>
-      <div className={styles.box}>
-        {hasPos ? (
-          <LazyMap markers={[{ id: b.id, lat: b.lat!, lng: b.lng!, label: b.name, selected: true }]} ariaLabel={`${t('location')} · ${b.name}`} loadingLabel={t('mapLoading')} />
-        ) : (
-          <div className={styles.pending}>
-            <MapPinOff size={28} strokeWidth={2} aria-hidden className={styles.ico} />
-            <span className={styles.pendingT}>{t('locPending')}</span>
-            <span className={styles.name}>{b.name}</span>
-          </div>
-        )}
-      </div>
+      <MapEmbed target={target} locale={locale} title={`${t('location')} · ${b.name}`} openLabel={t('openInMaps')} approxLabel={t('approxLocation')} />
       <div className={styles.addr}>
         {addr}
-        {b.mapsUrl && <a className={styles.gmaps} href={b.mapsUrl} target="_blank" rel="noopener noreferrer">{t('openMaps')} <ExternalLink size={14} aria-hidden /></a>}
+        <a className={styles.gmaps} href={b.mapsUrl ?? mapsOpenUrl(target)} target="_blank" rel="noopener noreferrer">{t('openMaps')} <ExternalLink size={14} aria-hidden /></a>
       </div>
     </>
   );

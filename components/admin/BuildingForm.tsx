@@ -1,7 +1,8 @@
 'use client';
 
 import { startTransition, useActionState, useState } from 'react';
-import { previewFeeSync, saveBuilding, type BuildingResult } from '@/lib/admin/buildingActions';
+import { previewFeeSync, readMapsLink, saveBuilding, type BuildingResult } from '@/lib/admin/buildingActions';
+import { mapsEmbedUrl } from '@/lib/maps';
 import type { BuildingFees } from '@/lib/fees';
 import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
 import { TagInput } from './TagInput';
@@ -67,15 +68,7 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
             {err('aliases')}
           </div>
           <label className={cls('street', 'span2')}>Địa chỉ<input className="input" name="street" defaultValue={b.street} maxLength={200} placeholder="vd. 01 Trần Hưng Đạo" /></label>
-          <label className={cls('maps_url', 'span2')}>Link Google Maps <span className="hint">Google Maps → bấm vào toà nhà → Chia sẻ → Sao chép đường liên kết</span>
-            <input className="input" name="maps_url" type="url" inputMode="url" defaultValue={s(b.maps_url)} placeholder="https://maps.app.goo.gl/…" />
-            {err('maps_url')}
-            <span className="a-small a-muted">
-              {b.lat != null && b.lng != null
-                ? <>Vị trí trên bản đồ: <a href={`https://www.google.com/maps?q=${b.lat},${b.lng}`} target="_blank" rel="noreferrer">{b.lat.toFixed(5)}, {b.lng.toFixed(5)}</a></>
-                : 'Chưa có vị trí — website hiện “Đang cập nhật vị trí”.'}
-            </span>
-          </label>
+          <MapsLinkField b={b} cls={cls} err={err} />
           <label className="a-check span4"><input type="checkbox" name="is_demo" defaultChecked={b.is_demo} /> Dữ liệu demo (hiện nhãn DỮ LIỆU DEMO)</label>
         </div>
       </section>
@@ -156,5 +149,48 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
         <button className="a-btn a-btn-blue" disabled={pending || checking}>{pending || checking ? 'Đang lưu…' : b.id ? 'Lưu' : 'Tạo toà nhà'}</button>
       </div>
     </form>
+  );
+}
+
+/** "Link Google Maps": paste → coordinates read on the server (short links followed) → preview map; lat/lng stay editable. */
+function MapsLinkField({ b, cls, err }: { b: BuildingData; cls: (k: string, extra?: string) => string; err: (k: string) => React.ReactNode }) {
+  const [url, setUrl] = useState(b.maps_url ?? '');
+  const [lat, setLat] = useState(b.lat == null ? '' : String(b.lat));
+  const [lng, setLng] = useState(b.lng == null ? '' : String(b.lng));
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const read = async (u = url) => {
+    if (!u.trim()) return;
+    setBusy(true);
+    const r = await readMapsLink(u);
+    setBusy(false);
+    if (r.lat != null && r.lng != null) {
+      setLat(String(r.lat)); setLng(String(r.lng));
+      setMsg({ ok: true, text: 'Đã đọc vị trí từ link — xem bản đồ bên dưới rồi bấm Lưu.' });
+    } else setMsg({ ok: false, text: r.error ?? 'Không đọc được vị trí.' });
+  };
+  const la = Number(lat.replace(',', '.')), ln = Number(lng.replace(',', '.'));
+  const ok = lat !== '' && lng !== '' && Math.abs(la) <= 90 && Math.abs(ln) <= 180;
+  return (
+    <>
+      <div className={cls('maps_url', 'span4')}>
+        <label htmlFor="b-maps">Link Google Maps <span className="hint">Google Maps → bấm vào toà nhà → Chia sẻ → Sao chép đường liên kết</span></label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input id="b-maps" className="input" name="maps_url" type="url" inputMode="url" value={url} placeholder="https://maps.app.goo.gl/…" style={{ flex: 1, minWidth: 0 }}
+            onChange={(e) => { setUrl(e.target.value); setMsg(null); }}
+            onPaste={(e) => { const t = e.clipboardData.getData('text'); if (t) setTimeout(() => void read(t.trim()), 0); }} />
+          <button type="button" className="a-btn a-btn-outline" disabled={!url.trim() || busy} onClick={() => void read()}>{busy ? 'Đang đọc…' : 'Đọc link'}</button>
+        </div>
+        {err('maps_url')}
+        {msg && <span className="a-small" role="status" style={{ color: msg.ok ? 'var(--ok-fg)' : 'var(--error)' }}>{msg.text}</span>}
+      </div>
+      <label className={cls('lat')}>Vĩ độ <span className="hint">tự điền từ link</span><input className="input a-mono" name="lat" inputMode="decimal" value={lat} onChange={(e) => setLat(e.target.value)} placeholder="13.7…" />{err('lat')}</label>
+      <label className={cls('lng')}>Kinh độ<input className="input a-mono" name="lng" inputMode="decimal" value={lng} onChange={(e) => setLng(e.target.value)} placeholder="109.2…" />{err('lng')}</label>
+      <div className="span2" style={{ alignSelf: 'end' }}>
+        {ok
+          ? <iframe title="Xem trước vị trí" src={mapsEmbedUrl({ lat: la, lng: ln, name: '' }, 'vi')} loading="lazy" style={{ width: '100%', aspectRatio: '16 / 9', border: 0, borderRadius: 12, display: 'block' }} />
+          : <p className="a-small a-muted" style={{ margin: 0 }}>Chưa có toạ độ — website hiện bản đồ theo tên + địa chỉ, ghi “Vị trí tham khảo”.</p>}
+      </div>
+    </>
   );
 }

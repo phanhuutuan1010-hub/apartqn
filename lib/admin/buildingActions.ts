@@ -14,6 +14,7 @@ import { coordsFromMapsUrl, isMapsHost, mapsUrlOk } from '@/lib/maps';
 export type BuildingResult = { ok?: string; error?: string; fieldErrors?: Record<string, string> };
 
 const txt = (max: number) => z.preprocess((v) => (typeof v === 'string' && v.trim() ? v.trim() : null), z.string().max(max).nullable());
+const coord = (min: number, max: number) => z.preprocess((v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.'))), z.number().min(min).max(max).nullable());
 const vnd = z.preprocess((v) => parseVnd(v as FormDataEntryValue), z.number().int().min(0).max(100_000_000).nullable());
 // '' = unknown (null) — never 0
 const pct = z.preprocess((v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.'))), z.number().min(0).max(100).nullable());
@@ -27,6 +28,8 @@ const Schema = z.object({
   street: z.string().trim().max(200),
   maps_url: z.preprocess((v) => (typeof v === 'string' && v.trim() ? v.trim() : null),
     z.string().max(2000).refine(mapsUrlOk, 'Dán link Google Maps (maps.app.goo.gl/… hoặc google.com/maps/…)').nullable()),
+  // filled from the link (editable by hand)
+  lat: coord(-90, 90), lng: coord(-180, 180),
   net: vnd,
   // fees (migration 14)
   mgmt_fee_per_m2: vnd, mgmt_fee_vat_pct: pct, motorbike_fee: vnd, motorbike_fee_from_3rd: vnd, car_fee: vnd,
@@ -37,7 +40,7 @@ const Schema = z.object({
   desc_vi: txt(8000), desc_en: txt(8000),
   sort: z.coerce.number().int().min(0).max(999),
   is_demo: z.preprocess((v) => v === 'on', z.boolean()),
-});
+}).refine((v) => (v.lat == null) === (v.lng == null), { message: 'Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai', path: ['lat'] });
 
 /**
  * Follows a (short) Google Maps link — only through Google hosts, at most 5 hops, 5 s each — and reads the pin from the URL.
@@ -61,6 +64,15 @@ async function resolveMapsCoords(url: string): Promise<{ lat: number; lng: numbe
     if (!isMapsHost(h) && h !== 'consent.google.com') return null;
   }
   return null;
+}
+
+/** "Đọc link" in the building form: coordinates from a pasted Google Maps link (preview before saving). */
+export async function readMapsLink(url: string): Promise<{ lat?: number; lng?: number; error?: string }> {
+  await requireAdmin();
+  const u = url.trim();
+  if (!mapsUrlOk(u)) return { error: 'Không phải link Google Maps (maps.app.goo.gl/… hoặc google.com/maps/…).' };
+  const c = await resolveMapsCoords(u);
+  return c ?? { error: 'Link này không chứa vị trí — mở Google Maps, bấm vào toà nhà → Chia sẻ → Sao chép đường liên kết.' };
 }
 
 /** Public pages showing this building: its page, home, results, and every listing detail in it. */
@@ -100,16 +112,17 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
     amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo,
   };
   const sb = await supabaseServer();
-  // the position comes only from the Maps link and changes only when the link does (older buildings keep their coordinates)
-  const prev = id ? (await sb.from('buildings').select('maps_url').eq('id', id).maybeSingle()).data : null;
-  if (v.maps_url !== (prev?.maps_url ?? null)) {
-    if (!v.maps_url) Object.assign(row, { maps_url: null, lat: null, lng: null });
-    else {
-      const c = await resolveMapsCoords(v.maps_url);
-      if (!c) return { error: 'Không đọc được vị trí từ link này.', fieldErrors: { maps_url: 'Mở Google Maps → bấm vào toà nhà → Chia sẻ → Sao chép đường liên kết' } };
-      Object.assign(row, { maps_url: v.maps_url, lat: c.lat, lng: c.lng });
-    }
+  // position = the lat/lng fields (filled from the link in the form, editable by hand). A new link whose coordinates
+  // weren't read yet (fields empty or still the old ones) is resolved here. Nothing is ever guessed.
+  const prev = id ? (await sb.from('buildings').select('maps_url, lat, lng').eq('id', id).maybeSingle()).data : null;
+  let { lat, lng } = v;
+  const stale = lat == null || (prev && v.maps_url !== (prev.maps_url ?? null) && lat === prev.lat && lng === prev.lng);
+  if (v.maps_url && stale) {
+    const c = await resolveMapsCoords(v.maps_url);
+    if (!c) return { error: 'Không đọc được vị trí từ link này.', fieldErrors: { maps_url: 'Mở Google Maps → bấm vào toà nhà → Chia sẻ → Sao chép đường liên kết' } };
+    ({ lat, lng } = c);
   }
+  Object.assign(row, { maps_url: v.maps_url, lat, lng });
   if (!id) {
     if (!v.slug) return { error: 'Nhập đường dẫn (slug).', fieldErrors: { slug: 'Bắt buộc' } };
     if (!v.code_prefix) return { error: 'Nhập tiền tố mã căn.', fieldErrors: { code_prefix: 'Bắt buộc, 3 chữ cái' } };

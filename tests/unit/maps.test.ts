@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { coordsFromMapsUrl, mapsUrlOk } from '@/lib/maps';
+import { coordsFromMapsUrl, mapsEmbedUrl, mapsOpenUrl, mapsUrlOk } from '@/lib/maps';
 
 describe('Google Maps link → coordinates (only what the link says)', () => {
   it('place link: the pin (!3d!4d), not the map centre', () =>
@@ -24,5 +24,16 @@ describe('Google Maps link → coordinates (only what the link says)', () => {
     expect(mapsUrlOk('http://maps.app.goo.gl/x')).toBe(false);
     expect(mapsUrlOk('https://evil.example/maps.app.goo.gl')).toBe(false);
     expect(mapsUrlOk('https://google.com.evil.io/maps')).toBe(false);
+  });
+});
+
+describe('embed / open URLs', () => {
+  it('coordinates → pin', () => {
+    expect(mapsEmbedUrl({ lat: 13.77376, lng: 109.24121, name: 'Altara' }, 'en')).toBe('https://www.google.com/maps?q=13.77376%2C109.24121&z=16&hl=en&output=embed');
+    expect(mapsOpenUrl({ lat: 13.77376, lng: 109.24121, name: 'Altara' })).toBe('https://www.google.com/maps/search/?api=1&query=13.77376%2C109.24121');
+  });
+  it('no coordinates → name + street + city (never invented coordinates)', () => {
+    expect(mapsEmbedUrl({ name: 'FLC Sea Tower', street: '1 An Dương Vương' }, 'vi')).toContain('q=FLC%20Sea%20Tower%2C%201%20An%20D');
+    expect(mapsOpenUrl({ name: 'TMS', street: '' })).toBe('https://www.google.com/maps/search/?api=1&query=TMS%2C%20Quy%20Nh%C6%A1n');
   });
 });

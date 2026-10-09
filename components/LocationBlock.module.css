@@ -1,8 +1,3 @@
-.box { position: relative; aspect-ratio: 16 / 9; border-radius: var(--r-card); overflow: hidden; background: var(--placeholder-map); isolation: isolate; }
-.pending { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 16px; text-align: center; }
-.ico { color: var(--blue-500); }
-.pendingT { font-size: 15px; font-weight: 700; color: var(--ink-900); background: rgba(255,255,255,.92); padding: 4px 12px; border-radius: var(--r-sm); }
-.name { font-size: 13px; font-weight: 600; color: var(--gray-700); background: rgba(255,255,255,.92); padding: 4px 10px; border-radius: var(--r-sm); line-height: 1.3; }
 .addr { margin-top: 10px; font-size: 14px; color: var(--gray-700); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .gmaps { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-weight: 600; color: var(--blue-500); text-decoration: none; }
 .gmaps:hover { text-decoration: underline; }
