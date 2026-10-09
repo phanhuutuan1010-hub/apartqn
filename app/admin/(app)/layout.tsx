@@ -11,24 +11,25 @@ export default async function AdminAppLayout({ children }: { children: React.Rea
     const { count } = await sb.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending');
     pending = count ?? 0;
   }
+  // 4 tabs for everyone; what sits behind "Thêm" depends on the role
   const items: NavItem[] = [
-    { href: '/admin', label: 'Tổng quan', icon: 'dashboard' },
+    { href: '/admin', label: 'Hôm nay', icon: 'today', count: pending },
     { href: '/admin/can-ho', label: 'Căn hộ', icon: 'listings' },
-    ...(isAdmin ? [{ href: '/admin/duyet-tin', label: 'Duyệt tin', icon: 'approve' as const, count: pending }] : []),
-    { href: '/admin/cho-xu-ly', label: 'Chờ xử lý', icon: 'inbox' },
-    { href: '/admin/khach-hang', label: 'Khách hàng', icon: 'leads' },
-    ...(isAdmin
-      ? ([
-          { href: '/admin/toa-nha', label: 'Toà nhà', icon: 'buildings' },
-          { href: '/admin/nguoi-dung', label: 'Người dùng', icon: 'users' },
-          { href: '/admin/cai-dat', label: 'Cài đặt', icon: 'settings' },
-        ] as NavItem[])
-      : []),
+    { href: '/admin/khach-hang', label: 'Khách', icon: 'leads' },
+    { href: '/admin/them', label: 'Thêm', icon: 'more' },
   ];
+  const more: NavItem[] = isAdmin
+    ? [
+        { href: '/admin/toa-nha', label: 'Toà nhà', icon: 'buildings' },
+        { href: '/admin/nguoi-dung', label: 'Người dùng', icon: 'users' },
+        { href: '/admin/cai-dat', label: 'Cài đặt', icon: 'settings' },
+        { href: '/admin/nhu-cau', label: 'Nhu cầu chưa đáp ứng', icon: 'demand' },
+      ]
+    : [];
   return (
-    <div style={{ display: 'flex', minHeight: '100dvh' }} className="a-shell">
-      <AdminNav items={items} me={{ name: me.full_name || me.email, role: isAdmin ? 'Quản trị viên' : me.can_publish ? 'Sales · được đăng tin' : 'Sales' }} />
-      <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+    <div className="a-shell">
+      <AdminNav items={items} more={more} me={{ name: me.full_name || me.email, role: isAdmin ? 'Quản trị viên' : me.can_publish ? 'Sales · được đăng tin' : 'Sales' }} />
+      <main className="a-main">{children}</main>
     </div>
   );
 }

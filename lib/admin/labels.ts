@@ -1,14 +1,16 @@
-/** Admin UI is Vietnamese only. Reuses the site's vi strings where they exist. */
-import vi from '@/i18n/vi.json';
+/**
+ * Admin UI is Vietnamese only. Labels are inlined (same text as i18n/vi.json) so client components do not pull the
+ * whole site dictionary into the admin bundle — tests/unit/labels.test.ts keeps them in sync.
+ */
 
 export type ListingStatusAll = 'draft' | 'pending' | 'available' | 'reserved' | 'rented' | 'hidden';
 
 export const STATUS_LABEL: Record<ListingStatusAll, string> = {
   draft: 'Nháp',
   pending: 'Chờ duyệt',
-  available: vi.st_available,
-  reserved: vi.st_reserved,
-  rented: vi.st_rented,
+  available: 'Còn trống',
+  reserved: 'Đã đặt cọc',
+  rented: 'Đã cho thuê',
   hidden: 'Đã ẩn',
 };
 export const STATUS_TONE: Record<ListingStatusAll, 'muted' | 'warn' | 'ok' | 'blue' | 'gray' | 'red'> = {
@@ -21,10 +23,17 @@ export const VIEWS = ['sea', 'city', 'river', 'lagoon'] as const;
 export const FURNS = ['full', 'basic', 'empty'] as const;
 export const AMENITIES = ['pool', 'gym', 'security', 'lift', 'basement', 'mart', 'kids'] as const;
 
-export const dirLabel = (d: string) => vi[`d_${d}` as 'd_N'] ?? d;
-export const viewLabel = (v: string) => vi[`v_${v}` as 'v_sea'] ?? v;
-export const furnLabel = (f: string) => vi[`furn_${f}` as 'furn_full'] ?? f;
-export const amenityLabel = (a: string) => vi[`b_${a}` as 'b_pool'] ?? a;
+export const DIR_LABEL: Record<string, string> = { N: 'Bắc', NE: 'Đông Bắc', E: 'Đông', SE: 'Đông Nam', S: 'Nam', SW: 'Tây Nam', W: 'Tây', NW: 'Tây Bắc' };
+export const VIEW_LABEL: Record<string, string> = { sea: 'View biển', city: 'View thành phố', river: 'View sông', lagoon: 'View đầm' };
+export const FURN_LABEL: Record<string, string> = { full: 'Đầy đủ', basic: 'Cơ bản', empty: 'Không nội thất' };
+export const AMENITY_LABEL: Record<string, string> = {
+  pool: 'Hồ bơi', gym: 'Phòng gym', security: 'Bảo vệ 24/7', lift: 'Thang máy', basement: 'Hầm gửi xe', mart: 'Siêu thị mini', kids: 'Khu vui chơi trẻ em',
+};
+
+export const dirLabel = (d: string) => DIR_LABEL[d] ?? d;
+export const viewLabel = (v: string) => VIEW_LABEL[v] ?? v;
+export const furnLabel = (f: string) => FURN_LABEL[f] ?? f;
+export const amenityLabel = (a: string) => AMENITY_LABEL[a] ?? a;
 
 /** "13.500.000" / "13500000" / "13,5tr" → 13500000; empty → null */
 export function parseVnd(v: FormDataEntryValue | null | undefined): number | null {

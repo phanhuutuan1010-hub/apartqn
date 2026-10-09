@@ -10,7 +10,7 @@ const MAX = 10;
 
 type Props = { buildings: { id: string; name: string }[] };
 
-/** building · floor/area/beds · asking rent · photos (≤10, compressed, direct to Vercel Blob) · owner, phone */
+/** building · floor/area/beds · asking rent · photos (≤10, compressed, direct to the private consign-inbox bucket) · owner, phone */
 export function ConsignForm({ buildings }: Props) {
   const t = useTranslations();
   const l = useLocale();

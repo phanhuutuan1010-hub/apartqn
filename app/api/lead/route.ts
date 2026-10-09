@@ -78,10 +78,14 @@ async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>) {
     const { data: b } = await sb.from('buildings').select('id, name').eq('slug', lead.building).maybeSingle();
     if (b) { building_id = b.id; bName = b.name; }
   }
-  const { data: row, error } = await sb.from('consign_inbox').insert({
+  // a consign request is a lead of type 'consign', unassigned (admins only) until an admin hands it to sales
+  const payload = Object.fromEntries(Object.entries({
     building_id, building_text: building_id ? null : lead.building || null,
     floor: lead.floor || null, area: lead.area || null, beds: lead.beds || null, rent: lead.rent,
-    owner_name: lead.owner, owner_phone: lead.phone, locale: lead.locale, page: lead.page || null, photo_paths: photos,
+  }).filter(([, v]) => v != null));
+  const { data: row, error } = await sb.from('leads').insert({
+    type: 'consign', name: lead.owner, phone: lead.phone, channel: 'web', locale: lead.locale, page: lead.page || null,
+    photo_paths: photos, payload, assigned_to: null,
   }).select('id').single();
   if (error) console.error('[consign] insert failed', error);
 
@@ -90,7 +94,7 @@ async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>) {
     ['Giá mong muốn (₫/tháng)', lead.rent], ['Chủ nhà', lead.owner], ['Điện thoại', lead.phone],
     ['Số ảnh', `${photos.length}${lead.photosFailed ? ` (${lead.photosFailed} ảnh tải lên lỗi — xin lại qua Zalo)` : ''}`],
     ['Ngôn ngữ', lead.locale.toUpperCase()],
-    ...(row ? ([['Mở trong quản trị', adminUrl('/admin/cho-xu-ly')]] as [string, string][]) : []),
+    ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
   ];
   const subject = `[ApartQN] Ký gửi căn hộ · ${bName}`;
   const [tg, mail] = await Promise.all([
@@ -131,7 +135,7 @@ async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_r
   const message = [lead.need, lead.query && `Đã tìm: “${lead.query}”`, line && `Điều kiện: ${line}`].filter(Boolean).join('\n');
   const { data: row, error } = await sb.from('leads').insert({
     name: lead.name, phone: lead.phone, channel: 'web', locale: lead.locale, message: message || null, page: lead.page || null,
-    assigned_to: adminList[0]?.id ?? null, search: { query: lead.query, criteria: lead.criteria },
+    assigned_to: adminList[0]?.id ?? null, type: 'search', search: { query: lead.query, criteria: lead.criteria },
   }).select('id').single();
   if (error) console.error('[lead] search_request insert failed', error);
 

@@ -1,27 +1,32 @@
-.side { position: sticky; top: 0; height: 100dvh; width: 232px; flex: 0 0 232px; display: flex; flex-direction: column; background: var(--white); border-right: 1px solid var(--gray-200); padding: 16px 12px; overflow-y: auto; }
-.brand { display: flex; align-items: baseline; gap: 8px; text-decoration: none; }
+/* ≥ 1024: sidebar · below: bottom tab bar (thumb reach) */
+.side { position: sticky; top: 0; height: 100dvh; width: 224px; flex: 0 0 224px; display: flex; flex-direction: column; background: var(--white); border-right: 1px solid var(--gray-200); padding: 16px 12px; overflow-y: auto; }
+.brand { display: flex; align-items: baseline; gap: 8px; padding: 4px 10px 18px; text-decoration: none; }
 .brand span:last-child { font-size: 12px; font-weight: 600; color: var(--gray-500); }
-.brandSide { padding: 4px 10px 18px; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
+.group { margin: 14px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-500); }
 .item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: var(--r-sm); border: 0; background: none; font-size: 14px; font-weight: 600; color: var(--gray-700); text-decoration: none; cursor: pointer; text-align: left; }
 .item:hover { background: var(--gray-100); color: var(--ink-900); }
-.on { background: var(--blue-50); color: var(--blue-500); }
-.on:hover { background: var(--blue-50); color: var(--blue-500); }
+.on, .on:hover { background: var(--blue-50); color: var(--blue-500); }
+.ico { position: relative; display: inline-flex; }
 .label { flex: 1; }
-.count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--red-500); color: var(--white); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.count { position: absolute; top: -6px; right: -10px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--red-500); color: var(--white); font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--gray-150); display: flex; flex-direction: column; gap: 2px; }
 .me { display: flex; flex-direction: column; padding: 8px 10px; border-radius: var(--r-sm); text-decoration: none; }
 .me:hover { background: var(--gray-100); }
 .meName { font-size: 14px; font-weight: 700; color: var(--ink-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meRole { font-size: 12px; color: var(--gray-500); }
-.topbar { display: none; }
-.scrim { display: none; }
+.bar { display: none; }
 
 @media (max-width: 1023.98px) {
-  .topbar { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 50; height: 56px; padding: 0 12px; background: var(--white); border-bottom: 1px solid var(--gray-200); }
-  .burger { width: 40px; height: 40px; border: 1px solid var(--gray-200); border-radius: var(--r-md); background: var(--white); display: flex; align-items: center; justify-content: center; }
-  .side { position: fixed; z-index: 60; left: 0; top: 0; bottom: 0; height: 100dvh; transform: translateX(-100%); transition: transform .18s ease-out; box-shadow: var(--sh-sheet); }
-  .open { transform: none; }
-  .brandSide { display: none; }
-  .scrim { display: block; position: fixed; inset: 0; z-index: 55; background: rgba(11,21,48,.35); }
+  .side { display: none; }
+  .bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid; grid-template-columns: repeat(4, 1fr);
+    padding: 4px max(4px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
+    background: rgba(255,255,255,.97); backdrop-filter: blur(8px); border-top: 1px solid var(--gray-200);
+  }
+  .tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 52px; border-radius: var(--r-md); font-size: 12px; font-weight: 600; color: var(--gray-700); text-decoration: none; }
+  .tab .label { flex: none; }
+  .tabOn { color: var(--blue-500); }
+  .tabOn .ico { background: var(--blue-50); border-radius: 12px; }
+  .tab .ico { padding: 3px 14px; }
 }

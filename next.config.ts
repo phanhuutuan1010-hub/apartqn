@@ -13,6 +13,13 @@ const nextConfig: NextConfig = {
     deviceSizes: [360, 480, 640, 768, 1024, 1280, 1600, 1920],
   },
   poweredByHeader: false,
+  // admin pages merged in the quick-ops cleanup
+  async redirects() {
+    return [
+      { source: '/admin/duyet-tin', destination: '/admin', permanent: true },
+      { source: '/admin/cho-xu-ly', destination: '/admin/khach-hang?type=consign', permanent: true },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);
