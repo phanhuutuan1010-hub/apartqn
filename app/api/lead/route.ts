@@ -4,6 +4,7 @@ import { leadSchema, type Lead } from '@/lib/leadSchema';
 import { clientIp, rateLimit } from '@/lib/rateLimit';
 import { supabaseSecret } from '@/lib/supabase/secret';
 import { adminUrl, htmlRows, leadEmail, telegram, tgRows } from '@/lib/notify';
+import { fmtPhone, isVnMobile } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
@@ -59,6 +60,26 @@ async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>) {
   const subject = `[ApartQN] Đặt lịch xem ${code}`;
   const [tg, mail] = await Promise.all([
     notifyTelegram(assignee?.telegram_chat_id ? [assignee.telegram_chat_id] : adminList.map((a) => a.telegram_chat_id), tgRows(subject, rows)),
+    leadEmail(subject, htmlRows(subject, rows)),
+  ]);
+  return { saved: !error, tg, mail };
+}
+
+/** "Để lại số, chúng tôi gọi lại" on /ky-gui: a consign lead with only a name + phone (admins only until assigned). */
+async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>) {
+  const { data: row, error } = await sb.from('leads').insert({
+    type: 'consign', name: lead.owner, phone: lead.phone, channel: 'web', locale: lead.locale, page: lead.page || null,
+    photo_paths: [], payload: { source: 'callback' }, assigned_to: null,
+    message: 'Chủ nhà nhờ gọi lại (để lại số ở trang ký gửi).',
+  }).select('id').single();
+  if (error) console.error('[consign] callback insert failed', error);
+  const rows: [string, string][] = [
+    ['Chủ nhà', lead.owner], ['Điện thoại', fmtPhone(lead.phone)], ['Yêu cầu', 'Gọi lại để ghi nhận căn ký gửi'], ['Ngôn ngữ', lead.locale.toUpperCase()],
+    ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
+  ];
+  const subject = '[ApartQN] Chủ nhà nhờ gọi lại';
+  const [tg, mail] = await Promise.all([
+    notifyTelegram((await admins(sb)).map((a) => a.telegram_chat_id), tgRows(subject, rows)),
     leadEmail(subject, htmlRows(subject, rows)),
   ]);
   return { saved: !error, tg, mail };
@@ -168,13 +189,14 @@ export async function POST(req: Request) {
   if (!parsed.success) return fail('INVALID', 400, parsed.error.issues.map((i) => i.path.join('.')));
   const lead = parsed.data;
   if (lead.website) return NextResponse.json({ ok: true }); // honeypot
+  if (lead.type === 'consign' && (lead.source === 'callback' ? !isVnMobile(lead.phone) : !lead.rent)) return fail('INVALID', 400, [lead.source === 'callback' ? 'phone' : 'rent']);
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
     console.error('[lead] CONFIG_MISSING: NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SECRET_KEY');
     return fail('CONFIG_MISSING', 500);
   }
   const sb = supabaseSecret();
-  const r = lead.type === 'viewing' ? await handleViewing(sb, lead) : lead.type === 'consign' ? await handleConsign(sb, lead) : await handleSearchRequest(sb, lead);
+  const r = lead.type === 'viewing' ? await handleViewing(sb, lead) : lead.type === 'consign' ? await (lead.source === 'callback' ? handleCallback(sb, lead) : handleConsign(sb, lead)) : await handleSearchRequest(sb, lead);
   if ('invalid' in r) return fail('INVALID', 400, ['code']);
   if (!r.saved && !r.tg && !r.mail) return fail('SEND_FAILED', 502, { db: 'failed', telegram: r.tg, email: r.mail });
   return NextResponse.json({ ok: true, channels: { db: r.saved ? 'saved' : 'failed', telegram: r.tg ? 'sent' : 'off', email: r.mail ? 'sent' : 'off' } });

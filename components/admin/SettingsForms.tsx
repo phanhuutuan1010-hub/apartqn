@@ -1,7 +1,8 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import { saveHotline, saveMyProfile, saveThresholds, testTelegram } from '@/lib/admin/settingsActions';
+import { saveContact, saveMyProfile, saveThresholds, testTelegram } from '@/lib/admin/settingsActions';
+import { compressImage } from '@/lib/compressImage';
 
 type Res = { ok?: string; error?: string };
 const Msg = ({ s }: { s: Res }) =>
@@ -24,17 +25,45 @@ export function ThresholdsForm({ v }: { v: { verify_remind_days: number; verify_
   );
 }
 
-export function HotlineForm({ value, fallback }: { value: string | null; fallback: string }) {
-  const [state, action, pending] = useActionState<Res, FormData>(saveHotline, {});
+export type ContactSettings = { hotline: string | null; zalo_phone: string | null; contact_person_name: string | null; contact_person_title: string | null; photoUrl: string | null };
+
+/** Hotline / Zalo / contact person for the website (/ky-gui quick contact) and "Tạo bài đăng". */
+export function ContactForm({ v, fallback }: { v: ContactSettings; fallback: string }) {
+  const [state, action, pending] = useActionState<Res, FormData>(saveContact, {});
+  const [busy, start] = useTransition();
+  const [preview, setPreview] = useState<string | null>(v.photoUrl);
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const f = fd.get('photo');
+    if (f instanceof File && f.size > 0) fd.set('photo', await compressImage(f, 512, 0.85), 'photo.jpg');
+    start(() => action(fd));
+  };
   return (
-    <form action={action} className="a-card">
-      <h2 className="a-section-title">Hotline</h2>
-      <p className="a-small a-muted" style={{ margin: '-6px 0 12px' }}>Số mặc định trong “Tạo bài đăng” (sales vẫn sửa được trước khi sao chép). Để trống = {fallback}.</p>
-      <label className="a-field" style={{ maxWidth: 320 }}>Số điện thoại
-        <input className="input" name="hotline" type="tel" defaultValue={value ?? ''} placeholder={fallback} maxLength={24} />
-      </label>
+    <form onSubmit={onSubmit} className="a-card">
+      <h2 className="a-section-title">Liên hệ trên website</h2>
+      <p className="a-small a-muted" style={{ margin: '-6px 0 12px' }}>
+        Hiện ở khối “Không tiện điền form?” trên trang Ký gửi. Ô để trống thì website không hiện (không dùng số mẫu).
+        Hotline cũng là số mặc định trong “Tạo bài đăng” (trống = {fallback}).
+      </p>
+      <div className="a-grid">
+        <label className="a-field">Hotline<input className="input" name="hotline" type="tel" defaultValue={v.hotline ?? ''} placeholder="0905 123 456" maxLength={24} /></label>
+        <label className="a-field">Số Zalo <span className="hint">trống = dùng hotline</span><input className="input" name="zalo_phone" type="tel" defaultValue={v.zalo_phone ?? ''} placeholder={v.hotline ?? ''} maxLength={24} /></label>
+        <label className="a-field">Người liên hệ <span className="hint">không bắt buộc</span><input className="input" name="contact_person_name" defaultValue={v.contact_person_name ?? ''} maxLength={60} placeholder="vd. Nguyễn Minh Anh" /></label>
+        <label className="a-field">Chức danh<input className="input" name="contact_person_title" defaultValue={v.contact_person_title ?? ''} maxLength={80} placeholder="vd. Chuyên viên ký gửi" /></label>
+        <div className="a-field span4" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          {preview && <img src={preview} alt="" width={56} height={56} style={{ borderRadius: '50%', objectFit: 'cover' }} />}
+          <label className="a-btn a-btn-outline a-btn-sm" style={{ cursor: 'pointer' }}>
+            {preview ? 'Đổi ảnh' : 'Tải ảnh người liên hệ'}
+            <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) setPreview(URL.createObjectURL(f)); }} />
+          </label>
+          {v.photoUrl && <label className="a-check"><input type="checkbox" name="remove_photo" /> Bỏ ảnh</label>}
+          <span className="a-small a-muted">Ảnh vuông, rõ mặt; tự cắt 256 px.</span>
+        </div>
+      </div>
       <Msg s={state} />
-      <button className="a-btn a-btn-blue" style={{ marginTop: 14 }} disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>
+      <button className="a-btn a-btn-blue" style={{ marginTop: 14 }} disabled={pending || busy}>{pending || busy ? 'Đang lưu…' : 'Lưu'}</button>
     </form>
   );
 }

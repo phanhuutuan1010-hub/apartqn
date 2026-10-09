@@ -602,3 +602,35 @@ describe('building fees (migration 14)', () => {
     expect(r.rowCount).toBe(0);
   });
 });
+
+describe('consign quick contact (migration 19)', () => {
+  it('public_contact exposes only the contact fields; settings stay staff-only', async () => {
+    await root(`update public.settings set hotline = '0905 123 456', zalo_phone = null, contact_person_name = 'Minh Anh', contact_person_title = 'Chuyên viên' where id = 1`);
+    const v = await as('anon', (q) => q(`select * from public.public_contact`));
+    expect(Object.keys(v.rows[0]).sort()).toEqual(['contact_person_name', 'contact_person_photo', 'contact_person_title', 'hotline', 'zalo_phone']);
+    expect(v.rows[0].hotline).toBe('0905 123 456');
+    expect(await as('anon', (q) => denied(q(`select hotline from public.settings`)))).toMatch(/permission/);
+    expect(await denied(root(`update public.settings set zalo_phone = 'call me' where id = 1`))).toMatch(/check/);
+    expect(await denied(root(`update public.settings set contact_person_photo = '../x.png' where id = 1`))).toMatch(/check/);
+    await root(`update public.settings set hotline = null, contact_person_name = null, contact_person_title = null where id = 1`);
+  });
+
+  it('contact clicks: anon logs through the rpc only, junk dropped, only admins read', async () => {
+    await root(`delete from public.contact_clicks`);
+    await as('anon', async (q) => {
+      await q(`select public.log_contact_click('call', 'ky-gui', 'vi')`);
+      await q(`select public.log_contact_click('zalo', 'ky-gui', 'en')`);
+      await q(`select public.log_contact_click('sms', 'ky-gui', 'vi')`); // unknown channel → dropped
+      await q(`select public.log_contact_click('call', '<script>', 'vi')`); // bad page → dropped
+      expect(await denied(q(`insert into public.contact_clicks (channel, page, locale) values ('call', 'ky-gui', 'vi')`))).toMatch(/permission/);
+      expect(await denied(q(`select * from public.contact_clicks`))).toMatch(/permission/);
+      // (as() rolls back: check the rows inside the same transaction, back as the superuser)
+      await q(`reset role`);
+      expect((await q(`select channel, locale from public.contact_clicks order by id`)).rows).toEqual([{ channel: 'call', locale: 'vi' }, { channel: 'zalo', locale: 'en' }]);
+    });
+    await root(`insert into public.contact_clicks (channel, page, locale) values ('call', 'ky-gui', 'vi'), ('form', 'ky-gui', 'vi')`);
+    expect((await as(id(U.admin), (q) => q(`select count(*)::int as n from public.contact_clicks`))).rows[0].n).toBe(2);
+    expect((await as(id(U.s1), (q) => q(`select count(*)::int as n from public.contact_clicks`))).rows[0].n).toBe(0);
+    await root(`delete from public.contact_clicks`);
+  });
+});

@@ -16,7 +16,7 @@ const DAY = 86_400_000;
  * 1. keep-alive query (Supabase Free pauses idle projects)
  * 2. available listings not confirmed for > remind days → Telegram reminder to the assignee
  * 3. … for > hide days → status hidden + notify assignee and admins
- * 4. search_misses older than 90 days → deleted
+ * 4. search_misses and contact_clicks older than 90 days → deleted
  * 5. Mondays → backup reminder to admins
  */
 export async function GET(req: NextRequest) {
@@ -73,6 +73,8 @@ export async function GET(req: NextRequest) {
   // 4 · unmet-demand log retention: 90 days
   const { count: missesDeleted, error: mErr } = await sb.from('search_misses').delete({ count: 'exact' }).lt('created_at', new Date(now - 90 * DAY).toISOString());
   if (mErr) console.error('[cron] search_misses cleanup', mErr);
+  const { count: clicksDeleted, error: cErr } = await sb.from('contact_clicks').delete({ count: 'exact' }).lt('created_at', new Date(now - 90 * DAY).toISOString());
+  if (cErr) console.error('[cron] contact_clicks cleanup', cErr);
 
   // 5 · Monday backup reminder (Vietnam time)
   const vnDay = new Date(now + 7 * 3600_000).getUTCDay();
@@ -88,5 +90,5 @@ export async function GET(req: NextRequest) {
     if (await telegram(chat, head + lines.join('\n'))) sent++;
   }
 
-  return NextResponse.json({ ok: true, reminded: toRemind.map((d) => d.code), hidden, backupReminder: vnDay === 1, telegramSent: sent, searchMissesDeleted: missesDeleted ?? 0 });
+  return NextResponse.json({ ok: true, reminded: toRemind.map((d) => d.code), hidden, backupReminder: vnDay === 1, telegramSent: sent, searchMissesDeleted: missesDeleted ?? 0, contactClicksDeleted: clicksDeleted ?? 0 });
 }

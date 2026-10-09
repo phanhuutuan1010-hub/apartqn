@@ -28,7 +28,8 @@ export const consignSchema = z.object({
   floor: small,
   area: small,
   beds: small,
-  rent: z.string().trim().min(1).max(30),
+  /** required for the full form (checked in the route); empty for a callback */
+  rent: z.string().trim().max(30).optional().default(''),
   owner: name,
   phone,
   // storage paths in the private consign-inbox bucket issued by /api/consign/upload: <uploadId>/<n>.<ext>
@@ -39,6 +40,8 @@ export const consignSchema = z.object({
     .optional()
     .default([]),
   photosFailed: z.number().int().min(0).max(MAX_PHOTOS).optional().default(0),
+  /** 'callback' = "Để lại số, chúng tôi gọi lại" (name + VN mobile only) */
+  source: z.enum(['form', 'callback']).optional().default('form'),
   locale,
   page,
   website,

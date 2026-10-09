@@ -5,7 +5,8 @@ import { DEMO, SITE } from '@/data/site';
 import { Logo } from './Logo';
 import styles from './Footer.module.css';
 
-export function Footer() {
+/** `demo={false}`: no DỮ LIỆU DEMO tag (the consign page talks to real owners). */
+export function Footer({ demo = DEMO }: { demo?: boolean } = {}) {
   const t = useTranslations();
   const locale = useLocale();
   const nav = [
@@ -49,7 +50,7 @@ export function Footer() {
         </div>
         <div className={styles.bottom}>
           <span>© 2026 ApartQN</span>
-          {DEMO && <span className={styles.demo}>{t('demo')}</span>}
+          {demo && <span className={styles.demo}>{t('demo')}</span>}
         </div>
       </div>
     </footer>

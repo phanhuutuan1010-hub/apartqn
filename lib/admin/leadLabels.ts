@@ -22,7 +22,7 @@ export const LEAD_TYPES = Object.keys(LEAD_TYPE) as LeadType[];
 
 /** consign request (leads.payload) → "Altara · Tầng 14 · 72 m² · 2 PN · 12 triệu" */
 export const consignLine = (p: Record<string, string | undefined>, buildingName: Map<string, string>) =>
-  [
+  p.source === 'callback' && !p.building_id && !p.building_text ? '📞 Nhờ gọi lại — chưa có thông tin căn' : [
     (p.building_id && buildingName.get(p.building_id)) || p.building_text || 'Chưa chọn toà nhà',
     p.floor && `Tầng ${p.floor}`,
     p.area && `${p.area.replace(/\s*m2?²?$/i, '')} m²`,

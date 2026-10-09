@@ -2,13 +2,12 @@ import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
-import { getBuildings } from '@/lib/repo';
+import { getBuildings, getContact } from '@/lib/repo';
 import { alternates, OG_LOCALE } from '@/lib/seo';
-import { DEMO } from '@/data/site';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { DemoBadge } from '@/components/Badges';
 import { ConsignForm } from '@/components/ConsignForm';
+import { ConsignBar, QuickContact } from '@/components/QuickContact';
 import styles from './consign.module.css';
 
 export async function generateMetadata({ params }: PageProps<'/[locale]/ky-gui'>): Promise<Metadata> {
@@ -27,7 +26,8 @@ export default async function ConsignPage({ params }: PageProps<'/[locale]/ky-gu
   const { locale } = (await params) as { locale: Locale };
   setRequestLocale(locale);
   const t = await getTranslations();
-  const buildings = await getBuildings();
+  const [buildings, contact] = await Promise.all([getBuildings(), getContact()]);
+  const reach = !!(contact.hotline || contact.zalo);
 
   return (
     <>
@@ -38,10 +38,21 @@ export default async function ConsignPage({ params }: PageProps<'/[locale]/ky-gu
             <div className={styles.text}>
               <div className={styles.pills}>
                 <span className={styles.eyebrow}>{t('cgEyebrow')}</span>
-                {DEMO && <DemoBadge height={28} />}
               </div>
               <h1 className={`h1 ${styles.h1}`}>{t('cgTitle')}</h1>
               <p className={styles.sub}>{t('cgSub')}</p>
+            </div>
+            {/* phones: quick contact right under the hero text; desktop: on top of the form column */}
+            <div className={styles.side}>
+              <div className={styles.qc}>
+                <QuickContact contact={contact} />
+                <p className={styles.or}><span>{t('qcOr')}</span></p>
+              </div>
+              <div className={styles.form} id="consign-form">
+                <ConsignForm buildings={buildings.map((b) => ({ id: b.id, name: b.name }))} />
+              </div>
+            </div>
+            <div className={styles.stepsWrap}>
               <div className={styles.steps}>
                 <span className="eyebrow" style={{ marginBottom: 8 }}>{t('cgHow')}</span>
                 <ol className={styles.list}>
@@ -56,9 +67,6 @@ export default async function ConsignPage({ params }: PageProps<'/[locale]/ky-gu
                   ))}
                 </ol>
               </div>
-            </div>
-            <div className={styles.form}>
-              <ConsignForm buildings={buildings.map((b) => ({ id: b.id, name: b.name }))} />
             </div>
           </div>
         </section>
@@ -76,7 +84,8 @@ export default async function ConsignPage({ params }: PageProps<'/[locale]/ky-gu
           </div>
         </section>
       </main>
-      <Footer />
+      <Footer demo={false} />
+      {reach && <ConsignBar contact={contact} />}
     </>
   );
 }

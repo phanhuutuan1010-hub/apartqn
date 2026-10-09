@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { compressImage } from '@/lib/compressImage';
 import { F, M2 } from '@/lib/format';
+import { trackContact } from '@/lib/trackContact';
 import styles from './Forms.module.css';
 
 const MAX = 10;
@@ -86,6 +87,7 @@ export function ConsignForm({ buildings }: Props) {
         }),
       });
       if (!r.ok) throw new Error(String(r.status));
+      trackContact('form', l);
       setState('done');
       setFiles([]);
       setTooMany(false);

@@ -6,7 +6,7 @@
 import { cache } from 'react';
 import { connection } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { toBuilding, toListing, type PublicBuildingRow, type PublicListingRow } from './repoMap';
+import { publicPhotoUrl, toBuilding, toListing, type PublicBuildingRow, type PublicListingRow } from './repoMap';
 import type { Building, Listing } from './types';
 
 export type { Building, Listing };
@@ -80,4 +80,23 @@ export const getBuilding = cache(async (slug: string): Promise<Building | null> 
   const { data, error } = await client().from('public_buildings').select('*').eq('slug', slug).maybeSingle();
   if (error) await fail('public_buildings', error);
   return data ? toBuilding(data as PublicBuildingRow, SUPABASE_URL) : null;
+});
+
+export type SiteContact = { hotline?: string; zalo?: string; person?: { name: string; title?: string; photo?: string } };
+
+/** Public contact from admin Cài đặt (public_contact view). Nothing set → empty: the page hides those parts, never a made-up number. */
+export const getContact = cache(async (): Promise<SiteContact> => {
+  const { data, error } = await client().from('public_contact').select('*').maybeSingle();
+  if (error) {
+    console.error('[repo] public_contact', error.message);
+    return {};
+  }
+  const v = (x: unknown) => (typeof x === 'string' && x.trim() ? x.trim() : undefined);
+  const hotline = v(data?.hotline), zalo = v(data?.zalo_phone) ?? hotline, name = v(data?.contact_person_name);
+  const photo = v(data?.contact_person_photo);
+  return {
+    ...(hotline ? { hotline } : {}),
+    ...(zalo ? { zalo } : {}),
+    ...(name ? { person: { name, ...(v(data?.contact_person_title) ? { title: v(data?.contact_person_title) } : {}), ...(photo ? { photo: publicPhotoUrl(SUPABASE_URL, photo) } : {}) } } : {}),
+  };
 });

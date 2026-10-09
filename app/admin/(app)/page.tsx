@@ -30,7 +30,7 @@ export default async function TodayPage() {
   const warnBackup = settings?.backup_warn_days ?? 7;
   const head = { count: 'exact' as const, head: true };
 
-  const [pendingRes, dueRes, dueCount, leadsRes, leadCount, trEn, all, missRes, dir, { data: buildings }] = await Promise.all([
+  const [pendingRes, dueRes, dueCount, leadsRes, leadCount, trEn, all, missRes, dir, { data: buildings }, clicksRes] = await Promise.all([
     isAdmin
       ? sb.from('listings')
           .select('id, rent, area, beds, furn, move_in, submitted_at, units(floor, unit_no, assigned_to, buildings(name)), photos(path, thumb_path, visibility, is_cover, sort)')
@@ -47,7 +47,12 @@ export default async function TodayPage() {
     isAdmin ? sb.rpc('search_miss_top', { p_days: 30, p_limit: 8 }) : Promise.resolve({ data: null }),
     staffDirectory(),
     sb.from('buildings').select('id, name'),
+    // consign-page contact clicks, 30 days (admins only — RLS)
+    isAdmin ? sb.from('contact_clicks').select('channel').eq('page', 'ky-gui').gte('created_at', daysAgoIso(30)).limit(10000) : Promise.resolve({ data: null }),
   ]);
+  const clicks = new Map<string, number>();
+  ((clicksRes.data ?? []) as { channel: string }[]).forEach((r) => clicks.set(r.channel, (clicks.get(r.channel) ?? 0) + 1));
+  const ck = (k: string) => clicks.get(k) ?? 0;
   const pending = (pendingRes.data ?? []) as unknown as Pending[];
   const due = (dueRes.data ?? []) as Due[];
   const leads = (leadsRes.data ?? []) as unknown as NewLead[];
@@ -139,6 +144,14 @@ export default async function TodayPage() {
             ))}
           </ul>
         </section>
+      )}
+
+      {isAdmin && (
+        <div className={`a-card ${styles.clicks}`}>
+          <span>Ký gửi: <b>{ck('call') + ck('copy')}</b> gọi · <b>{ck('zalo')}</b> Zalo · <b>{ck('form')}</b> form
+            {ck('callback') > 0 && <> · <b>{ck('callback')}</b> nhờ gọi lại</>}{ck('whatsapp') > 0 && <> · <b>{ck('whatsapp')}</b> WhatsApp</>}</span>
+          <span className="a-muted">(30 ngày)</span>
+        </div>
       )}
 
       {/* secondary: one expandable summary row */}

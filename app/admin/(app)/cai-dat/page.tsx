@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { DatabaseBackup } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin/session';
-import { supabaseServer } from '@/lib/supabase/server';
+import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { daysSince, fmtDateTime } from '@/lib/admin/labels';
-import { HotlineForm, ThresholdsForm } from '@/components/admin/SettingsForms';
+import { ContactForm, ThresholdsForm } from '@/components/admin/SettingsForms';
+import { publicPhotoUrl } from '@/lib/repoMap';
 import { SITE } from '@/data/site';
 
 export const metadata: Metadata = { title: 'Cài đặt' };
@@ -34,7 +35,10 @@ export default async function SettingsPage() {
         </form>
       </section>
 
-      <HotlineForm value={s?.hotline ?? null} fallback={SITE.phoneDisplay} />
+      <ContactForm fallback={SITE.phoneDisplay} v={{
+        hotline: s?.hotline ?? null, zalo_phone: s?.zalo_phone ?? null, contact_person_name: s?.contact_person_name ?? null,
+        contact_person_title: s?.contact_person_title ?? null, photoUrl: s?.contact_person_photo ? publicPhotoUrl(SUPABASE_URL, s.contact_person_photo) : null,
+      }} />
 
       <ThresholdsForm v={{ verify_remind_days: s?.verify_remind_days ?? 14, verify_hide_days: s?.verify_hide_days ?? 21, backup_warn_days: s?.backup_warn_days ?? 7 }} />
     </div>

@@ -25,3 +25,6 @@
 .demandList { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 24px; }
 .demandList li { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--gray-100); font-size: 15px; min-width: 0; }
 .demandQ { min-width: 0; overflow-wrap: anywhere; }
+
+/* consign contact clicks, one line */
+.clicks { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 12px 16px; font-size: 14px; }
