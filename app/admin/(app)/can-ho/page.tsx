@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { requireStaff, staffDirectory } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
-import { STATUS_LABEL, STATUS_TONE, daysAgoIso, daysSince, fmtVnd, type ListingStatusAll } from '@/lib/admin/labels';
+import { STATUS_LABEL, daysAgoIso, daysSince, type ListingStatusAll } from '@/lib/admin/labels';
 import { TableFilters } from '@/components/admin/TableFilters';
-import { SortTh, Pager } from '@/components/admin/Table';
-import { ListingRowActions } from '@/components/admin/ListingRowActions';
+import { SortHead, Pager } from '@/components/admin/Table';
+import { ListingsList, type ListRow } from '@/components/admin/ListingsList';
 
 export const metadata: Metadata = { title: 'Căn hộ' };
 
@@ -22,12 +22,6 @@ type Row = {
   has_vi: boolean; has_en: boolean; en_outdated: boolean;
   photo_count: number; is_demo: boolean; rejection_reason: string | null;
 };
-
-function TrBadge({ lang, has, outdated }: { lang: string; has: boolean; outdated: boolean }) {
-  if (!has) return <span className="a-badge outline" title={`Chưa có mô tả ${lang}`}>{lang}</span>;
-  if (outdated) return <span className="a-badge warn" title={`Bản ${lang} cũ hơn bản VI`}>{lang}</span>;
-  return <span className="a-badge ok" title={`Đã có mô tả ${lang}`}>{lang}</span>;
-}
 
 export default async function ListingsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const me = await requireStaff();
@@ -83,62 +77,34 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
 
       {error && <div className="a-alert error" style={{ marginBottom: 12 }}>Không tải được dữ liệu: {error.message}</div>}
 
-      <div className="a-table-wrap">
-        <table className="a-table">
-          <thead>
-            <tr>
-              <SortTh label="Mã" k="code" sp={sp} basePath={base} />
-              <SortTh label="Toà nhà" k="building" sp={sp} basePath={base} />
-              <SortTh label="Tầng · căn" k="floor" sp={sp} basePath={base} />
-              <SortTh label="PN" k="beds" sp={sp} basePath={base} className="num" />
-              <SortTh label="Giá thuê" k="rent" sp={sp} basePath={base} className="num" />
-              <SortTh label="Trạng thái" k="status" sp={sp} basePath={base} />
-              <th>Phụ trách</th>
-              <SortTh label="Xác nhận" k="verified" sp={sp} basePath={base} />
-              <th>Dịch</th>
-              <th style={{ textAlign: 'right' }}>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const d = daysSince(r.verified_at);
-              const isPublic = r.status === 'available' || r.status === 'reserved';
-              const tone = !isPublic || d == null ? 'a-muted' : d > hide ? 'red' : d > remind ? 'warn' : '';
-              return (
-                <tr key={r.id}>
-                  <td className="nowrap">
-                    <Link href={`/admin/can-ho/${r.id}`} style={{ fontWeight: 700, color: 'var(--blue-500)', textDecoration: 'none' }}>
-                      {r.code ?? 'Chưa có mã'}
-                    </Link>
-                    {r.is_demo && <span className="a-badge outline" style={{ marginLeft: 6 }}>demo</span>}
-                  </td>
-                  <td style={{ minWidth: 160 }}>{r.building_name}</td>
-                  <td className="nowrap">T{r.floor} · <span className="a-mono">{r.unit_no}</span></td>
-                  <td className="num">{r.beds === 0 ? 'Studio' : r.beds ?? '—'}</td>
-                  <td className="num">{r.rent ? fmtVnd(r.rent) : '—'}</td>
-                  <td>
-                    <span className={`a-badge dot ${STATUS_TONE[r.status]}`}>{STATUS_LABEL[r.status]}</span>
-                    {r.status === 'draft' && r.rejection_reason && <div className="a-small" style={{ color: 'var(--error)' }} title={r.rejection_reason}>Bị từ chối</div>}
-                  </td>
-                  <td className="nowrap">{r.assigned_to ? dir.get(r.assigned_to)?.name ?? '—' : <span className="a-muted">Chưa giao</span>}</td>
-                  <td className="nowrap">
-                    {d == null ? <span className="a-muted">—</span> : (
-                      <span className={tone === 'red' ? 'a-badge red' : tone === 'warn' ? 'a-badge warn' : tone}>{d === 0 ? 'Hôm nay' : `${d} ngày`}</span>
-                    )}
-                  </td>
-                  <td className="nowrap" style={{ display: 'flex', gap: 4, alignItems: 'center', minHeight: 52 }}>
-                    <TrBadge lang="EN" has={r.has_en} outdated={r.en_outdated} />
-                  </td>
-                  <td style={{ minWidth: 190 }}>
-                    <ListingRowActions id={r.id} status={r.status} role={me.role} canPublish={me.can_publish} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {!rows.length && <div className="a-empty">Không có căn nào phù hợp.</div>}
-      </div>
+      <ListingsList
+        rows={rows.map((r): ListRow => {
+          const d = daysSince(r.verified_at);
+          const isPublic = r.status === 'available' || r.status === 'reserved';
+          return {
+            id: r.id, code: r.code, status: r.status, building_name: r.building_name, floor: r.floor, unit_no: r.unit_no,
+            beds: r.beds, rent: r.rent, assigned_to: r.assigned_to, assignee: r.assigned_to ? dir.get(r.assigned_to)?.name ?? '—' : null,
+            verified_days: d, verify_tone: !isPublic || d == null ? 'a-muted' : d > hide ? 'red' : d > remind ? 'warn' : '',
+            has_en: r.has_en, en_outdated: r.en_outdated, is_demo: r.is_demo, rejected: !!r.rejection_reason,
+          };
+        })}
+        header={<>
+          <SortHead label="Mã" k="code" sp={sp} basePath={base} className="c-code" />
+          <SortHead label="Toà nhà" k="building" sp={sp} basePath={base} className="c-bld" />
+          <SortHead label="Tầng · căn" k="floor" sp={sp} basePath={base} className="c-unit" />
+          <SortHead label="PN" k="beds" sp={sp} basePath={base} className="c-beds" />
+          <SortHead label="Giá thuê" k="rent" sp={sp} basePath={base} className="c-rent" />
+          <SortHead label="Trạng thái" k="status" sp={sp} basePath={base} className="c-status" />
+          <div className="c-who">Phụ trách</div>
+          <SortHead label="Xác nhận" k="verified" sp={sp} basePath={base} className="c-ver" />
+          <div className="c-en">Dịch</div>
+          <div className="c-more" />
+        </>}
+        role={me.role}
+        canPublish={me.can_publish}
+        staff={staffOptions}
+      />
+      {!rows.length && <div className="a-card a-empty">Không có căn nào phù hợp.</div>}
       <Pager page={page} pageSize={PAGE} total={count ?? 0} sp={sp} basePath={base} />
     </div>
   );
