@@ -10,9 +10,11 @@ import { parseVnd, AMENITIES } from '@/lib/admin/labels';
 import { FEE_FIELDS, toBuildingFees, type BuildingFees } from '@/lib/fees';
 import { syncListingFees } from '@/lib/admin/feeSync';
 import { normaliseYoutube, YOUTUBE_RE } from '@/lib/youtube';
+import { viHash } from '@/lib/enStatus';
+import { mismatchText } from '@/lib/translate';
 import { coordsFromMapsUrl, isMapsHost, mapsUrlOk } from '@/lib/maps';
 
-export type BuildingResult = { ok?: string; error?: string; fieldErrors?: Record<string, string> };
+export type BuildingResult = { ok?: string; error?: string; warning?: string; fieldErrors?: Record<string, string> };
 
 const txt = (max: number) => z.preprocess((v) => (typeof v === 'string' && v.trim() ? v.trim() : null), z.string().max(max).nullable());
 const coord = (min: number, max: number) => z.preprocess((v) => (v === '' || v == null ? null : Number(String(v).replace(',', '.'))), z.number().min(min).max(max).nullable());
@@ -112,6 +114,8 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   const row = {
     name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street, video_url: v.video_url,
     amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo,
+    // "Bản EN vẫn đúng": the English now counts as written from the current Vietnamese
+    ...(fd.get('en_confirm') === 'on' && v.desc_en ? { desc_en_vi_hash: viHash(v.desc_vi) } : {}),
   };
   const sb = await supabaseServer();
   // position = the lat/lng fields (filled from the link in the form, editable by hand). A new link whose coordinates
@@ -147,7 +151,8 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   await refreshBuilding(id, data.slug);
   revalidatePath(`/admin/toa-nha/${id}`);
   revalidatePath('/admin/can-ho');
-  return { ok: synced ? `Đã lưu và cập nhật phí ${synced} căn. Website cập nhật ngay.` : 'Đã lưu. Website cập nhật ngay.' };
+  const warning = v.desc_en ? mismatchText(v.desc_vi ?? '', v.desc_en) || undefined : undefined;
+  return { ok: synced ? `Đã lưu và cập nhật phí ${synced} căn. Website cập nhật ngay.` : 'Đã lưu. Website cập nhật ngay.', warning };
 }
 
 /** How many listings would take new fees from this form (before saving): drives the "Cập nhật N căn" dialog. */

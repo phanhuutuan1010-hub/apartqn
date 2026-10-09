@@ -9,6 +9,8 @@ import { publicPhotoUrl } from '@/lib/repoMap';
 import { fmtDateTime } from '@/lib/admin/labels';
 import { BuildingForm, type BuildingData } from '@/components/admin/BuildingForm';
 import { BuildingDelete } from '@/components/admin/BuildingDelete';
+import { enStatusOf } from '@/lib/enStatus';
+import { loadGlossary } from '@/lib/admin/glossary';
 import type { PhotoView } from '@/components/admin/PhotoManager';
 import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
 
@@ -77,7 +79,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
       </div>
       {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo toà nhà. Thêm ảnh bên dưới.</div>}
       {copiedFrom && <div className="a-alert info" style={{ marginBottom: 14 }}>Bản sao từ <b>{copiedFrom}</b>: đã chép phí, tiện ích, mô tả. Nhập tên, đường dẫn, tiền tố mã và địa chỉ rồi bấm Tạo toà nhà.</div>}
-      <BuildingForm b={b} codedListings={coded} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
+      <BuildingForm b={b} codedListings={coded} enStatus={enStatusOf(b.desc_vi, b.desc_en, b.desc_en_vi_hash)} glossary={await loadGlossary(sb)} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
     </div>
   );
 }

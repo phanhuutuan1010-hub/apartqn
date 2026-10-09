@@ -5,7 +5,21 @@ import { ChevronDown, Lock } from 'lucide-react';
 import { saveListing, type ActionResult } from '@/lib/admin/listingActions';
 import { DIRS, FURNS, VIEWS, dirLabel, fmtVnd, furnLabel, parseVnd, viewLabel } from '@/lib/admin/labels';
 import { effectiveFees, mgmtFormula, type BuildingFees, type OverrideKey, type Overrides } from '@/lib/fees';
-import { PasteBox, type PasteBuilding, type PasteValues } from './PasteBox';
+import dynamic from 'next/dynamic';
+import type { PasteBuilding, PasteValues } from './PasteBox';
+
+// the paste box hydrates a moment later; the placeholder keeps its exact place (no layout shift)
+const PasteBox = dynamic(() => import('./PasteBox').then((m) => m.PasteBox), {
+  ssr: false,
+  loading: () => (
+    <section className="a-card a-paste" aria-hidden>
+      <label className="a-field"><span>Dán tin nhắn chủ nhà</span><textarea className="input" rows={3} disabled /></label>
+      <div style={{ marginTop: 8 }}><button type="button" className="a-btn a-btn-outline a-btn-sm" disabled>Phân tích</button></div>
+    </section>
+  ),
+});
+import { DescEditor } from './DescEditor';
+import type { EnStatus, GlossaryPair } from '@/lib/translateCore';
 
 export type BuildingOpt = { id: string; name: string; slug: string; aliases: string[]; prefix: string | null; default_fees: { net?: number }; fees: BuildingFees };
 export type ListingData = Record<string, unknown> & {
@@ -24,6 +38,10 @@ type Props = {
   photos: React.ReactNode;
   /** signed-in user: the local draft is per user + listing */
   meId: string;
+  enStatus: EnStatus;
+  glossary: GlossaryPair[];
+  /** opened from "X tin cần dịch": EN tab first, "Lưu & tin tiếp theo" */
+  queue?: boolean;
 };
 
 const s = (v: unknown) => (v == null ? '' : String(v));
@@ -35,10 +53,9 @@ const PASTE_DOM = ['floor', 'unit_no', 'beds', 'baths', 'furn', 'deposit', 'cycl
  * One page, phone first: paste box → the fields every listing needs → photos → "Thêm chi tiết" (fees and terms come
  * from the building). Sticky save bar. Unsaved edits are kept in this browser (per user + listing) until saved.
  */
-export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, canPublish, photos, meId }: Props) {
+export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, canPublish, photos, meId, enStatus, glossary, queue }: Props) {
   const [state, action, pending] = useActionState<ActionResult, FormData>(saveListing.bind(null, L.id), {});
   const [updatedAt, setUpdatedAt] = useState(L.updated_at);
-  const [tab, setTab] = useState<'vi' | 'en'>('vi');
   const [dirty, setDirty] = useState(false);
   const form = useRef<HTMLFormElement>(null);
   const draftKey = `aqn.draft.${meId}.${L.id}`;
@@ -61,7 +78,7 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   const fe = state.fieldErrors ?? {};
   const detailErr = Object.keys(fe).some((k) => !['building_id', 'floor', 'unit_no', 'beds', 'area', 'rent', 'furn'].includes(k));
   const missing = DETAIL_REQUIRED.filter((k) => L[k] == null || L[k] === '').length;
-  const [more, setMore] = useState(false);
+  const [more, setMore] = useState(!!queue);
 
   // react to a new action result during render (no effect-driven setState)
   const [seen, setSeen] = useState(state);
@@ -209,10 +226,6 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   const cls = (k: string, extra = '') => `a-field ${extra} ${fe[k] ? 'invalid' : ''}`;
   const err = (k: string) => fe[k] && <span className="err">{fe[k]}</span>;
   const draftLike = L.status === 'draft' || L.status === 'hidden';
-  const outdated = (lang: 'en') => {
-    const vi = L.desc_vi_updated_at, x = L[`desc_${lang}_updated_at`] as string | null;
-    return !!(vi && x && new Date(vi) > new Date(x));
-  };
   const pasteBuildings: PasteBuilding[] = buildings.map((b) => ({ id: b.id, slug: b.slug, name: b.name, aliases: b.aliases, prefix: b.prefix ?? undefined }));
 
   return (
@@ -368,23 +381,9 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
 
           <section className="a-card">
             <h2 className="a-section-title">Mô tả</h2>
-            <div className="a-tabs" role="tablist">
-              {(['vi', 'en'] as const).map((k) => (
-                <button key={k} type="button" role="tab" aria-selected={tab === k} className={`a-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>
-                  {k.toUpperCase()}
-                  {k !== 'vi' && !L[`desc_${k}`] && <span className="a-badge outline">thiếu</span>}
-                  {k !== 'vi' && outdated(k) && <span className="a-badge warn">cũ hơn VI</span>}
-                </button>
-              ))}
-            </div>
-            {(['vi', 'en'] as const).map((k) => (
-              <label key={k} className={cls(`desc_${k}`)} style={{ display: tab === k ? 'flex' : 'none' }}>
-                {k === 'vi' ? 'Mô tả tiếng Việt' : 'English description'}
-                <textarea className="input" name={`desc_${k}`} rows={7} lang={k} defaultValue={s(L[`desc_${k}`])} />
-                {err(`desc_${k}`)}
-              </label>
-            ))}
-            <p className="a-small a-muted" style={{ margin: '10px 0 0' }}>Trang EN chỉ hiện mô tả tiếng Anh. Thiếu bản dịch → website hiện tóm tắt tự động từ các trường ở trên.</p>
+            <DescEditor vi={s(L.desc_vi)} en={s(L.desc_en)} status={enStatus} glossary={glossary}
+              startTab={queue ? 'en' : 'vi'} errors={{ vi: fe.desc_vi, en: fe.desc_en }}
+              note="Trang EN chỉ hiện mô tả tiếng Anh. Chưa dịch → website hiện tóm tắt tự động từ các trường ở trên." />
           </section>
         </details>
 
@@ -392,9 +391,11 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
         <div className="a-actions">
           {state.error && <span className="a-small" style={{ color: 'var(--error)' }} role="alert">{state.error}</span>}
           {state.ok && !dirty && <span className="a-small" style={{ color: 'var(--ok-fg)' }} role="status">✓ {state.ok}</span>}
+          {state.warning && !dirty && <span className="a-small" style={{ color: 'var(--warn-fg)' }} role="status">⚠ {state.warning}</span>}
           {dirty && !pending && <span className="a-small a-muted">Chưa lưu · đã giữ trên máy này</span>}
           <span className="spacer" />
           <button className="a-btn a-btn-outline" name="intent" value="save" disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>
+          {queue && <button className="a-btn a-btn-blue" name="intent" value="next-en" disabled={pending}>Lưu & tin tiếp theo</button>}
           {draftLike && (
             <button className="a-btn a-btn-primary" name="intent" value="submit" disabled={pending}>
               {canPublish ? 'Đăng ngay' : 'Gửi duyệt'}

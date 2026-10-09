@@ -3,6 +3,7 @@
  * Each `as()` block runs in its own transaction and is rolled back.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { as, close, denied, root } from './helpers';
 
 const U = {
@@ -744,5 +745,44 @@ describe('soft delete + trash (migration 20)', () => {
       await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: U.s2, role: 'authenticated' })]);
       expect((await q(`select id from public.listings`)).rowCount).toBe(0);
     });
+  });
+});
+
+describe('EN translation status (migration 21)', () => {
+  it('none → ok when EN is saved; VI edit → stale; confirming re-hashes; matches the app hash', async () => {
+    await as(id(U.admin), async (q) => {
+      const st = async () => (await q(`select en_status from public.admin_listings where id = $1`, [l2])).rows[0].en_status;
+      await q(`update public.listings set desc_vi = null, desc_en = null where id = $1`, [l2]);
+      expect(await st()).toBe('na');
+      await q(`update public.listings set desc_vi = 'Căn 2PN view biển.' where id = $1`, [l2]);
+      expect(await st()).toBe('none');
+      await q(`update public.listings set desc_en = '2-bedroom with sea view.' where id = $1`, [l2]);
+      expect(await st()).toBe('ok');
+      const h = (await q(`select desc_en_vi_hash from public.listings where id = $1`, [l2])).rows[0].desc_en_vi_hash;
+      expect(h).toBe(createHash('sha256').update('Căn 2PN view biển.', 'utf8').digest('hex'));
+      await q(`update public.listings set desc_vi = 'Căn 2PN view biển, tầng cao.' where id = $1`, [l2]);
+      expect(await st()).toBe('stale');
+      // "Bản EN vẫn đúng": the app stores the hash of the current VI text
+      await q(`update public.listings set desc_en_vi_hash = $2 where id = $1`, [l2, createHash('sha256').update('Căn 2PN view biển, tầng cao.', 'utf8').digest('hex')]);
+      expect(await st()).toBe('ok');
+      await q(`update public.listings set desc_en = '' where id = $1`, [l2]);
+      expect(await st()).toBe('none');
+    });
+  });
+
+  it('buildings get the same source hash', async () => {
+    await as(id(U.admin), async (q) => {
+      const r = await q(`update public.buildings set desc_vi = 'Toà nhà ven biển.', desc_en = 'Beachfront building.' where id = $1 returning desc_en_vi_hash`, [B]);
+      expect(r.rows[0].desc_en_vi_hash).toBe(createHash('sha256').update('Toà nhà ven biển.', 'utf8').digest('hex'));
+    });
+  });
+
+  it('glossary: seeded, staff read, only admins write', async () => {
+    const rows = await as(id(U.s1), (q) => q(`select vi, en from public.translation_glossary order by sort`));
+    expect(rows.rows[0]).toEqual({ vi: 'full nội thất', en: 'fully furnished' });
+    expect(rows.rowCount).toBe(7);
+    expect(await as(id(U.s1), (q) => denied(q(`insert into public.translation_glossary (vi, en) values ('a', 'b')`)))).toMatch(/row-level security/);
+    expect(await as('anon', (q) => denied(q(`select * from public.translation_glossary`)))).toMatch(/permission denied/);
+    await as(id(U.admin), (q) => q(`insert into public.translation_glossary (vi, en) values ('ban công', 'balcony')`));
   });
 });

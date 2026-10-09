@@ -1,5 +1,8 @@
 'use server';
 
+import { viHash } from '@/lib/enStatus';
+import { mismatchText } from '@/lib/translate';
+
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
@@ -12,7 +15,7 @@ import { vnError } from '@/lib/admin/errors';
 import { copyListing } from '@/lib/admin/duplicate';
 import { effectiveFees, FEE_FIELDS, toBuildingFees, type Overrides } from '@/lib/fees';
 
-export type ActionResult = { ok?: string; error?: string; fieldErrors?: Record<string, string>; updatedAt?: string };
+export type ActionResult = { ok?: string; error?: string; warning?: string; fieldErrors?: Record<string, string>; updatedAt?: string };
 
 // ───────────────────────── create ─────────────────────────
 export async function checkDuplicate(building: string, floor: number, unitNo: string) {
@@ -122,8 +125,10 @@ export async function saveListing(id: string, _: ActionResult, fd: FormData): Pr
   const fees = toBuildingFees((bRow ?? {}) as unknown as Record<string, unknown>);
   const overrides: Overrides = Object.fromEntries(([['mgmt', ov_mgmt], ['moto', ov_moto], ['car', ov_car]] as const).filter(([, x]) => x != null));
   const eff = effectiveFees(fees, listing.area, overrides);
+  // "Bản EN vẫn đúng": the English now counts as written from the current Vietnamese
+  const confirmEn = fd.get('en_confirm') === 'on' && listing.desc_en ? { desc_en_vi_hash: viHash(listing.desc_vi) } : {};
   const l = await sb.from('listings').update({
-    ...listing, video: !!listing.video_url, fee_overrides: overrides,
+    ...listing, ...confirmEn, video: !!listing.video_url, fee_overrides: overrides,
     mgmt: eff.mgmt, moto: eff.moto, car: eff.car, car_parking: eff.carParking ?? car_parking,
   }).eq('id', id).select('updated_at');
   if (l.error) return { error: vnError(l.error) };
@@ -135,7 +140,14 @@ export async function saveListing(id: string, _: ActionResult, fd: FormData): Pr
     return { ...r, ok: r.ok ? r.ok : undefined, error: r.error ? 'Đã lưu, nhưng chưa gửi được: ' + r.error : undefined, updatedAt: after?.updated_at ?? l.data[0].updated_at };
   }
   await refresh(id, !!cur.code);
-  return { ok: 'Đã lưu.', updatedAt: l.data[0].updated_at };
+  const warning = listing.desc_en ? mismatchText(listing.desc_vi ?? '', listing.desc_en) || undefined : undefined;
+  // translation queue: straight on to the next listing that needs English
+  if (fd.get('intent') === 'next-en') {
+    const { data: next } = await sb.from('admin_listings').select('id').in('en_status', ['none', 'stale']).neq('id', id)
+      .order('code', { ascending: true, nullsFirst: false }).order('created_at').limit(1);
+    redirect(next?.[0] ? `/admin/can-ho/${next[0].id}?queue=en` : '/admin/can-ho?tr=en&queueDone=1');
+  }
+  return { ok: 'Đã lưu.', warning, updatedAt: l.data[0].updated_at };
 }
 
 // ───────────────────────── status ─────────────────────────

@@ -41,7 +41,8 @@ export default async function TodayPage() {
     sb.from('admin_listings').select('id', head).in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind)),
     sb.from('leads').select('id, name, phone, type, created_at, payload, listings(code)').eq('status', 'new').order('created_at', { ascending: false }).limit(6),
     sb.from('leads').select('id', head).eq('status', 'new'),
-    sb.from('admin_listings').select('id', head).in('status', ['available', 'reserved', 'rented']).or('has_en.eq.false,en_outdated.eq.true'),
+    // translation queue: listings whose Vietnamese text has no / an outdated English version, in queue order
+    sb.from('admin_listings').select('id', { count: 'exact' }).in('en_status', ['none', 'stale']).order('code', { ascending: true, nullsFirst: false }).order('created_at').limit(1),
     sb.from('admin_listings').select('status'),
     // unmet demand: searches that found nothing (admins only — RLS returns nothing to sales)
     isAdmin ? sb.rpc('search_miss_top', { p_days: 30, p_limit: 8 }) : Promise.resolve({ data: null }),
@@ -154,6 +155,13 @@ export default async function TodayPage() {
         </div>
       )}
 
+      {(trEn.count ?? 0) > 0 && trEn.data?.[0] && (
+        <Link href={`/admin/can-ho/${trEn.data[0].id}?queue=en`} className={`a-card ${styles.clicks}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+          <span><b>{trEn.count}</b> tin cần dịch EN</span>
+          <span style={{ marginLeft: 'auto', color: 'var(--blue-500)', fontWeight: 600 }}>Dịch lần lượt →</span>
+        </Link>
+      )}
+
       {/* secondary: one expandable summary row */}
       <details className={`a-card ${styles.more2}`}>
         <summary>
@@ -178,7 +186,7 @@ export default async function TodayPage() {
           )}
           <div>
             <h3 className={styles.h3}>Cần dịch EN</h3>
-            <p className="a-small" style={{ margin: 0 }}><Link href="/admin/can-ho?tr=en">{trEn.count ?? 0} tin đang đăng thiếu / cũ bản tiếng Anh →</Link></p>
+            <p className="a-small" style={{ margin: 0 }}><Link href="/admin/can-ho?tr=en">{trEn.count ?? 0} tin chưa dịch / cần cập nhật bản tiếng Anh →</Link></p>
           </div>
           {isAdmin && (
             <div>

@@ -18,6 +18,8 @@ export type PostData = {
   moveIn: string | null;
   /** public listing page — only when the listing is published */
   url: string | null;
+  /** short excerpt of the English description — only when it is translated from the current Vietnamese */
+  excerptEn?: string | null;
 };
 export type PostChannel = 'facebook' | 'zalo';
 export type PostLang = 'vi' | 'en';
@@ -78,6 +80,7 @@ export function buildPost(d: PostData, o: { channel: PostChannel; lang: PostLang
   return join([
     title,
     bullets.join('\n'),
+    !vi && d.excerptEn,
     phone && (vi ? `📞 Liên hệ: ${phone}` : `📞 Contact: ${phone}`),
     d.url && `🔗 ${d.url}`,
   ], '\n\n');

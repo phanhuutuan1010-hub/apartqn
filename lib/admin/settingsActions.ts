@@ -98,3 +98,24 @@ export async function testTelegram(): Promise<Res> {
     ? { ok: 'Đã gửi tin thử — kiểm tra Telegram.' }
     : { error: 'Không gửi được. Hãy mở bot và bấm Start trước, rồi kiểm tra lại Chat ID.' };
 }
+
+/** Glossary for "Sao chép để dịch": the whole table is replaced by what the admin sees (vi → en, in order). */
+export async function saveGlossary(pairs: { vi: string; en: string }[]): Promise<Res> {
+  await requireAdmin();
+  const clean = pairs.map((p) => ({ vi: p.vi.trim().slice(0, 80), en: p.en.trim().slice(0, 120) })).filter((p) => p.vi && p.en);
+  const seen = new Set<string>();
+  for (const p of clean) {
+    if (seen.has(p.vi.toLowerCase())) return { error: `“${p.vi}” bị lặp.` };
+    seen.add(p.vi.toLowerCase());
+  }
+  if (clean.length > 200) return { error: 'Tối đa 200 thuật ngữ.' };
+  const sb = await supabaseServer();
+  const { error: de } = await sb.from('translation_glossary').delete().gte('id', 0);
+  if (de) return { error: 'Lỗi: ' + de.message };
+  if (clean.length) {
+    const { error } = await sb.from('translation_glossary').insert(clean.map((p, i) => ({ ...p, sort: i + 1 })));
+    if (error) return { error: 'Lỗi: ' + error.message };
+  }
+  revalidatePath('/admin/cai-dat');
+  return { ok: `Đã lưu ${clean.length} thuật ngữ.` };
+}

@@ -9,6 +9,7 @@ import { bulkListings, undoBulk, updateRent, type BulkOp, type Prev } from '@/li
 import { changeStatus, confirmAvailable } from '@/lib/admin/listingActions';
 import { trashListing, restoreListing } from '@/lib/admin/trashActions';
 import { allowedStatuses } from './ListingRowActions';
+import { EN_STATUS_LABEL, type EnStatus } from '@/lib/translateCore';
 import { ConfirmDialog } from './Danger';
 
 // "Tạo bài đăng" code (templates, share, zip) loads only when a dialog is opened
@@ -17,7 +18,7 @@ const PostDialog = dynamic(() => import('./PostDialog'), { ssr: false });
 export type ListRow = {
   id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string;
   beds: number | null; rent: number | null; assigned_to: string | null; assignee: string | null; verified_days: number | null;
-  verify_tone: '' | 'warn' | 'red' | 'a-muted'; has_en: boolean; en_outdated: boolean; is_demo: boolean; rejected: boolean;
+  verify_tone: '' | 'warn' | 'red' | 'a-muted'; en_status: EnStatus; is_demo: boolean; rejected: boolean;
 };
 type Opt = { value: string; label: string };
 type Toast = { msg: string; tone: 'ok' | 'error'; prev?: Prev[]; undoFn?: () => void; until: number };
@@ -186,7 +187,7 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed }:
                 ) : <span className="a-muted">—</span>}
               </div>
               <div className="c-en">
-                <span className={`a-badge ${!r.has_en ? 'outline' : r.en_outdated ? 'warn' : 'ok'}`} title={!r.has_en ? 'Chưa có mô tả EN' : r.en_outdated ? 'Bản EN cũ hơn bản VI' : 'Đã có mô tả EN'}>EN</span>
+                {r.en_status !== 'na' && <span className={`a-badge ${EN_STATUS_LABEL[r.en_status].tone}`} title={`EN: ${EN_STATUS_LABEL[r.en_status].label}`}>EN</span>}
               </div>
               <div className="c-more">
                 <details className="a-menu">

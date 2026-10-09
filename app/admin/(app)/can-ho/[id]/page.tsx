@@ -12,24 +12,27 @@ import type { PhotoView } from '@/components/admin/PhotoManager';
 import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
 import { ListingRowActions } from '@/components/admin/ListingRowActions';
 import { PostButton } from '@/components/admin/PostButton';
-import { ListingDeleteMenu } from '@/components/admin/ListingDeleteMenu';
+import { ListingDeleteMenuLazy as ListingDeleteMenu } from '@/components/admin/ListingDeleteMenuLazy';
+import { enStatusOf } from '@/lib/enStatus';
+import { loadGlossary } from '@/lib/admin/glossary';
 
 export const metadata: Metadata = { title: 'Sửa căn' };
 const BUILDING_COLS = `id, name, slug, aliases, code_prefix, default_fees, ${FEE_FIELDS.join(', ')}`;
 
-export default async function EditListingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string; copied?: string; copyError?: string }> }) {
+export default async function EditListingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string; copied?: string; copyError?: string; queue?: string }> }) {
   const { id } = await params;
-  const { created, copied, copyError } = await searchParams;
+  const { created, copied, copyError, queue } = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const me = await requireStaff();
   const sb = await supabaseServer();
 
   // one round trip: listing + its unit (join) in parallel with buildings, photos and the staff directory
-  const [{ data: row }, { data: buildings }, { data: photoRows }, dir] = await Promise.all([
+  const [{ data: row }, { data: buildings }, { data: photoRows }, dir, glossary] = await Promise.all([
     sb.from('listings').select('*, unit:units(building_id, floor, unit_no, owner_name, owner_phone, owner_notes, assigned_to)').eq('id', id).maybeSingle(),
     sb.from('buildings').select(BUILDING_COLS).order('sort') as unknown as Promise<{ data: ({ id: string; name: string; slug: string; default_fees: { net?: number } } & Record<string, unknown>)[] | null }>,
     sb.from('photos').select('id, bucket, path, thumb_path, visibility, is_cover, sort, width, height, watermark, tag, source').eq('listing_id', id).order('sort'),
     staffDirectory(),
+    loadGlossary(sb),
   ]);
   if (!row) notFound(); // not found OR not yours (RLS)
   const { unit, ...listing } = row as typeof row & { unit: UnitData | null };
@@ -96,6 +99,9 @@ export default async function EditListingPage({ params, searchParams }: { params
         canPublish={me.role === 'admin' || me.can_publish}
         photos={<PhotoManagerLazy owner={{ kind: 'listing', id }} photos={photos} />}
         meId={me.id}
+        enStatus={enStatusOf(listing.desc_vi as string | null, listing.desc_en as string | null, listing.desc_en_vi_hash as string | null)}
+        glossary={glossary}
+        queue={queue === 'en'}
       />
     </div>
   );

@@ -57,3 +57,14 @@ describe('Tạo bài đăng', () => {
     expect(t).not.toContain('http');
   });
 });
+
+describe('Tạo bài đăng EN excerpt', () => {
+  const base = { code: 'ALT-001', building: 'Altara', beds: 2, area: 68, floor: 18, furn: 'full' as const, rent: 13_500_000, mgmt: null, mgmtPaidBy: null, moveIn: null, url: null };
+  it('EN Facebook includes the translated excerpt; VI and Zalo do not', () => {
+    const d = { ...base, excerptEn: 'Bright corner unit with sea view.' };
+    expect(buildPost(d, { channel: 'facebook', lang: 'en', phone: '0905' })).toContain('Bright corner unit with sea view.');
+    expect(buildPost(d, { channel: 'facebook', lang: 'vi', phone: '0905' })).not.toContain('Bright corner');
+    expect(buildPost(d, { channel: 'zalo', lang: 'en', phone: '0905' })).not.toContain('Bright corner');
+  });
+  it('no excerpt → structured fields only', () => expect(buildPost(base, { channel: 'facebook', lang: 'en', phone: '' })).not.toMatch(/undefined|null/));
+});

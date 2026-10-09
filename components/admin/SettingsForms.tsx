@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import { saveContact, saveMyProfile, saveThresholds, testTelegram } from '@/lib/admin/settingsActions';
+import { saveContact, saveGlossary, saveMyProfile, saveThresholds, testTelegram } from '@/lib/admin/settingsActions';
 import { compressImage } from '@/lib/compressImage';
 
 type Res = { ok?: string; error?: string };
@@ -93,6 +93,34 @@ export function MyProfileForm({ me, botName }: { me: { full_name: string; phone:
       <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
         <button className="a-btn a-btn-blue" disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>
         <button type="button" className="a-btn a-btn-ghost" disabled={busy} onClick={() => start(async () => setTest(await testTelegram()))}>Gửi tin thử</button>
+      </div>
+    </form>
+  );
+}
+
+/** vi → en glossary used by "Sao chép để dịch". */
+export function GlossaryForm({ rows: initial }: { rows: { vi: string; en: string }[] }) {
+  const [rows, setRows] = useState(initial.length ? initial : [{ vi: '', en: '' }]);
+  const [state, setState] = useState<Res>({});
+  const [busy, start] = useTransition();
+  const set = (i: number, k: 'vi' | 'en', v: string) => setRows((r) => r.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+  return (
+    <form className="a-card" onSubmit={(e) => { e.preventDefault(); start(async () => setState(await saveGlossary(rows))); }}>
+      <h2 className="a-section-title">Thuật ngữ dịch (VI → EN)</h2>
+      <p className="a-small a-muted" style={{ margin: '-6px 0 12px' }}>Được chép kèm khi bấm “Sao chép để dịch”. Tên toà nhà luôn giữ nguyên, không cần thêm vào đây.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) 44px', gap: 8, alignItems: 'center' }}>
+            <input className="input" aria-label={`Tiếng Việt ${i + 1}`} value={r.vi} maxLength={80} placeholder="full nội thất" onChange={(e) => set(i, 'vi', e.target.value)} />
+            <input className="input" aria-label={`English ${i + 1}`} value={r.en} maxLength={120} placeholder="fully furnished" lang="en" onChange={(e) => set(i, 'en', e.target.value)} />
+            <button type="button" className="a-btn a-btn-ghost" aria-label={`Bỏ dòng ${i + 1}`} onClick={() => setRows((x) => x.filter((_, j) => j !== i))}>×</button>
+          </div>
+        ))}
+      </div>
+      <Msg s={state} />
+      <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+        <button type="button" className="a-btn a-btn-outline" onClick={() => setRows((x) => [...x, { vi: '', en: '' }])}>+ Thêm thuật ngữ</button>
+        <button className="a-btn a-btn-blue" disabled={busy}>{busy ? 'Đang lưu…' : 'Lưu thuật ngữ'}</button>
       </div>
     </form>
   );

@@ -6,18 +6,19 @@ import { mapsEmbedUrl } from '@/lib/maps';
 import type { BuildingFees } from '@/lib/fees';
 import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
 import { TagInput } from './TagInput';
+import { DescEditor } from './DescEditor';
+import type { EnStatus, GlossaryPair } from '@/lib/translateCore';
 
 export type BuildingData = {
   id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; maps_url: string | null; video_url: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
-  desc_vi: string | null; desc_en: string | null; sort: number; is_demo: boolean;
+  desc_vi: string | null; desc_en: string | null; desc_en_vi_hash?: string | null; sort: number; is_demo: boolean;
 } & BuildingFees;
 
 /** `codedListings`: listings of this building that already carry a code → the prefix is frozen. */
-export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData; photos?: React.ReactNode; codedListings?: number }) {
+export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary }: { b: BuildingData; photos?: React.ReactNode; codedListings?: number; enStatus: EnStatus; glossary: GlossaryPair[] }) {
   const [state, action, pending] = useActionState<BuildingResult, FormData>(saveBuilding.bind(null, b.id), {});
-  const [tab, setTab] = useState<'vi' | 'en'>('vi');
   const fe = state.fieldErrors ?? {};
   const cls = (k: string, extra = '') => `a-field ${extra} ${fe[k] ? 'invalid' : ''}`;
   const err = (k: string) => fe[k] && <span className="err">{fe[k]}</span>;
@@ -130,24 +131,14 @@ export function BuildingForm({ b, photos, codedListings = 0 }: { b: BuildingData
 
       <section className="a-card">
         <h2 className="a-section-title">Mô tả</h2>
-        <div className="a-tabs" role="tablist">
-          {(['vi', 'en'] as const).map((k) => (
-            <button key={k} type="button" role="tab" aria-selected={tab === k} className={`a-tab ${tab === k ? 'on' : ''}`} onClick={() => setTab(k)}>
-              {k.toUpperCase()}{k !== 'vi' && !b[`desc_${k}`] && <span className="a-badge outline">thiếu</span>}
-            </button>
-          ))}
-        </div>
-        {(['vi', 'en'] as const).map((k) => (
-          <label key={k} className="a-field" style={{ display: tab === k ? 'flex' : 'none' }}>
-            {k === 'vi' ? 'Mô tả tiếng Việt' : 'English description'}
-            <textarea className="input" name={`desc_${k}`} rows={6} lang={k} defaultValue={s(b[`desc_${k}`])} />
-          </label>
-        ))}
+        <DescEditor vi={s(b.desc_vi)} en={s(b.desc_en)} status={enStatus} glossary={glossary}
+          errors={{ vi: fe.desc_vi, en: fe.desc_en }} note="Trang EN chỉ hiện mô tả tiếng Anh; chưa dịch thì phần mô tả không hiện trên trang EN." />
       </section>
 
       <div className="a-actions">
         {state.error && <span className="a-small" style={{ color: 'var(--error)' }} role="alert">{state.error}</span>}
         {state.ok && <span className="a-small" style={{ color: 'var(--ok-fg)' }} role="status">✓ {state.ok}</span>}
+        {state.warning && <span className="a-small" style={{ color: 'var(--warn-fg)' }} role="status">⚠ {state.warning}</span>}
         <span className="spacer" />
         <button className="a-btn a-btn-blue" disabled={pending || checking}>{pending || checking ? 'Đang lưu…' : b.id ? 'Lưu' : 'Tạo toà nhà'}</button>
       </div>

@@ -3,7 +3,7 @@ import { DatabaseBackup } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { daysSince, fmtDateTime } from '@/lib/admin/labels';
-import { ContactForm, ThresholdsForm } from '@/components/admin/SettingsForms';
+import { ContactForm, GlossaryForm, ThresholdsForm } from '@/components/admin/SettingsForms';
 import { publicPhotoUrl } from '@/lib/repoMap';
 import { SITE } from '@/data/site';
 
@@ -12,7 +12,10 @@ export const metadata: Metadata = { title: 'Cài đặt' };
 export default async function SettingsPage() {
   await requireAdmin();
   const sb = await supabaseServer();
-  const { data: s } = await sb.from('settings').select('*').single();
+  const [{ data: s }, { data: glossary }] = await Promise.all([
+    sb.from('settings').select('*').single(),
+    sb.from('translation_glossary').select('vi, en').order('sort').order('vi'),
+  ]);
   const days = daysSince(s?.last_backup_at);
   const late = days == null || days > (s?.backup_warn_days ?? 7);
 
@@ -39,6 +42,8 @@ export default async function SettingsPage() {
         hotline: s?.hotline ?? null, zalo_phone: s?.zalo_phone ?? null, contact_person_name: s?.contact_person_name ?? null,
         contact_person_title: s?.contact_person_title ?? null, photoUrl: s?.contact_person_photo ? publicPhotoUrl(SUPABASE_URL, s.contact_person_photo) : null,
       }} />
+
+      <GlossaryForm rows={(glossary ?? []) as { vi: string; en: string }[]} />
 
       <ThresholdsForm v={{ verify_remind_days: s?.verify_remind_days ?? 14, verify_hide_days: s?.verify_hide_days ?? 21, backup_warn_days: s?.backup_warn_days ?? 7 }} />
     </div>

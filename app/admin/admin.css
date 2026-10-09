@@ -149,6 +149,9 @@ a.a-tab { text-decoration: none; }
 .a-seg { display: inline-flex; gap: 2px; padding: 3px; margin-bottom: 10px; border-radius: var(--r-pill); background: var(--gray-100); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .a-seg a, .a-seg button { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: none; font-size: 14px; font-weight: 600; color: var(--gray-700); text-decoration: none; white-space: nowrap; cursor: pointer; }
 .a-seg .on { background: var(--white); color: var(--blue-500); box-shadow: 0 1px 3px rgba(16,24,40,.12); }
+.a-desc .a-seg { margin-bottom: 12px; }
+.a-desc .a-seg button { min-height: 40px; padding: 0 22px; gap: 8px; }
+.a-desc .a-seg .a-badge { font-weight: 600; }
 .a-tabs-scroll { overflow-x: auto; scrollbar-width: none; }
 .a-tabs-scroll .a-tab { flex: 0 0 auto; white-space: nowrap; }
 .a-shell { display: flex; min-height: 100dvh; }
