@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
+import { getPathname, Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
-import { getBuilding, getBuildings, getContact, getListings, staticParams } from '@/lib/repo';
+import { getBuilding, getBuildings, getContact, getListings, isBuildingHidden, staticParams } from '@/lib/repo';
 import { F, money } from '@/lib/format';
 import { contacts } from '@/lib/contacts';
 import { alternates, OG_LOCALE } from '@/lib/seo';
@@ -37,7 +37,7 @@ const rng = (arr: number[], fmt: (n: number) => string) => {
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { locale, id } = await params;
   const b = await getBuilding(id);
-  if (!b) return {};
+  if (!b) return { robots: { index: false, follow: false } };
   const t = await getTranslations({ locale });
   const avail = (await getListings()).filter((x) => x.buildingId === b.id && x.status !== 'rented');
   const title = `${b.name} – ${F.units(avail.length, locale)} | ApartQN`;
@@ -54,6 +54,8 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
   const { locale: l, id } = await params;
   setRequestLocale(l);
   const b = await getBuilding(id);
+  // hidden in admin: temporary redirect to the building list (it comes back when the building is shown again)
+  if (!b && (await isBuildingHidden(id))) redirect(getPathname({ locale: l, href: '/' }) + '#buildings');
   if (!b) notFound();
   const [listings, buildings, contact] = await Promise.all([getListings(), getBuildings(), getContact()]);
   const t = await getTranslations();

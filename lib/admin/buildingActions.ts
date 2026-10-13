@@ -155,6 +155,25 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   return { ok: synced ? `Đã lưu và cập nhật phí ${synced} căn. Website cập nhật ngay.` : 'Đã lưu. Website cập nhật ngay.', warning };
 }
 
+/**
+ * "Hiển thị" switch. Hidden = the building and its listings leave the public views (list, home, search index, sitemap,
+ * filters); listing rows are not touched. Admin only (requireAdmin + buildings_admin_update RLS).
+ */
+export async function setBuildingVisible(id: string, visible: boolean): Promise<{ ok?: true; error?: string }> {
+  await requireAdmin();
+  if (!z.string().uuid().safeParse(id).success || typeof visible !== 'boolean') return { error: 'Toà nhà không hợp lệ.' };
+  const sb = await supabaseServer();
+  const { data, error } = await sb.from('buildings').update({ is_visible: visible }).eq('id', id).select('slug').maybeSingle();
+  if (error) return { error: 'Lỗi: ' + error.message };
+  if (!data) return { error: 'Không thấy toà nhà.' };
+  // sitemap + search index, then every public page: cards, filters and "other buildings" appear all over the site
+  revalidatePublic({ building: data.slug });
+  revalidatePath('/[locale]', 'layout');
+  revalidatePath('/admin/toa-nha');
+  revalidatePath(`/admin/toa-nha/${id}`);
+  return { ok: true };
+}
+
 /** How many listings would take new fees from this form (before saving): drives the "Cập nhật N căn" dialog. */
 export async function previewFeeSync(id: string, fd: FormData): Promise<{ count: number; error?: string }> {
   await requireAdmin();

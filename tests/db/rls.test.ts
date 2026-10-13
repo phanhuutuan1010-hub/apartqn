@@ -750,6 +750,32 @@ describe('soft delete + trash (migration 20)', () => {
   });
 });
 
+describe('building visibility (migration 23)', () => {
+  it('hidden building + its listings leave the public views; listing rows untouched; showing restores', async () => {
+    const pub = () => as('anon', async (q) => ({
+      b: (await q(`select slug from public.public_buildings where slug = 'altara'`)).rowCount,
+      l: (await q(`select code from public.public_listings where building_slug = 'altara'`)).rowCount,
+      hidden: (await q(`select public.building_hidden('altara') as h`)).rows[0].h,
+    }));
+    const before = await pub();
+    expect(before.b).toBe(1);
+    expect(before.hidden).toBe(false);
+    const rows = async () => (await root(`select l.id, l.status, l.code, l.updated_at from public.listings l join public.units u on u.id = l.unit_id where u.building_id = $1 order by l.id`, [B])).rows;
+    const snap = await rows();
+    // sales: RLS, no rows; admin: allowed
+    expect((await as(id(U.s1), (q) => q(`update public.buildings set is_visible = false where id = $1`, [B]))).rowCount).toBe(0);
+    expect((await as(id(U.admin), (q) => q(`update public.buildings set is_visible = false where id = $1`, [B]))).rowCount).toBe(1);
+    await root(`update public.buildings set is_visible = false where id = $1`, [B]);
+    expect(await pub()).toEqual({ b: 0, l: 0, hidden: true });
+    expect(await rows()).toEqual(snap);
+    expect(await as('anon', (q) => denied(q(`select is_visible from public.buildings`)))).toMatch(/permission/);
+    await root(`update public.buildings set is_visible = true where id = $1`, [B]);
+    expect(await pub()).toEqual(before);
+    expect(await rows()).toEqual(snap);
+    expect((await as('anon', (q) => q(`select public.building_hidden('no-such') as h`))).rows[0].h).toBe(false);
+  });
+});
+
 describe('EN translation status (migration 21)', () => {
   it('none → ok when EN is saved; VI edit → stale; confirming re-hashes; matches the app hash', async () => {
     await as(id(U.admin), async (q) => {

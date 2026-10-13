@@ -82,6 +82,17 @@ export const getBuilding = cache(async (slug: string): Promise<Building | null> 
   return data ? toBuilding(data as PublicBuildingRow, SUPABASE_URL) : null;
 });
 
+/** A building switched off in admin ("Hiển thị"): its page redirects to the building list instead of 404. */
+export const isBuildingHidden = cache(async (slug: string): Promise<boolean> => {
+  if (!/^[a-z0-9-]{2,40}$/.test(slug)) return false;
+  const { data, error } = await client().rpc('building_hidden', { p_slug: slug });
+  if (error) {
+    console.error('[repo] building_hidden', error.message);
+    return false;
+  }
+  return data === true;
+});
+
 export type SiteContact = { hotline?: string; zalo?: string; whatsapp?: string; telegramPhone?: string; telegramUsername?: string; person?: { name: string; title?: string; photo?: string } };
 
 /** Public contact from admin Cài đặt (public_contact view) — the single source of every number on the site. Nothing set → empty: the page hides those parts, never a made-up number. */

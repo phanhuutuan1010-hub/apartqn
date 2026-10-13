@@ -9,6 +9,7 @@ import { publicPhotoUrl } from '@/lib/repoMap';
 import { fmtDateTime } from '@/lib/admin/labels';
 import { BuildingForm, type BuildingData } from '@/components/admin/BuildingForm';
 import { BuildingDelete } from '@/components/admin/BuildingDelete';
+import { BuildingVisibility } from '@/components/admin/BuildingVisibility';
 import { enStatusOf } from '@/lib/enStatus';
 import { loadGlossary } from '@/lib/admin/glossary';
 import type { PhotoView } from '@/components/admin/PhotoManager';
@@ -30,7 +31,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
   };
   let copiedFrom: string | null = null;
   let photos: PhotoView[] = [];
-  let coded = 0;
+  let coded = 0, live = 0, visible = true;
   let meta: { updated_at: string; updated_by: string | null } | null = null;
   // "Nhân bản toà nhà": fees, amenities, default terms and descriptions; NOT name, slug, prefix, aliases, address, coordinates, photos
   if (isNew && from && /^[0-9a-f-]{36}$/.test(from)) {
@@ -45,15 +46,18 @@ export default async function BuildingEditPage({ params, searchParams }: { param
     }
   }
   if (!isNew) {
-    const [{ data }, { data: ph }, { count }] = await Promise.all([
+    const [{ data }, { data: ph }, { count }, { count: liveCount }] = await Promise.all([
       sb.from('buildings').select('*').eq('id', id).maybeSingle(),
       sb.from('photos').select('id, path, thumb_path, visibility, is_cover, width, height, watermark, tag, source').eq('building_id', id).order('sort'),
       sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).not('code', 'is', null),
+      sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).not('code', 'is', null).in('status', ['available', 'reserved', 'rented']),
     ]);
     coded = count ?? 0;
+    live = liveCount ?? 0;
     if (!data) notFound();
     b = { ...(data as BuildingData), ...toBuildingFees(data) };
     meta = data;
+    visible = data.is_visible !== false;
     photos = (ph ?? []).map((p) => ({ id: p.id, visibility: 'public', is_cover: p.is_cover, watermark: p.watermark, tag: p.tag, source: p.source, width: p.width, height: p.height, url: publicPhotoUrl(SUPABASE_URL, p.thumb_path ?? p.path) }));
   }
   const dir = await staffDirectory();
@@ -67,6 +71,8 @@ export default async function BuildingEditPage({ params, searchParams }: { param
           {meta && <div className="a-sub">Sửa lần cuối {meta.updated_by ? <>bởi <b>{dir.get(meta.updated_by)?.name}</b> </> : ''}lúc {fmtDateTime(meta.updated_at)}</div>}
         </div>
         {!isNew && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <BuildingVisibility id={id} visible={visible} live={live} label />
           <details className="a-menu">
             <summary className="a-btn a-btn-ghost a-btn-sm" aria-label="Thao tác với toà nhà"><MoreHorizontal size={16} aria-hidden /></summary>
             <div role="menu">
@@ -75,6 +81,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
               <BuildingDelete id={id} name={b.name} slug={b.slug} />
             </div>
           </details>
+          </div>
         )}
       </div>
       {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo toà nhà. Thêm ảnh bên dưới.</div>}
