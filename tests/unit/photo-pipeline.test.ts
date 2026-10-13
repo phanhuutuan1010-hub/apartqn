@@ -42,15 +42,15 @@ describe('photo pipeline', () => {
     expect(master_path).toBe('listings/L1/p1.webp');
     expect((await sharp(master).metadata()).width).toBe(2400);
     const out = await renderVariants(f.sb, 'listings/L1/', 'p1', master, true);
-    expect(out).toMatchObject({ path: 'listings/L1/p1-wm2-1920.webp', thumb_path: 'listings/L1/p1-wm2-640.webp', width: 1920, height: 1440, wm_version: 2 });
+    expect(out).toMatchObject({ path: 'listings/L1/p1-wm3-1920.webp', thumb_path: 'listings/L1/p1-wm3-640.webp', width: 1920, height: 1440, wm_version: 3 });
     expect(out.variants.map((v) => v.w)).toEqual([640, 1200, 1920]);
-    expect(listed(f.files)).toEqual(['listing-master/listings/L1/p1.webp', ...pub('listings/L1/', 'p1', 'wm2')].sort());
+    expect(listed(f.files)).toEqual(['listing-master/listings/L1/p1.webp', ...pub('listings/L1/', 'p1', 'wm3')].sort());
   });
 
   it('a small master is never upscaled', async () => {
     const small = await sharp({ create: { width: 1000, height: 750, channels: 3, background: '#7aa' } }).webp().toBuffer();
     const out = await renderVariants(f.sb, 'buildings/b/', 'p9', small, false);
-    expect(out.variants).toEqual([{ w: 640, h: 480, path: 'buildings/b/p9-c2-640.webp' }, { w: 1000, h: 750, path: 'buildings/b/p9-c2-1000.webp' }]);
+    expect(out.variants).toEqual([{ w: 640, h: 480, path: 'buildings/b/p9-c3-640.webp' }, { w: 1000, h: 750, path: 'buildings/b/p9-c3-1000.webp' }]);
   });
 
   it('toggle off → clean re-render from the master, old public files removed; legacy photo gets a master first', async () => {
@@ -60,25 +60,25 @@ describe('photo pipeline', () => {
     const row: Row = { id: 'p2', listing_id: null, building_id: 'B', bucket: 'listing-public', path: 'buildings/b/old.webp', thumb_path: 'buildings/b/thumbs/old.webp', master_path: null, watermark: false, wm_version: null, visibility: 'public', is_cover: false };
     f.rows.set('p2', row);
     await setPhotoWatermark(f.sb, row, true);
-    expect(f.rows.get('p2')).toMatchObject({ watermark: true, wm_version: 2, path: 'buildings/b/p2-wm2-1920.webp', thumb_path: 'buildings/b/p2-wm2-640.webp', master_path: 'buildings/b/p2.webp' });
-    expect(listed(f.files)).toEqual(['listing-master/buildings/b/p2.webp', ...pub('buildings/b/', 'p2', 'wm2')].sort());
+    expect(f.rows.get('p2')).toMatchObject({ watermark: true, wm_version: 3, path: 'buildings/b/p2-wm3-1920.webp', thumb_path: 'buildings/b/p2-wm3-640.webp', master_path: 'buildings/b/p2.webp' });
+    expect(listed(f.files)).toEqual(['listing-master/buildings/b/p2.webp', ...pub('buildings/b/', 'p2', 'wm3')].sort());
     await setPhotoWatermark(f.sb, f.rows.get('p2')!, false);
-    expect(f.rows.get('p2')).toMatchObject({ watermark: false, path: 'buildings/b/p2-c2-1920.webp' });
-    expect(listed(f.files)).toEqual(['listing-master/buildings/b/p2.webp', ...pub('buildings/b/', 'p2', 'c2')].sort());
+    expect(f.rows.get('p2')).toMatchObject({ watermark: false, path: 'buildings/b/p2-c3-1920.webp' });
+    expect(listed(f.files)).toEqual(['listing-master/buildings/b/p2.webp', ...pub('buildings/b/', 'p2', 'c3')].sort());
   });
 
   it('public → internal keeps a clean copy only; internal → public renders again', async () => {
     f.files.set('listing-master/listings/L1/p3.webp', await jpeg());
     const out = await renderVariants(f.sb, 'listings/L1/', 'p3', await jpeg(), true);
-    const row: Row = { id: 'p3', listing_id: 'L1', building_id: null, bucket: 'listing-public', path: out.path, thumb_path: out.thumb_path, variants: out.variants, master_path: 'listings/L1/p3.webp', watermark: true, wm_version: 2, visibility: 'public', is_cover: true };
+    const row: Row = { id: 'p3', listing_id: 'L1', building_id: null, bucket: 'listing-public', path: out.path, thumb_path: out.thumb_path, variants: out.variants, master_path: 'listings/L1/p3.webp', watermark: true, wm_version: 3, visibility: 'public', is_cover: true };
     f.rows.set('p3', row);
     await movePhoto(f.sb, row, 'internal');
     expect(f.rows.get('p3')).toMatchObject({ bucket: 'listing-internal', visibility: 'internal', master_path: null, is_cover: false, variants: null });
     expect(listed(f.files)).toEqual(['listing-internal/listings/L1/p3.webp', 'listing-internal/listings/L1/thumbs/p3.webp']);
     await expect(setPhotoWatermark(f.sb, f.rows.get('p3')!, true)).rejects.toThrow(/nội bộ/);
     await movePhoto(f.sb, f.rows.get('p3')!, 'public');
-    expect(f.rows.get('p3')).toMatchObject({ bucket: 'listing-public', visibility: 'public', path: 'listings/L1/p3-wm2-1920.webp', master_path: 'listings/L1/p3.webp' });
-    expect(listed(f.files)).toEqual(['listing-master/listings/L1/p3.webp', ...pub('listings/L1/', 'p3', 'wm2')].sort());
+    expect(f.rows.get('p3')).toMatchObject({ bucket: 'listing-public', visibility: 'public', path: 'listings/L1/p3-wm3-1920.webp', master_path: 'listings/L1/p3.webp' });
+    expect(listed(f.files)).toEqual(['listing-master/listings/L1/p3.webp', ...pub('listings/L1/', 'p3', 'wm3')].sort());
   });
 });
 

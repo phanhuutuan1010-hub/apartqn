@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import { normaliseYoutube, youtubeId } from '@/lib/youtube';
+import { WM_MARK } from '@/lib/watermarkLogo';
 import { publicSuffix, renderMaster, renderVariant, variantWidths, watermarkSvg, WATERMARK } from '@/lib/watermark';
 
 describe('YouTube links', () => {
@@ -62,7 +63,7 @@ describe('watermark render', () => {
     const svg = watermarkSvg(400, 300).toString();
     expect(svg).toContain('width="400" height="300"');
     const scale = Number(/scale\(([\d.]+)\)/.exec(svg)![1]);
-    expect(scale * 4113).toBeGreaterThanOrEqual(119.9);
+    expect(scale * WM_MARK.box[2]).toBeGreaterThanOrEqual(119.9);
   });
   it('file names carry the variant', () => {
     expect(publicSuffix(true)).toBe(`-wm${WATERMARK.version}`);

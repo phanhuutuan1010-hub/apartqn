@@ -4,17 +4,19 @@
  * Server / scripts only (sharp). Internal photos are never watermarked and never public.
  */
 import sharp from 'sharp';
-import { LOGO } from './watermarkLogo';
+import { WM_MARK } from './watermarkLogo';
 
 export const WATERMARK = {
-  version: 2,
+  version: 3,
+  /** what the mark says (outlines in lib/watermarkLogo.ts — change both together) */
+  text: 'apartqn.com',
   /** logo width as a share of the image width, never below `minWidth` px */
   widthRatio: 0.2,
   minWidth: 120,
   /** vertical centre of the logo (0 = top, 1 = bottom): lower third */
   centerY: 0.7,
-  /** white wordmark opacity */
-  opacity: 0.28,
+  /** white text opacity */
+  opacity: 0.33,
   /** soft dark halo behind it so it reads on bright photos */
   shadowOpacity: 0.35,
   /** blur radius as a share of the logo height */
@@ -39,14 +41,14 @@ export const MASTER = { edge: 2400, tall: 3200, quality: 90 } as const;
 /** Full-image SVG overlay for a w×h image. */
 export function watermarkSvg(w: number, h: number): Buffer {
   const W = WATERMARK;
-  const [bx, by, bw, bh] = LOGO.box;
+  const [bx, by, bw, bh] = WM_MARK.box;
   const lw = Math.min(w * 0.9, Math.max(W.minWidth, w * W.widthRatio));
   const s = lw / bw;
   const lh = bh * s;
   const x = (w - lw) / 2 - bx * s;
   const y = h * W.centerY - lh / 2 - by * s;
   const blur = Math.max(1, lh * W.shadowBlur);
-  const logo = `<path d="${LOGO.apart}"/><path d="${LOGO.qn}"/>`;
+  const logo = `<path d="${WM_MARK.apart}"/><path d="${WM_MARK.rest}"/>`;
   return Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
       `<defs><filter id="b" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="${(blur / s).toFixed(2)}"/></filter></defs>` +
