@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase/server';
-import { BUCKET, col, download, normaliseMaster, refreshOwner, removeFiles, renderPublicPair, type PhotoOwner } from '@/lib/admin/photoPipeline';
+import { BUCKET, col, masterFromOriginal, refreshOwner, removeFiles, renderVariants, type PhotoOwner } from '@/lib/admin/photoPipeline';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const Body = z.object({
   owner: z.discriminatedUnion('kind', [
@@ -17,8 +17,9 @@ const Body = z.object({
 const fail = (status: number, error: string) => NextResponse.json({ ok: false, error }, { status });
 
 /**
- * ONE uploaded master (listing-master/<prefix><photoId>.webp, put there through a signed URL) → public 1600 + 600 px,
- * watermarked by default for listing photos (lib/watermark.ts), + the photos row. Runs as the signed-in staff member:
+ * ONE uploaded original (listing-master/<prefix>orig-<photoId>, put there untouched through a signed URL) → clean master
+ * (≤ 2400 px WebP q90, the original is deleted) → public variants 640 / 1200 / 1920 px, watermarked by default for listing
+ * photos (lib/watermark.ts), + the photos row. One encode per file from the original. Runs as the signed-in staff member:
  * storage and table RLS decide what they may touch.
  */
 export async function POST(req: NextRequest) {
@@ -46,26 +47,27 @@ export async function POST(req: NextRequest) {
     if (!data) return fail(404, 'Không tìm thấy toà nhà.');
     prefix = `buildings/${data.slug}/`;
   }
-  const master_path = `${prefix}${photoId}.webp`;
   const watermark = owner.kind === 'listing';
 
-  let out: Awaited<ReturnType<typeof renderPublicPair>>;
+  let out: Awaited<ReturnType<typeof renderVariants>>;
+  let master_path: string;
   try {
-    const master = await normaliseMaster(sb, master_path, await download(sb, BUCKET.master, master_path));
-    out = await renderPublicPair(sb, prefix, photoId, master, watermark);
+    const m = await masterFromOriginal(sb, prefix, photoId);
+    master_path = m.master_path;
+    out = await renderVariants(sb, prefix, photoId, m.master, watermark);
   } catch (e) {
     return fail(500, (e as Error).message);
   }
   const { data: existing } = await sb.from('photos').select('sort, is_cover').eq(col(owner), owner.id);
   const { error } = await sb.from('photos').insert({
     id: photoId, [col(owner)]: owner.id, bucket: BUCKET.public, visibility: 'public',
-    path: out.path, thumb_path: out.thumb_path, width: out.width, height: out.height,
+    path: out.path, thumb_path: out.thumb_path, variants: out.variants, width: out.width, height: out.height,
     master_path, watermark, wm_version: out.wm_version,
     sort: Math.max(-1, ...(existing ?? []).map((p) => p.sort)) + 1,
     is_cover: !(existing ?? []).some((p) => p.is_cover),
   });
   if (error) {
-    await removeFiles(sb, BUCKET.public, [out.path, out.thumb_path]);
+    await removeFiles(sb, BUCKET.public, out.variants.map((v) => v.path));
     return fail(error.code === '23505' ? 409 : 500, error.code === '23505' ? 'Ảnh đã được xử lý.' : error.message);
   }
   await refreshOwner(sb, owner);

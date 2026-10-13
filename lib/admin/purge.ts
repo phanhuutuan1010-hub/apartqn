@@ -45,7 +45,7 @@ export async function purgeExpired(sb: Sb) {
   if (error) out.errors.push(`photos: ${error.message}`);
   else {
     const list = (files ?? []) as StorageObject[];
-    out.photos = list.filter((f) => f.bucket !== 'listing-master' && !f.path.includes('/thumbs/')).length;
+    out.photos = list.filter((f) => f.bucket === 'listing-master').length;
     out.filesFailed += await removeObjects(sb, list);
   }
   return out;

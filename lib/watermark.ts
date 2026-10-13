@@ -1,5 +1,5 @@
 /**
- * Public photo watermark — the ONE place to change it. Bump `version` and run `npm run photos:watermark`
+ * Public photo rendering + watermark — the ONE place to change it. Bump `version` and run `npm run photos:watermark`
  * to regenerate every public photo from its clean master (new file names → no stale CDN copies).
  * Server / scripts only (sharp). Internal photos are never watermarked and never public.
  */
@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { LOGO } from './watermarkLogo';
 
 export const WATERMARK = {
-  version: 1,
+  version: 2,
   /** logo width as a share of the image width, never below `minWidth` px */
   widthRatio: 0.2,
   minWidth: 120,
@@ -22,8 +22,14 @@ export const WATERMARK = {
   copyright: '© ApartQN',
 } as const;
 
-/** Output sizes for public files (long edge, webp quality) — same as the existing upload pipeline. */
-export const PUBLIC_SIZES = { full: { edge: 1600, quality: 82 }, thumb: { edge: 600, quality: 78 } } as const;
+/**
+ * Public files of one photo: WebP at these widths (never upscaled — a 1000 px master gives 640 + 1000), rendered ONCE
+ * from the master. The site serves them with its own srcset; nothing re-compresses them afterwards.
+ */
+export const PUBLIC_WIDTHS = [640, 1200, 1920] as const;
+export const PUBLIC_QUALITY = 85;
+/** Clean master kept in listing-master: the single encode of the uploaded original. */
+export const MASTER = { edge: 2400, quality: 90 } as const;
 
 /** Full-image SVG overlay for a w×h image. */
 export function watermarkSvg(w: number, h: number): Buffer {
@@ -51,31 +57,45 @@ const XMP = `<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:
   `<dc:rights><rdf:Alt><rdf:li xml:lang="x-default">${WATERMARK.copyright}</rdf:li></rdf:Alt></dc:rights><dc:creator><rdf:Seq><rdf:li>ApartQN</rdf:li></rdf:Seq></dc:creator>` +
   `<xmpRights:Marked>True</xmpRights:Marked></rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>`;
 
-/** Clean master → one public webp (resized, watermarked unless `watermark` is false, © metadata). */
-export async function renderPublic(master: Buffer, size: keyof typeof PUBLIC_SIZES, watermark: boolean) {
-  const { edge, quality } = PUBLIC_SIZES[size];
-  const base = await sharp(master).rotate().resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true }).toBuffer({ resolveWithObject: true });
-  const { width, height } = base.info;
+/** The widths a master of this width is rendered at: the standard ones below it, then its own width (capped at the largest). */
+export function variantWidths(masterWidth: number): number[] {
+  const top = Math.min(masterWidth, PUBLIC_WIDTHS[PUBLIC_WIDTHS.length - 1]);
+  return [...PUBLIC_WIDTHS.filter((w) => w < top), top];
+}
+
+/** Clean master → one public webp `width` px wide (lanczos, light sharpen, watermarked unless `watermark` is false, © metadata). */
+export async function renderVariant(master: Buffer, width: number, watermark: boolean) {
+  const src = sharp(master).rotate();
+  const down = (await imageWidth(master)) > width;
+  const base = await (down ? src.resize({ width, kernel: 'lanczos3', withoutEnlargement: true }).sharpen({ sigma: 0.5 }) : src)
+    .toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = base.info;
   let img = sharp(base.data);
-  if (watermark) img = img.composite([{ input: watermarkSvg(width, height), top: 0, left: 0 }]);
+  if (watermark) img = img.composite([{ input: watermarkSvg(w, h), top: 0, left: 0 }]);
   const data = await img
-    .webp({ quality })
+    .webp({ quality: PUBLIC_QUALITY, effort: 5 })
     .withExif({ IFD0: { Copyright: WATERMARK.copyright, Artist: 'ApartQN' } })
     .withXmp(XMP)
     .toBuffer();
-  return { data, width, height };
+  return { data, width: w, height: h };
 }
 
-/** Clean master for listing-master: ≤ 1600 px webp, no metadata from the camera (GPS etc. stripped). */
+/** Width after EXIF orientation. */
+export async function imageWidth(buf: Buffer): Promise<number> {
+  const m = await sharp(buf).metadata();
+  return ((m.orientation ?? 1) >= 5 ? m.height : m.width) ?? 0;
+}
+
+/** Uploaded original (JPEG / PNG / WebP / AVIF, any size) → clean master: orientation applied, ≤ 2400 px, no camera metadata (GPS). */
 export async function renderMaster(input: Buffer) {
-  const { data, info } = await sharp(input).rotate().resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 88 }).toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(input).rotate().resize({ width: MASTER.edge, height: MASTER.edge, fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' })
+    .webp({ quality: MASTER.quality, effort: 5 }).toBuffer({ resolveWithObject: true });
   return { data, width: info.width, height: info.height };
 }
 
-/** Clean 600 px thumb (internal photos shown in admin). */
+/** Clean 640 px thumb (internal photos shown in admin). */
 export async function renderCleanThumb(input: Buffer) {
-  return sharp(input).rotate().resize({ width: 600, height: 600, fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+  return sharp(input).rotate().resize({ width: 640, height: 640, fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toBuffer();
 }
 
 /** Public file names carry the variant: -wm{version} when watermarked, -c{version} when not. */

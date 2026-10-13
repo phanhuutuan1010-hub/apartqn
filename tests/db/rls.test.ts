@@ -892,3 +892,19 @@ describe('photo bulk actions (migration 24)', () => {
     });
   });
 });
+
+describe('photo variants (migration 25)', () => {
+  it('public views expose the variants; purge returns every variant file once', async () => {
+    const vs = [{ w: 640, h: 427, path: 'v25/p-c2-640.webp' }, { w: 1200, h: 800, path: 'v25/p-c2-1200.webp' }];
+    const pid = (await root(`insert into public.photos (building_id, bucket, path, thumb_path, master_path, variants, sort)
+                             values ($1, 'listing-public', 'v25/p-c2-1200.webp', 'v25/p-c2-640.webp', 'v25/p.webp', $2, 99) returning id`, [B, JSON.stringify(vs)])).rows[0].id;
+    const v = await as('anon', (q) => q(`select photos from public.public_buildings where slug = 'altara'`));
+    expect((v.rows[0].photos as { path: string; v: unknown }[]).find((p) => p.path === 'v25/p-c2-1200.webp')?.v).toEqual(vs);
+    expect(await denied(root(`update public.photos set variants = '{}' where id = $1`, [pid]))).toMatch(/check/);
+    await root(`select public.trash_photos($1)`, [[pid]]);
+    const files = (await root(`select public.purge_photos($1) as f`, [[pid]])).rows[0].f as { bucket: string; path: string }[];
+    expect(files.map((f) => `${f.bucket}:${f.path}`).sort()).toEqual(['listing-master:v25/p.webp', 'listing-public:v25/p-c2-1200.webp', 'listing-public:v25/p-c2-640.webp']);
+    const b = (await root(`select file_size_limit from storage.buckets where id = 'listing-master'`)).rows[0];
+    expect(Number(b.file_size_limit)).toBe(26214400);
+  });
+});

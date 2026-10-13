@@ -1,10 +1,12 @@
 'use client';
 /**
- * Admin photo input: accept common camera / phone formats, convert in the browser to a clean master.
+ * Admin photo input: accept common camera / phone formats.
  *   JPG/JPEG (any case), PNG, WebP, AVIF, HEIC/HEIF (iPhone; decoded with heic2any, loaded only when needed).
- * Checks MIME OR extension (browsers often report "" for HEIC). Orientation from EXIF is applied, then all metadata
- * is dropped by re-encoding (no GPS leaves the device). Output ≤ 1600 px WebP — or JPEG on Safari, which cannot
- * encode WebP; the server turns such a master into WebP (lib/admin/photoPipeline.ts).
+ * Checks MIME OR extension (browsers often report "" for HEIC).
+ * Public photos: the ORIGINAL file is uploaded untouched (prepareOriginal) — no downscale, no re-compression in the
+ * browser. Only HEIC is converted (JPEG q95): the server cannot read it. The server applies the EXIF orientation, drops
+ * all metadata (GPS) when it makes the master, and deletes the original (lib/admin/photoPipeline.ts).
+ * Internal photos (never public) are still converted here (prepareImage).
  */
 
 export const MAX_BYTES = 25 * 1024 * 1024;
@@ -58,6 +60,31 @@ async function heicToJpeg(file: Blob): Promise<Blob> {
     return Array.isArray(out) ? out[0] : out;
   } catch {
     throw new Error('Không đọc được ảnh HEIC, hãy xuất sang JPG');
+  }
+}
+
+/** What is uploaded for a public photo: the file itself, or a JPEG when it is HEIC. */
+export async function prepareOriginal(file: File): Promise<{ blob: Blob; type: string }> {
+  const c = classify(file);
+  if ('error' in c) throw new Error(c.error);
+  if (c.kind === 'raster') {
+    const ext = (file.name.split('.').pop() ?? '').toLowerCase();
+    const type = file.type || { png: 'image/png', webp: 'image/webp', avif: 'image/avif' }[ext] || 'image/jpeg';
+    return { blob: file, type: type === 'image/jpg' || type === 'image/pjpeg' ? 'image/jpeg' : type };
+  }
+  try {
+    return { blob: await heicToJpeg(file), type: 'image/jpeg' };
+  } catch (e) {
+    // Safari decodes HEIC itself: full-size JPEG from the canvas
+    const d = await decode(file).catch(() => { throw e; });
+    const canvas = document.createElement('canvas');
+    canvas.width = d.width;
+    canvas.height = d.height;
+    canvas.getContext('2d')?.drawImage(d.img, 0, 0);
+    d.close();
+    const jpg = await encode(canvas, 'image/jpeg', 0.95);
+    if (!jpg) throw e;
+    return { blob: jpg, type: 'image/jpeg' };
   }
 }
 

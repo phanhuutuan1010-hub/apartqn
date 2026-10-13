@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { notFound } from 'next/navigation';
+import { preconnect } from 'react-dom';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
@@ -46,6 +47,8 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
+  // photos come straight from Supabase Storage (own srcset, no image optimizer in between)
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) preconnect(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin);
 
   return (
     <html lang={locale} className={noto.variable}>

@@ -5,7 +5,12 @@
 import { PHOTO_TAGS, type Building, type BuildingAmenity, type Descriptions, type Listing, type PhotoMeta, type PhotoTag } from './types';
 import { toBuildingFees } from './fees';
 
-type PhotoRow = { path: string; thumb: string | null; w?: number | null; h?: number | null; tag?: string | null; source?: string | null };
+type PhotoRow = { path: string; thumb: string | null; w?: number | null; h?: number | null; tag?: string | null; source?: string | null; v?: { w: number; path: string }[] | null };
+/** "url 640w, url 1200w, …" from the photo's own variants (older photos: the 600 px thumb + the full file) */
+const srcset = (p: PhotoRow, base: string): string => {
+  const vs = p.v?.length ? p.v : [...(p.thumb && p.thumb !== p.path ? [{ w: Math.min(600, Number(p.w) || 600), path: p.thumb }] : []), { w: Number(p.w) || 1600, path: p.path }];
+  return vs.map((v) => `${publicPhotoUrl(base, v.path)} ${v.w}w`).join(', ');
+};
 const meta = (p: PhotoRow): PhotoMeta => ({
   tag: (PHOTO_TAGS as readonly string[]).includes(p.tag ?? '') ? (p.tag as PhotoTag) : 'khac',
   ...(p.source === 'own' || p.source === 'reference' ? { src: p.source } : {}),
@@ -78,6 +83,7 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
     amenities: r.amenities as BuildingAmenity[],
     photos: photos.map((p) => publicPhotoUrl(supabaseUrl, p.path)),
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),
+    srcsets: photos.map((p) => srcset(p, supabaseUrl)),
     photoMeta: photos.map(meta),
     ...(text(r.video_url ?? null) ? { videoUrl: text(r.video_url ?? null) } : {}),
     desc: desc(r),
@@ -122,6 +128,7 @@ export function toListing(r: PublicListingRow, supabaseUrl: string): Listing {
     updated: vnDate(r.updated_at),
     photos: photos.map((p) => publicPhotoUrl(supabaseUrl, p.path)),
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),
+    srcsets: photos.map((p) => srcset(p, supabaseUrl)),
     photoMeta: photos.map(meta),
     photoCount: photos.length || n(r.placeholder_photos),
     ...(r.car_parking != null ? { carParking: r.car_parking } : {}),

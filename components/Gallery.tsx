@@ -18,6 +18,8 @@ export type GalleryLabels = {
 
 type Props = {
   photos: string[];
+  /** srcset per photo (own 640 / 1200 / 1920 variants) */
+  srcsets?: string[];
   meta?: PhotoMeta[];
   /** placeholder tiles when there are no photos yet (demo listings) */
   count?: number;
@@ -35,7 +37,7 @@ const SMALL = '(min-width:1240px) 300px, (min-width:768px) 20vw, 50vw';
  * Phones: scroll-snap strip with "1 / 12". md+: adaptive grid — 1 large + up to 4 small, never an empty slot;
  * the last tile shows "+N ảnh" when there are more. Every photo opens the lightbox (loaded on first open).
  */
-export function Gallery({ photos, meta, count = 0, alt, tone = 'unit', videoHref, labels }: Props) {
+export function Gallery({ photos, srcsets, meta, count = 0, alt, tone = 'unit', videoHref, labels }: Props) {
   const [open, setOpen] = useState<number | null>(null);
   const [gi, setGi] = useState(0);
   // phones: only slides up to 2 past the furthest one seen get an image (100-photo buildings stay light)
@@ -48,7 +50,7 @@ export function Gallery({ photos, meta, count = 0, alt, tone = 'unit', videoHref
   );
   const tile = (i: number, sizes: string, cls = '') => (
     <button key={i} type="button" className={`${styles.cell} ${cls}`} onClick={() => setOpen(i)} aria-label={`${labels.showAll} · ${i + 1}/${n}`}>
-      <Photo src={photos[i]} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes={sizes} priority={i === 0} blur />
+      <Photo src={photos[i]} srcSet={srcsets?.[i]} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes={sizes} priority={i === 0} blur />
       {i === shown - 1 && n > shown && <span className={styles.more}>{labels.more.replace('{n}', String(n - shown))}</span>}
       {i === 0 && badge(0)}
     </button>
@@ -62,7 +64,7 @@ export function Gallery({ photos, meta, count = 0, alt, tone = 'unit', videoHref
           {n > 0
             ? photos.map((src, i) => (
               <button key={i} type="button" className={styles.slide} onClick={() => setOpen(i)} aria-label={`${labels.showAll} · ${i + 1}/${n}`}>
-                {i <= far + 2 && <Photo src={src} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes="100vw" priority={i === 0} blur />}
+                {i <= far + 2 && <Photo src={src} srcSet={srcsets?.[i]} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes="100vw" priority={i === 0} blur />}
                 {badge(i)}
               </button>
             ))
@@ -85,7 +87,7 @@ export function Gallery({ photos, meta, count = 0, alt, tone = 'unit', videoHref
         )}
       </div>
 
-      {open != null && <Lightbox photos={photos} meta={meta} start={open} alt={alt} labels={labels} onClose={() => setOpen(null)} />}
+      {open != null && <Lightbox photos={photos} srcsets={srcsets} meta={meta} start={open} alt={alt} labels={labels} onClose={() => setOpen(null)} />}
     </div>
   );
 }

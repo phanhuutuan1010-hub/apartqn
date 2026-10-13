@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import { normaliseYoutube, youtubeId } from '@/lib/youtube';
-import { publicSuffix, renderPublic, watermarkSvg, WATERMARK } from '@/lib/watermark';
+import { publicSuffix, renderMaster, renderVariant, variantWidths, watermarkSvg, WATERMARK } from '@/lib/watermark';
 
 describe('YouTube links', () => {
   it('accepts watch / youtu.be / shorts / mobile, normalises to youtu.be', () => {
@@ -18,15 +18,29 @@ describe('YouTube links', () => {
 
 describe('watermark render', () => {
   const photo = () => sharp({ create: { width: 2400, height: 1600, channels: 3, background: '#d8d0c0' } }).jpeg().toBuffer();
-  it('full: ≤1600, logo ~20% wide in the lower third, © metadata', async () => {
-    const out = await renderPublic(await photo(), 'full', true);
+  it('variant widths: the standard ones below the master, then the master itself; never upscaled', () => {
+    expect(variantWidths(4000)).toEqual([640, 1200, 1920]);
+    expect(variantWidths(1920)).toEqual([640, 1200, 1920]);
+    expect(variantWidths(1024)).toEqual([640, 1024]);
+    expect(variantWidths(500)).toEqual([500]);
+  });
+  it('master: ≤ 2400 px webp, orientation applied, camera metadata gone', async () => {
+    const big = await sharp({ create: { width: 4000, height: 3000, channels: 3, background: '#888' } }).jpeg().withExif({ IFD3: { GPSLatitudeRef: 'N' } }).toBuffer();
+    const m = await renderMaster(big);
+    expect([m.width, m.height]).toEqual([2400, 1800]);
+    const meta = await sharp(m.data).metadata();
+    expect(meta.format).toBe('webp');
+    expect(meta.exif).toBeUndefined();
+  });
+  it('1600: logo ~20% wide in the lower third, © metadata', async () => {
+    const out = await renderVariant(await photo(), 1600, true);
     expect([out.width, out.height]).toEqual([1600, 1067]);
     const m = await sharp(out.data).metadata();
     expect(m.format).toBe('webp');
     expect(m.xmp?.toString()).toContain(WATERMARK.copyright);
     expect(m.exif).toBeTruthy();
     // the overlay changes pixels only around the logo area
-    const plain = await renderPublic(await photo(), 'full', false);
+    const plain = await renderVariant(await photo(), 1600, false);
     const diff = async (top: number) => {
       const a = await sharp(out.data).extract({ left: 0, top, width: 1600, height: 40 }).raw().toBuffer();
       const b = await sharp(plain.data).extract({ left: 0, top, width: 1600, height: 40 }).raw().toBuffer();

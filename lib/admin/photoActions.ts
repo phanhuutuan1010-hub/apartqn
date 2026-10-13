@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/admin/session';
 import { vnError } from '@/lib/admin/errors';
-import { BUCKET, movePhoto, refreshOwner, type PhotoOwner, type PhotoRow } from '@/lib/admin/photoPipeline';
+import { BUCKET, movePhoto, originalPath, refreshOwner, type PhotoOwner, type PhotoRow } from '@/lib/admin/photoPipeline';
 
 /** Whose photos: a listing (public + internal) or a building (public only, admin). */
 export type { PhotoOwner };
@@ -37,13 +37,13 @@ export async function photoPrefix(owner: PhotoOwner): Promise<string | null> {
 
 const after = async (owner: PhotoOwner) => refreshOwner(await supabaseServer(), owner);
 
-/** Signed upload URL for one clean master (listing-master, private). The photo id is fixed here. */
+/** Signed upload URL for one untouched original (listing-master, private; replaced by the master on the server). The photo id is fixed here. */
 export async function prepareMasterUpload(owner: PhotoOwner): Promise<{ photoId?: string; path?: string; token?: string; error?: string }> {
   await requireStaff();
   const prefix = await photoPrefix(owner);
   if (!prefix) return { error: 'Không xác định được thư mục ảnh.' };
   const photoId = crypto.randomUUID();
-  const path = `${prefix}${photoId}.webp`;
+  const path = originalPath(prefix, photoId);
   const sb = await supabaseServer();
   const { data, error } = await sb.storage.from(BUCKET.master).createSignedUploadUrl(path);
   if (error || !data) return { error: 'Không tạo được link tải ảnh: ' + (error?.message ?? '') };

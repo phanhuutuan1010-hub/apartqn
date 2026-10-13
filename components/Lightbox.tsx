@@ -5,14 +5,14 @@ import type { PhotoMeta, PhotoTag } from '@/lib/types';
 import type { GalleryLabels } from './Gallery';
 import styles from './Lightbox.module.css';
 
-type Props = { photos: string[]; meta?: PhotoMeta[]; start: number; alt: string; labels: GalleryLabels; onClose: () => void };
+type Props = { photos: string[]; srcsets?: string[]; meta?: PhotoMeta[]; start: number; alt: string; labels: GalleryLabels; onClose: () => void };
 
 /**
  * Native <dialog> (modal = focus trap + inert page) with a scroll-snap track: swipe, ←/→, Esc, counter, tag tabs.
  * Full-size images load only for the current slide ± 1. Pinch zoom is the browser's own; double-tap / double-click
  * toggles 2× on the slide. The phone back button closes it (history entry pushed on open).
  */
-export default function Lightbox({ photos, meta, start, alt, labels, onClose }: Props) {
+export default function Lightbox({ photos, srcsets, meta, start, alt, labels, onClose }: Props) {
   const dlg = useRef<HTMLDialogElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const [tag, setTag] = useState<PhotoTag | ''>('');
@@ -100,7 +100,7 @@ export default function Lightbox({ photos, meta, start, alt, labels, onClose }: 
             }}>
             {seen.has(p)
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={photos[p]} alt={`${alt} · ${p + 1}/${photos.length}`} decoding="async" draggable={false} />
+              ? <img src={photos[p]} srcSet={srcsets?.[p]} sizes="100vw" alt={`${alt} · ${p + 1}/${photos.length}`} decoding="async" draggable={false} />
               : <span className={styles.ph} aria-hidden />}
           </div>
         ))}

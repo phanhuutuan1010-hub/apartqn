@@ -1,13 +1,14 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { WATERMARK, publicSuffix, renderCleanThumb, renderMaster, renderPublic } from '@/lib/watermark';
+import { WATERMARK, imageWidth, publicSuffix, renderCleanThumb, renderMaster, renderVariant, variantWidths } from '@/lib/watermark';
 import { refresh } from '@/lib/admin/refresh';
 import { revalidatePublic } from '@/lib/revalidate';
 import { revalidatePath } from 'next/cache';
 
 /**
  * Public photo pipeline (sharp, one photo per call — fits Vercel Hobby limits):
- *   clean master (listing-master, private) → watermarked or clean public 1600 + 600 px (listing-public).
+ *   uploaded original → clean master (listing-master, private, ≤ 2400 px q90) → watermarked or clean public variants
+ *   640 / 1200 / 1920 px wide (listing-public). One encode from the original to each public file.
  * Every storage/DB call goes through the caller's client: the signed-in staff member (RLS) in the app.
  */
 export const BUCKET = { master: 'listing-master', public: 'listing-public', internal: 'listing-internal' } as const;
@@ -18,7 +19,11 @@ type Sb = SupabaseClient<any, any, any>;
 export type PhotoRow = {
   id: string; listing_id: string | null; building_id: string | null; bucket: string; path: string; thumb_path: string | null;
   master_path: string | null; watermark: boolean; wm_version: number | null; visibility: 'public' | 'internal'; is_cover: boolean;
+  variants?: Variant[] | null;
 };
+export type Variant = { w: number; h: number; path: string };
+/** every public file of a row (old pair + variants) */
+export const publicFiles = (p: Pick<PhotoRow, 'path' | 'thumb_path' | 'variants'>) => [...new Set([p.path, p.thumb_path, ...(p.variants ?? []).map((v) => v.path)].filter((x): x is string => !!x))];
 
 const WEBP = { contentType: 'image/webp', cacheControl: '31536000' };
 export const col = (o: PhotoOwner) => (o.kind === 'listing' ? 'listing_id' : 'building_id');
@@ -35,24 +40,32 @@ async function put(sb: Sb, bucket: string, path: string, data: Buffer) {
   if (error) throw new Error(`Không lưu được ảnh ${path}: ${error.message}`);
 }
 
-const isWebp = (b: Buffer) => b.length > 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP';
+/** The untouched upload sits next to the master until the master exists. */
+export const originalPath = (prefix: string, photoId: string) => `${prefix}orig-${photoId}`;
 
-/** Masters are WebP at rest. Safari cannot encode WebP and sends JPEG: convert it (≤ 1600 px, no metadata) in place. */
-export async function normaliseMaster(sb: Sb, path: string, buf: Buffer): Promise<Buffer> {
-  if (isWebp(buf)) return buf;
-  const { data } = await renderMaster(buf);
-  await put(sb, BUCKET.master, path, data);
-  return data;
+/** Original → master in listing-master (the one lossy step before the public files); the original is then deleted. */
+export async function masterFromOriginal(sb: Sb, prefix: string, photoId: string): Promise<{ master: Buffer; master_path: string }> {
+  const orig = originalPath(prefix, photoId), master_path = `${prefix}${photoId}.webp`;
+  const { data } = await renderMaster(await download(sb, BUCKET.master, orig));
+  await put(sb, BUCKET.master, master_path, data);
+  await removeFiles(sb, BUCKET.master, [orig]);
+  return { master: data, master_path };
 }
 
-/** Render + upload the public pair for one photo. File names carry the variant, so CDN caches never go stale. */
-export async function renderPublicPair(sb: Sb, prefix: string, photoId: string, master: Buffer, watermark: boolean) {
+/** Render + upload the public variants of one photo. File names carry the render version and width, so CDN caches never go stale. */
+export async function renderVariants(sb: Sb, prefix: string, photoId: string, master: Buffer, watermark: boolean) {
   const suffix = publicSuffix(watermark);
-  const path = `${prefix}${photoId}${suffix}.webp`, thumb_path = `${prefix}thumbs/${photoId}${suffix}.webp`;
-  const [full, thumb] = await Promise.all([renderPublic(master, 'full', watermark), renderPublic(master, 'thumb', watermark)]);
-  await put(sb, BUCKET.public, path, full.data);
-  await put(sb, BUCKET.public, thumb_path, thumb.data);
-  return { path, thumb_path, width: full.width, height: full.height, wm_version: WATERMARK.version, watermark, bytes: full.data.length + thumb.data.length };
+  const variants: Variant[] = [];
+  let bytes = 0;
+  for (const w of variantWidths(await imageWidth(master))) {
+    const out = await renderVariant(master, w, watermark);
+    const path = `${prefix}${photoId}${suffix}-${out.width}.webp`;
+    await put(sb, BUCKET.public, path, out.data);
+    variants.push({ w: out.width, h: out.height, path });
+    bytes += out.data.length;
+  }
+  const top = variants[variants.length - 1];
+  return { variants, path: top.path, thumb_path: variants[0].path, width: top.w, height: top.h, wm_version: WATERMARK.version, watermark, bytes };
 }
 
 /** The clean master of a public photo (created from the current public file when an old photo has none). */
@@ -84,12 +97,13 @@ export async function refreshOwner(sb: Sb, owner: PhotoOwner) {
 export async function setPhotoWatermark(sb: Sb, p: PhotoRow, on: boolean) {
   if (p.visibility !== 'public') throw new Error('Ảnh nội bộ không bao giờ gắn watermark.');
   const { master, master_path } = await ensureMaster(sb, p);
-  const out = await renderPublicPair(sb, folder(p.path), p.id, master, on);
+  const out = await renderVariants(sb, folder(p.path), p.id, master, on);
   const { error } = await sb.from('photos').update({
-    path: out.path, thumb_path: out.thumb_path, width: out.width, height: out.height, watermark: on, wm_version: out.wm_version, master_path,
+    path: out.path, thumb_path: out.thumb_path, variants: out.variants, width: out.width, height: out.height, watermark: on, wm_version: out.wm_version, master_path,
   }).eq('id', p.id);
   if (error) throw new Error(error.message);
-  await removeFiles(sb, BUCKET.public, [p.path, p.thumb_path].filter((x) => x !== out.path && x !== out.thumb_path));
+  const now = new Set(out.variants.map((v) => v.path));
+  await removeFiles(sb, BUCKET.public, publicFiles(p).filter((x) => !now.has(x)));
 }
 
 /** Listing photo public ↔ internal. Internal = clean files in listing-internal, no master; public = master + rendered pair. */
@@ -101,19 +115,19 @@ export async function movePhoto(sb: Sb, p: PhotoRow, to: 'public' | 'internal') 
     await put(sb, BUCKET.internal, path, master);
     await put(sb, BUCKET.internal, thumb_path, await renderCleanThumb(master));
     const { error } = await sb.from('photos').update({
-      bucket: BUCKET.internal, visibility: 'internal', path, thumb_path, master_path: null, wm_version: null, is_cover: false,
+      bucket: BUCKET.internal, visibility: 'internal', path, thumb_path, variants: null, master_path: null, wm_version: null, is_cover: false,
     }).eq('id', p.id);
     if (error) throw new Error(error.message);
-    await removeFiles(sb, BUCKET.public, [p.path, p.thumb_path]);
+    await removeFiles(sb, BUCKET.public, publicFiles(p));
     await removeFiles(sb, BUCKET.master, [p.master_path ?? `${prefix}${p.id}.webp`]);
     return;
   }
   const master = await download(sb, BUCKET.internal, p.path);
   const master_path = `${prefix}${p.id}.webp`;
   await put(sb, BUCKET.master, master_path, master);
-  const out = await renderPublicPair(sb, prefix, p.id, master, p.watermark);
+  const out = await renderVariants(sb, prefix, p.id, master, p.watermark);
   const { error } = await sb.from('photos').update({
-    bucket: BUCKET.public, visibility: 'public', path: out.path, thumb_path: out.thumb_path, width: out.width, height: out.height,
+    bucket: BUCKET.public, visibility: 'public', path: out.path, thumb_path: out.thumb_path, variants: out.variants, width: out.width, height: out.height,
     master_path, wm_version: out.wm_version,
   }).eq('id', p.id);
   if (error) throw new Error(error.message);

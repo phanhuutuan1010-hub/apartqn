@@ -1,3 +1,4 @@
 .ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--placeholder); }
 .bld { background: var(--placeholder-bld); }
-.img { object-fit: cover; }
+.img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.blur { background: linear-gradient(#dfe5ee 55%, #cdd5e0); }

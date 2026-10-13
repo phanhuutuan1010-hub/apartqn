@@ -91,6 +91,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
 
         <Gallery
           photos={x.photos}
+          srcsets={x.srcsets}
           meta={x.photoMeta}
           count={x.photoCount}
           alt={`${title} · ${b.name}`}

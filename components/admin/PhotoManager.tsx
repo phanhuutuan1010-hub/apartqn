@@ -7,7 +7,7 @@ import {
   bulkPhotoMeta, movePhotos, moveTargets, photoPrefix, prepareMasterUpload, refreshPhotos, registerPhotos, reorderPhotos, restorePhotos,
   setCover, setVisibility, trashPhotos, type MoveTarget, type PhotoOwner,
 } from '@/lib/admin/photoActions';
-import { ACCEPT, classify, MAX_FILES, prepareImage } from '@/lib/admin/imageInput';
+import { ACCEPT, classify, MAX_FILES, prepareImage, prepareOriginal } from '@/lib/admin/imageInput';
 import styles from './PhotoManager.module.css';
 
 export type PhotoView = {
@@ -134,7 +134,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
 
   const patch = (key: string, p: Partial<QItem>) => setQueue((q) => q.map((x) => (x.key === key ? { ...x, ...p } : x)));
 
-  /** One file: convert in the browser (orientation, no EXIF, ≤ 1600 px) → upload → server render (public). */
+  /** One file: upload the original untouched (HEIC → JPEG only) → the server makes the master and the public sizes. */
   async function processOne(it: QItem): Promise<boolean> {
     patch(it.key, { status: 'processing', error: undefined });
     try {
@@ -142,7 +142,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
       const { supabaseBrowser } = await import('@/lib/supabase/browser');
       const sb = supabaseBrowser();
       if (it.target === 'public' || isBuilding) {
-        const master = await prepareImage(it.file, 1600, 0.82);
+        const master = await prepareOriginal(it.file);
         patch(it.key, { status: 'uploading' });
         const slot = await prepareMasterUpload(owner);
         if (!slot.photoId || !slot.path || !slot.token) throw new Error(slot.error ?? 'Không tạo được link tải ảnh');
@@ -157,7 +157,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
         if (!r.ok) throw new Error(j.error ?? `Máy chủ báo lỗi ${r.status}`);
       } else {
         // internal: clean files straight to the private bucket, never watermarked, never public
-        const [full, thumb] = await Promise.all([prepareImage(it.file, 1600, 0.82), prepareImage(it.file, 600, 0.78)]);
+        const [full, thumb] = await Promise.all([prepareImage(it.file, 2400, 0.9), prepareImage(it.file, 640, 0.8)]);
         patch(it.key, { status: 'uploading' });
         const prefix = await photoPrefix(owner);
         if (!prefix) throw new Error('Không xác định được thư mục ảnh');
@@ -348,7 +348,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
           </div>
           JPG, PNG, HEIC, WebP · tối đa {MAX_FILES} ảnh mỗi lần, mỗi ảnh ≤ 25MB
           <div className="a-small a-muted">
-            Tự xoay đúng chiều, xoá thông tin vị trí (GPS), nén WebP 1600px.{' '}
+            Tải ảnh gốc, không nén trên máy. Máy chủ tự xoay đúng chiều, xoá thông tin vị trí (GPS) và tạo các cỡ ảnh sắc nét.{' '}
             {isBuilding ? 'Ảnh toà nhà mặc định không gắn watermark.' : 'Ảnh công khai mặc định gắn watermark ApartQN; ảnh nội bộ không bao giờ.'} Bật/tắt ở nút “…” hoặc chọn nhiều ảnh.
           </div>
         </div>

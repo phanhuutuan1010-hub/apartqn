@@ -36,13 +36,15 @@ export async function copyListing(sb: Sb, from: string, to: string, opts: { phot
   let copied = 0;
   if (opts.photos) {
     const { data: photos } = await sb.from('photos')
-      .select('id, bucket, path, thumb_path, master_path, visibility, is_cover, sort, width, height, watermark, wm_version, tag, source')
+      .select('id, bucket, path, thumb_path, variants, master_path, visibility, is_cover, sort, width, height, watermark, wm_version, tag, source')
       .eq('listing_id', from).order('sort');
     for (const p of photos ?? []) {
       const id = crypto.randomUUID();
       const move = (path: string | null) => (path ? path.replace(`listings/${from}/`, `listings/${to}/`).replace(p.id, id) : null);
+      const vs = (p.variants ?? []) as { w: number; h: number; path: string }[];
+      const files = [...new Set([p.path, p.thumb_path, ...vs.map((v) => v.path)].filter(Boolean))] as string[];
       const pairs: [string, string | null, string | null][] = [
-        [p.bucket, p.path, move(p.path)], [p.bucket, p.thumb_path, move(p.thumb_path)], ['listing-master', p.master_path, move(p.master_path)],
+        ...files.map((f): [string, string, string | null] => [p.bucket, f, move(f)]), ['listing-master', p.master_path, move(p.master_path)],
       ];
       for (const [bucket, a, b] of pairs) {
         if (!a || !b) continue;
@@ -51,6 +53,7 @@ export async function copyListing(sb: Sb, from: string, to: string, opts: { phot
       }
       const { error: pe } = await sb.from('photos').insert({
         id, listing_id: to, bucket: p.bucket, path: move(p.path), thumb_path: move(p.thumb_path), master_path: move(p.master_path),
+        variants: p.variants ? vs.map((v) => ({ ...v, path: move(v.path) })) : null,
         visibility: p.visibility, is_cover: p.is_cover, sort: p.sort, width: p.width, height: p.height, watermark: p.watermark, wm_version: p.wm_version, tag: p.tag, source: p.source,
       });
       if (pe) throw new Error(pe.message);

@@ -11,7 +11,7 @@ const base: Listing = {
   code: 'QN-001', buildingId: 'altara', floor: 18, area: 68, beds: 2, baths: 2, dir: 'SE', view: 'sea', furn: 'full',
   rent: 13500000, deposit: 2, cycle: 'm1', mgmt: 816000, elec: 'evn', water: 'meter', moto: 150000, car: 1500000, net: 220000,
   minTerm: 6, maxOcc: 4, pets: true, tempReg: true, verified: true, video: false, status: 'available', moveIn: '2026-10-05',
-  updated: '2026-09-21', photos: [], thumbs: [], photoCount: 0, desc: { vi: 'Căn góc, view biển đẹp, bếp mới.' }, demo: true,
+  updated: '2026-09-21', photos: [], thumbs: [], srcsets: [], photoCount: 0, desc: { vi: 'Căn góc, view biển đẹp, bếp mới.' }, demo: true,
 };
 const tr = (locale: 'vi' | 'en', messages: object) =>
   createTranslator({ locale, messages }) as unknown as Parameters<typeof listingDescription>[3];

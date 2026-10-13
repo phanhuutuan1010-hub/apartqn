@@ -5,7 +5,7 @@
 import { readdirSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
-import { renderPublic } from '../lib/watermark';
+import { renderVariant } from '../lib/watermark';
 
 const out = process.argv[2] ?? 'wm-samples';
 mkdirSync(out, { recursive: true });
@@ -25,8 +25,8 @@ const pick = {
 };
 for (const [k, s] of Object.entries(pick)) {
   const src = readFileSync(s.f);
-  for (const size of ['full', 'thumb'] as const) {
-    const r = await renderPublic(src, size, true);
+  for (const size of [1200, 640] as const) {
+    const r = await renderVariant(src, size, true);
     writeFileSync(path.join(out, `${k}-${size}.webp`), r.data);
     await sharp(r.data).png().toFile(path.join(out, `${k}-${size}.png`));
   }

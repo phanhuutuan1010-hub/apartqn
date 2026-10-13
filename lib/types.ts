@@ -29,8 +29,10 @@ export type Building = {
   amenities: BuildingAmenity[];
   /** full-size public photo URLs, cover first; empty → striped placeholder */
   photos: string[];
-  /** 600px thumbnails, same order as photos */
+  /** smallest variant (640 px), same order as photos */
   thumbs: string[];
+  /** srcset of each photo's own variants (640 / 1200 / 1920 w), same order */
+  srcsets: string[];
   /** tag / source / size per photo, same order (missing → 'khac', own) */
   photoMeta?: PhotoMeta[];
   /** unlisted YouTube link */
@@ -79,6 +81,7 @@ export type Listing = {
   updated: string;
   photos: string[];
   thumbs: string[];
+  srcsets: string[];
   photoMeta?: PhotoMeta[];
   /** photos.length, or the demo placeholder count when there are no photos yet */
   photoCount: number;

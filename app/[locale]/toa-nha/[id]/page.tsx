@@ -92,7 +92,7 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
           <Link href={{ pathname: '/', hash: 'buildings' }}>{t('navBlds')}</Link><span aria-hidden>/</span>
           <span aria-current="page" className={styles.crumbCur}>{b.name}</span>
         </nav>
-        <Gallery photos={b.photos} meta={b.photoMeta} alt={b.name} tone="building" videoHref={videoId ? '#video' : undefined}
+        <Gallery photos={b.photos} srcsets={b.srcsets} meta={b.photoMeta} alt={b.name} tone="building" videoHref={videoId ? '#video' : undefined}
           labels={galleryLabels(t as unknown as Parameters<typeof galleryLabels>[0])} />
         {(qf.length > 0 || keyAm.length > 0 || free > 0) && (
           <div className={styles.qf}>
