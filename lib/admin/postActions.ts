@@ -7,7 +7,8 @@ import { z } from 'zod';
 import { requireStaff } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
-import { SITE, SITE_URL } from '@/data/site';
+import { SITE_URL } from '@/data/site';
+import { fmtPhone } from '@/lib/phone';
 import type { PostData } from '@/lib/listing/post';
 
 const PUBLIC = ['available', 'reserved', 'rented'];
@@ -36,6 +37,6 @@ export async function getPostData(id: string): Promise<{ data?: PostData; images
       excerptEn: enStatusOf(l.desc_vi, l.desc_en, l.desc_en_vi_hash) === 'ok' && l.desc_en ? excerpt(l.desc_en) : null,
     },
     images: (photos ?? []).map((p) => publicPhotoUrl(SUPABASE_URL, p.path)),
-    hotline: settings?.hotline || SITE.phoneDisplay,
+    hotline: settings?.hotline ? fmtPhone(settings.hotline) : '',
   };
 }

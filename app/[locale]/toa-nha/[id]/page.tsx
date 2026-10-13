@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
-import { getBuilding, getBuildings, getListings, staticParams } from '@/lib/repo';
+import { getBuilding, getBuildings, getContact, getListings, staticParams } from '@/lib/repo';
 import { F, money } from '@/lib/format';
 import { contacts } from '@/lib/contacts';
 import { alternates, OG_LOCALE } from '@/lib/seo';
@@ -55,13 +55,13 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
   setRequestLocale(l);
   const b = await getBuilding(id);
   if (!b) notFound();
-  const [listings, buildings] = await Promise.all([getListings(), getBuildings()]);
+  const [listings, buildings, contact] = await Promise.all([getListings(), getBuildings(), getContact()]);
   const t = await getTranslations();
   const all = listings.filter((x) => x.buildingId === b.id);
   const avail = all.filter((x) => x.status !== 'rented').sort((p, q) => p.rent - q.rent);
   const r1k = (n: number) => Math.round(n / 1000) * 1000;
   const msg = F.msgB(b.name, l);
-  const cs = contacts(l, t('call'), { message: msg });
+  const cs = contacts(contact, l, t('call'), { message: msg });
   const fullAddr = [b.street, t('city')].filter(Boolean).join(', ');
   const fees: [string, string][] = [
     [t('mgmtRate'), rng(all.map((x) => r1k(x.mgmt / x.area)), (n) => F.perM2(n, l))],

@@ -608,10 +608,12 @@ describe('consign quick contact (migration 19)', () => {
   it('public_contact exposes only the contact fields; settings stay staff-only', async () => {
     await root(`update public.settings set hotline = '0905 123 456', zalo_phone = null, contact_person_name = 'Minh Anh', contact_person_title = 'Chuyên viên' where id = 1`);
     const v = await as('anon', (q) => q(`select * from public.public_contact`));
-    expect(Object.keys(v.rows[0]).sort()).toEqual(['contact_person_name', 'contact_person_photo', 'contact_person_title', 'hotline', 'zalo_phone']);
+    expect(Object.keys(v.rows[0]).sort()).toEqual(['contact_person_name', 'contact_person_photo', 'contact_person_title', 'hotline', 'telegram_phone', 'telegram_username', 'whatsapp_phone', 'zalo_phone']);
     expect(v.rows[0].hotline).toBe('0905 123 456');
     expect(await as('anon', (q) => denied(q(`select hotline from public.settings`)))).toMatch(/permission/);
     expect(await denied(root(`update public.settings set zalo_phone = 'call me' where id = 1`))).toMatch(/check/);
+    expect(await denied(root(`update public.settings set whatsapp_phone = 'call me' where id = 1`))).toMatch(/check/);
+    expect(await denied(root(`update public.settings set telegram_username = '@a b' where id = 1`))).toMatch(/check/);
     expect(await denied(root(`update public.settings set contact_person_photo = '../x.png' where id = 1`))).toMatch(/check/);
     await root(`update public.settings set hotline = null, contact_person_name = null, contact_person_title = null where id = 1`);
   });

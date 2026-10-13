@@ -5,7 +5,6 @@ import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { daysSince, fmtDateTime } from '@/lib/admin/labels';
 import { ContactForm, GlossaryForm, ThresholdsForm } from '@/components/admin/SettingsForms';
 import { publicPhotoUrl } from '@/lib/repoMap';
-import { SITE } from '@/data/site';
 
 export const metadata: Metadata = { title: 'Cài đặt' };
 
@@ -38,8 +37,9 @@ export default async function SettingsPage() {
         </form>
       </section>
 
-      <ContactForm fallback={SITE.phoneDisplay} v={{
-        hotline: s?.hotline ?? null, zalo_phone: s?.zalo_phone ?? null, contact_person_name: s?.contact_person_name ?? null,
+      <ContactForm v={{
+        hotline: s?.hotline ?? null, zalo_phone: s?.zalo_phone ?? null, whatsapp_phone: s?.whatsapp_phone ?? null,
+        telegram_phone: s?.telegram_phone ?? null, telegram_username: s?.telegram_username ?? null, contact_person_name: s?.contact_person_name ?? null,
         contact_person_title: s?.contact_person_title ?? null, photoUrl: s?.contact_person_photo ? publicPhotoUrl(SUPABASE_URL, s.contact_person_photo) : null,
       }} />
 

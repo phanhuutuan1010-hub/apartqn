@@ -201,10 +201,10 @@
   const contacts = (code, l, msg) => {
     const m = encodeURIComponent(msg || F.msg(code, l));
     const all = {
-      zalo: { k: 'zalo', label: 'Zalo', href: 'https://zalo.me/0900000000' },
-      call: { k: 'call', label: t('call', l), href: 'tel:+84900000000' },
-      telegram: { k: 'telegram', label: 'Telegram', href: 'https://t.me/apartqn?text=' + m },
-      whatsapp: { k: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/84900000000?text=' + m }
+      zalo: { k: 'zalo', label: 'Zalo', href: 'https://zalo.me/0906051010' },
+      call: { k: 'call', label: t('call', l), href: 'tel:+84363480154' },
+      telegram: { k: 'telegram', label: 'Telegram', href: 'https://t.me/+84906051010?text=' + m },
+      whatsapp: { k: 'whatsapp', label: 'WhatsApp', href: 'https://wa.me/84906051010?text=' + m }
     };
     const order = l === 'vi' ? ['zalo', 'call'] : l === 'ru' ? ['telegram', 'whatsapp'] : ['whatsapp', 'telegram'];
     return order.map((k) => all[k]);

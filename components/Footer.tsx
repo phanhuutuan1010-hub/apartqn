@@ -1,14 +1,15 @@
-import { useLocale, useTranslations } from 'next-intl';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { LOCALES } from '@/i18n/routing';
 import { DEMO, SITE } from '@/data/site';
+import { getContact } from '@/lib/repo';
+import { fmtPhone, telHref } from '@/lib/phone';
 import { Logo } from './Logo';
 import styles from './Footer.module.css';
 
 /** `demo={false}`: no DỮ LIỆU DEMO tag (the consign page talks to real owners). */
-export function Footer({ demo = DEMO }: { demo?: boolean } = {}) {
-  const t = useTranslations();
-  const locale = useLocale();
+export async function Footer({ demo = DEMO }: { demo?: boolean } = {}) {
+  const [t, locale, { hotline }] = await Promise.all([getTranslations(), getLocale(), getContact()]);
   const nav = [
     { label: t('navApts'), href: { pathname: '/can-ho' as const } },
     { label: t('navBlds'), href: { pathname: '/' as const, hash: 'buildings' } },
@@ -33,7 +34,7 @@ export function Footer({ demo = DEMO }: { demo?: boolean } = {}) {
           </div>
           <div className={styles.links}>
             <div className={styles.head}>{t('navContact')}</div>
-            <a href={`tel:${SITE.phone}`} className={styles.link}>{SITE.phoneDisplay}</a>
+            {hotline && <a href={telHref(hotline)} className={styles.link}>{fmtPhone(hotline)}</a>}
             <a href={`mailto:${SITE.email}`} className={styles.link}>{SITE.email}</a>
             <span className={styles.hours}>{t('fHours')}</span>
           </div>

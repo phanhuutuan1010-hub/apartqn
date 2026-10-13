@@ -9,7 +9,7 @@ const today = '2026-10-09';
 
 describe('Tạo bài đăng', () => {
   it('Facebook vi: every listed field, hotline and link', () => {
-    const t = buildPost(L, { channel: 'facebook', lang: 'vi', phone: '0900 000 000', today });
+    const t = buildPost(L, { channel: 'facebook', lang: 'vi', phone: '0363 480 154', today });
     expect(t).toContain('🏢 CHO THUÊ CĂN HỘ 2 PN · Altara Residences');
     expect(t).toContain('• Mã căn: ALT-001');
     expect(t).toContain('• Diện tích 68 m² · Tầng 18');
@@ -17,7 +17,7 @@ describe('Tạo bài đăng', () => {
     expect(t).toContain('• Giá thuê: 13.500.000 đ/tháng');
     expect(t).toContain('• Phí quản lý: 822.800 đ/tháng (khách trả)');
     expect(t).toContain('• Dọn vào từ 20/10/2026');
-    expect(t).toContain('📞 Liên hệ: 0900 000 000');
+    expect(t).toContain('📞 Liên hệ: 0363 480 154');
     expect(t).toContain('🔗 https://apartqn.vercel.app/can-ho/alt-001');
   });
 

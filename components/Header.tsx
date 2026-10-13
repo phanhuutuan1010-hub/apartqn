@@ -1,6 +1,7 @@
-import { useLocale, useTranslations } from 'next-intl';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { contacts } from '@/lib/contacts';
+import { getContact } from '@/lib/repo';
 import { Logo } from './Logo';
 import { LangSwitcher } from './LangSwitcher';
 import { MobileMenu } from './MobileMenu';
@@ -10,9 +11,8 @@ import styles from './Header.module.css';
 export type NavKey = 'results' | 'building' | 'consign' | 'contact' | '';
 
 /** inlineSearch = false on pages that already have a big search box (home hero, results toolbar): icon only, < 1280. */
-export function Header({ active = '', inlineSearch = true }: { active?: NavKey; inlineSearch?: boolean }) {
-  const t = useTranslations();
-  const locale = useLocale();
+export async function Header({ active = '', inlineSearch = true }: { active?: NavKey; inlineSearch?: boolean }) {
+  const [t, locale, contact] = await Promise.all([getTranslations(), getLocale(), getContact()]);
 
   const nav = [
     { k: 'results' as const, label: t('navApts'), href: { pathname: '/can-ho' as const } },
@@ -46,7 +46,7 @@ export function Header({ active = '', inlineSearch = true }: { active?: NavKey; 
           <MobileMenu
             active={active}
             nav={menuNav.map((n) => ({ k: n.k, label: n.label, href: n.href }))}
-            contacts={contacts(locale, t('call'))}
+            contacts={contacts(contact, locale, t('call'))}
             labels={{ menu: t('menu'), close: t('close'), contact: t('navContact'), hours: t('fHours'), consign: t('navConsign') }}
           />
         </div>

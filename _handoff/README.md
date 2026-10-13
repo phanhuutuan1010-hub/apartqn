@@ -221,7 +221,7 @@ On success, show a confirmation card with "Gửi yêu cầu khác".
   | ru | Telegram + WhatsApp | Telegram |
   | en | WhatsApp + Telegram | WhatsApp |
 
-  WhatsApp and Telegram get `?text=` with the listing code (`F.msg`), building name (`F.msgB`) or a generic message (`F.msgG`). **Replace the demo numbers:** `tel:+84900000000`, `zalo.me/0900000000`, `wa.me/84900000000`, `t.me/apartqn`.
+  WhatsApp and Telegram get `?text=` with the listing code (`F.msg`), building name (`F.msgB`) or a generic message (`F.msgG`). Numbers come from admin Cài đặt (settings), never from code: `tel:+84363480154`, `zalo.me/0906051010`, `wa.me/84906051010`, `t.me/+84906051010`.
 - **Card photo slider:** ‹ › step through photos without navigating; dots show 5 max.
 - **Viewing form:** name*, phone*, preferred date, duration chips (6 / 12 / >12 months).
   - While submitting: "Đang gửi…", button disabled.

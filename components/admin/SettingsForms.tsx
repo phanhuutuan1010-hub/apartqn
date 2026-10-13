@@ -25,10 +25,10 @@ export function ThresholdsForm({ v }: { v: { verify_remind_days: number; verify_
   );
 }
 
-export type ContactSettings = { hotline: string | null; zalo_phone: string | null; contact_person_name: string | null; contact_person_title: string | null; photoUrl: string | null };
+export type ContactSettings = { hotline: string | null; zalo_phone: string | null; whatsapp_phone: string | null; telegram_phone: string | null; telegram_username: string | null; contact_person_name: string | null; contact_person_title: string | null; photoUrl: string | null };
 
-/** Hotline / Zalo / contact person for the website (/ky-gui quick contact) and "Tạo bài đăng". */
-export function ContactForm({ v, fallback }: { v: ContactSettings; fallback: string }) {
+/** Hotline / Zalo / WhatsApp / Telegram / contact person: the only source of the numbers on the website and in "Tạo bài đăng". */
+export function ContactForm({ v }: { v: ContactSettings }) {
   const [state, action, pending] = useActionState<Res, FormData>(saveContact, {});
   const [busy, start] = useTransition();
   const [preview, setPreview] = useState<string | null>(v.photoUrl);
@@ -43,12 +43,15 @@ export function ContactForm({ v, fallback }: { v: ContactSettings; fallback: str
     <form onSubmit={onSubmit} className="a-card">
       <h2 className="a-section-title">Liên hệ trên website</h2>
       <p className="a-small a-muted" style={{ margin: '-6px 0 12px' }}>
-        Hiện ở khối “Không tiện điền form?” trên trang Ký gửi. Ô để trống thì website không hiện (không dùng số mẫu).
-        Hotline cũng là số mặc định trong “Tạo bài đăng” (trống = {fallback}).
+        Dùng cho mọi nút liên hệ trên website: menu, chân trang, trang căn hộ, toà nhà, Ký gửi (tiếng Việt: Zalo + Gọi; tiếng Anh: WhatsApp + Telegram).
+        Ô để trống thì website không hiện nút đó (không dùng số mẫu). Hotline cũng là số mặc định trong “Tạo bài đăng”.
       </p>
       <div className="a-grid">
         <label className="a-field">Hotline<input className="input" name="hotline" type="tel" defaultValue={v.hotline ?? ''} placeholder="0905 123 456" maxLength={24} /></label>
         <label className="a-field">Số Zalo <span className="hint">trống = dùng hotline</span><input className="input" name="zalo_phone" type="tel" defaultValue={v.zalo_phone ?? ''} placeholder={v.hotline ?? ''} maxLength={24} /></label>
+        <label className="a-field">Số WhatsApp<input className="input" name="whatsapp_phone" type="tel" defaultValue={v.whatsapp_phone ?? ''} placeholder="0905 123 456" maxLength={24} /></label>
+        <label className="a-field">Số Telegram<input className="input" name="telegram_phone" type="tel" defaultValue={v.telegram_phone ?? ''} placeholder="0905 123 456" maxLength={24} /></label>
+        <label className="a-field">Telegram username <span className="hint">không bắt buộc; có thì dùng thay số</span><input className="input" name="telegram_username" defaultValue={v.telegram_username ?? ''} placeholder="vd. apartqn" maxLength={33} autoCapitalize="none" /></label>
         <label className="a-field">Người liên hệ <span className="hint">không bắt buộc</span><input className="input" name="contact_person_name" defaultValue={v.contact_person_name ?? ''} maxLength={60} placeholder="vd. Nguyễn Minh Anh" /></label>
         <label className="a-field">Chức danh<input className="input" name="contact_person_title" defaultValue={v.contact_person_title ?? ''} maxLength={80} placeholder="vd. Chuyên viên ký gửi" /></label>
         <div className="a-field span4" style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>

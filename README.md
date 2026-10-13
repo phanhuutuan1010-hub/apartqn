@@ -46,7 +46,7 @@ npm test                     # RLS / RPC / seed / unit tests (embedded Postgres,
 | Khách hàng | leads by status, notes timeline, reassign, manual lead |
 | Toà nhà | wards (new/old), verified coordinates, amenities, default fees, descriptions, photos |
 | Người dùng | invite, role, publishing right, lock, **Chuyển giao** (hand over all work), password-reset link |
-| Cài đặt | **Xuất dữ liệu** (.zip: JSON + CSV UTF-8 BOM of units, listings, leads, profiles, buildings), reminder thresholds |
+| Cài đặt | **Liên hệ trên website** (hotline, Zalo, WhatsApp, Telegram: the only source of public contact numbers), **Xuất dữ liệu** (.zip: JSON + CSV UTF-8 BOM of units, listings, leads, profiles, buildings), reminder thresholds |
 | Tài khoản | own name / phone / Telegram chat id + test message |
 
 Public pages refresh immediately (`revalidatePath`) when a listing is published, its status/price/photos change, or a building is edited.

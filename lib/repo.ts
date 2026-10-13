@@ -82,9 +82,9 @@ export const getBuilding = cache(async (slug: string): Promise<Building | null> 
   return data ? toBuilding(data as PublicBuildingRow, SUPABASE_URL) : null;
 });
 
-export type SiteContact = { hotline?: string; zalo?: string; person?: { name: string; title?: string; photo?: string } };
+export type SiteContact = { hotline?: string; zalo?: string; whatsapp?: string; telegramPhone?: string; telegramUsername?: string; person?: { name: string; title?: string; photo?: string } };
 
-/** Public contact from admin Cài đặt (public_contact view). Nothing set → empty: the page hides those parts, never a made-up number. */
+/** Public contact from admin Cài đặt (public_contact view) — the single source of every number on the site. Nothing set → empty: the page hides those parts, never a made-up number. */
 export const getContact = cache(async (): Promise<SiteContact> => {
   const { data, error } = await client().from('public_contact').select('*').maybeSingle();
   if (error) {
@@ -97,6 +97,9 @@ export const getContact = cache(async (): Promise<SiteContact> => {
   return {
     ...(hotline ? { hotline } : {}),
     ...(zalo ? { zalo } : {}),
+    ...(v(data?.whatsapp_phone) ? { whatsapp: v(data?.whatsapp_phone) } : {}),
+    ...(v(data?.telegram_phone) ? { telegramPhone: v(data?.telegram_phone) } : {}),
+    ...(v(data?.telegram_username) ? { telegramUsername: v(data?.telegram_username) } : {}),
     ...(name ? { person: { name, ...(v(data?.contact_person_title) ? { title: v(data?.contact_person_title) } : {}), ...(photo ? { photo: publicPhotoUrl(SUPABASE_URL, photo) } : {}) } } : {}),
   };
 });

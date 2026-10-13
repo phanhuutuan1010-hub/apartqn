@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { fmtPhone, isVnMobile, telHref, waHref, zaloHref } from '@/lib/phone';
+import { fmtPhone, isVnMobile, telHref, tgHref, waHref, zaloHref } from '@/lib/phone';
 import { trackContact } from '@/lib/trackContact';
 import type { SiteContact } from '@/lib/repo';
 import styles from './QuickContact.module.css';
@@ -22,7 +22,7 @@ export const IconChat = () => (
 const cantDial = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
 /**
- * "Không tiện điền form?" — call / Zalo (+ WhatsApp on en) from admin Cài đặt, an optional contact person,
+ * "Không tiện điền form?" — call + Zalo (vi) / WhatsApp + Telegram (en) from admin Cài đặt, an optional contact person,
  * and "Để lại số, chúng tôi gọi lại" (name + VN mobile → /api/lead consign, source callback).
  */
 export function QuickContact({ contact }: { contact: SiteContact }) {
@@ -31,8 +31,10 @@ export function QuickContact({ contact }: { contact: SiteContact }) {
   const [toast, setToast] = useState('');
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
-  const { hotline, zalo, person } = contact;
-  const wa = l === 'en' && hotline ? waHref(hotline) : null;
+  const { hotline, person } = contact;
+  const zalo = l === 'vi' ? contact.zalo : undefined;
+  const wa = l === 'en' && contact.whatsapp ? waHref(contact.whatsapp) : null;
+  const tg = l === 'en' ? tgHref(contact.telegramPhone, contact.telegramUsername) : null;
 
   const onCall = async (e: React.MouseEvent) => {
     if (!hotline) return;
@@ -49,7 +51,7 @@ export function QuickContact({ contact }: { contact: SiteContact }) {
     <section className={styles.card} aria-labelledby="qc-title">
       <h2 id="qc-title" className={styles.title}>{t('qcTitle')}</h2>
       <p className={styles.text}>{t('qcText')}</p>
-      {(hotline || zalo) && (
+      {(hotline || zalo || wa || tg) && (
         <div className={styles.btns}>
           {hotline && (
             <a href={telHref(hotline)} className={`btn btn-blue ${styles.btn}`} onClick={onCall}>
@@ -64,6 +66,11 @@ export function QuickContact({ contact }: { contact: SiteContact }) {
           {wa && (
             <a href={wa} target="_blank" rel="noopener noreferrer" className={`btn btn-secondary ${styles.btn}`} onClick={() => trackContact('whatsapp', l)}>
               <IconChat /> WhatsApp
+            </a>
+          )}
+          {tg && (
+            <a href={tg} target="_blank" rel="noopener noreferrer" className={`btn btn-secondary ${styles.btn}`} onClick={() => trackContact('telegram', l)}>
+              <IconChat /> Telegram
             </a>
           )}
         </div>
@@ -133,7 +140,7 @@ function Callback() {
   );
 }
 
-/** Phones: [Gọi] [Zalo] [Điền form ↓] pinned to the bottom; hidden while typing (a field is focused / keyboard open). */
+/** Phones: [Gọi] [Zalo · en WhatsApp] [Điền form ↓] pinned to the bottom; hidden while typing (a field is focused / keyboard open). */
 export function ConsignBar({ contact }: { contact: SiteContact }) {
   const t = useTranslations();
   const l = useLocale();
@@ -148,13 +155,16 @@ export function ConsignBar({ contact }: { contact: SiteContact }) {
     vv?.addEventListener('resize', check);
     return () => { document.removeEventListener('focusin', check); document.removeEventListener('focusout', later); vv?.removeEventListener('resize', check); };
   }, []);
-  const { hotline, zalo } = contact;
+  const { hotline } = contact;
+  const zalo = l === 'vi' ? contact.zalo : undefined;
+  const wa = l === 'en' && contact.whatsapp ? waHref(contact.whatsapp) : null;
   return (
     <>
       <div className={styles.barSpace} aria-hidden />
       <nav className={`${styles.bar} ${hide ? styles.barHidden : ''}`} aria-label={t('qcTitle')}>
         {hotline && <a href={telHref(hotline)} className={`btn btn-blue ${styles.barBtn}`} onClick={() => trackContact('call', l)}><IconPhone /> {t('qcBarCall')}</a>}
         {zalo && <a href={zaloHref(zalo)} target="_blank" rel="noopener noreferrer" className={`btn btn-secondary ${styles.barBtn}`} onClick={() => trackContact('zalo', l)}><IconChat /> Zalo</a>}
+        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className={`btn btn-secondary ${styles.barBtn}`} onClick={() => trackContact('whatsapp', l)}><IconChat /> WhatsApp</a>}
         <a href="#consign-form" className={`btn btn-secondary ${styles.barBtn}`}>{t('qcBarForm')}</a>
       </nav>
     </>

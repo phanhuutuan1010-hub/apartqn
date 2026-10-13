@@ -27,7 +27,7 @@ export default async function ConsignPage({ params }: PageProps<'/[locale]/ky-gu
   setRequestLocale(locale);
   const t = await getTranslations();
   const [buildings, contact] = await Promise.all([getBuildings(), getContact()]);
-  const reach = !!(contact.hotline || contact.zalo);
+  const reach = !!(contact.hotline || contact.zalo || contact.whatsapp);
 
   return (
     <>

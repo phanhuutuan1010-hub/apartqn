@@ -31,3 +31,10 @@ export const waHref = (s: string) => {
   const d = toLocal(s);
   return /^0\d{9,10}$/.test(d) ? `https://wa.me/84${d.slice(1)}` : null;
 };
+/** t.me/<username> when one is set, otherwise the phone link t.me/+84…; null when neither is usable */
+export const tgHref = (phone?: string, username?: string) => {
+  const u = username?.trim().replace(/^@/, '');
+  if (u) return `https://t.me/${u}`;
+  const d = phone ? toLocal(phone) : '';
+  return /^0\d{9,10}$/.test(d) ? `https://t.me/+84${d.slice(1)}` : null;
+};

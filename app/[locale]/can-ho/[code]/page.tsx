@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
-import { getBuilding, getBuildings, getListing, getListings, staticParams } from '@/lib/repo';
+import { getBuilding, getBuildings, getContact, getListing, getListings, staticParams } from '@/lib/repo';
 import { codeSlug, dFull, F, M2, mil, money, total, UNIT_AM } from '@/lib/format';
 import { listingDescription } from '@/lib/summary';
 import { alternates, OG_LOCALE } from '@/lib/seo';
@@ -53,7 +53,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
   setRequestLocale(l);
   const x = await getListing(code);
   if (!x) notFound();
-  const [b, all, buildings] = await Promise.all([getBuilding(x.buildingId), getListings(), getBuildings()]);
+  const [b, all, buildings, contact] = await Promise.all([getBuilding(x.buildingId), getListings(), getBuildings(), getContact()]);
   if (!b) notFound();
   const t = await getTranslations();
   const m = (n: number) => money(n, l);
@@ -189,7 +189,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
 
           <aside className={styles.aside}>
             <div className={styles.asideBox}>
-              <ContactBox x={x} />
+              <ContactBox x={x} contact={contact} />
               <div className={styles.or}><span />{t('orRequest')}<span /></div>
               <ViewingRequestForm code={x.code} />
             </div>
@@ -205,7 +205,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
       </div>
 
       <div className={styles.bar}>
-        <MobileContactBar x={x} />
+        <MobileContactBar x={x} contact={contact} />
       </div>
       <Footer />
     </>

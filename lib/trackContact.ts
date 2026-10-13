@@ -1,6 +1,6 @@
 'use client';
 /** Anonymous contact-click count (rpc log_contact_click): channel + page + site language only — no user data. */
-export type ContactChannel = 'call' | 'zalo' | 'whatsapp' | 'copy' | 'form' | 'callback';
+export type ContactChannel = 'call' | 'zalo' | 'whatsapp' | 'telegram' | 'copy' | 'form' | 'callback';
 
 export function trackContact(channel: ContactChannel, locale: string, page = 'ky-gui') {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
