@@ -21,6 +21,8 @@ export type Parsed = {
   pets?: true;
   parking?: true;
   view?: ViewKind;
+  /** "tầng cao", "high floor" */
+  floorBand?: 'low' | 'mid' | 'high';
   /** "ALT-001" (per-building code) */
   code?: string;
   /** "QN-001" (old code — resolved through legacy_code) */
@@ -66,6 +68,12 @@ const FURN: [Furnishing, string][] = [
 ];
 const PETS = 'cho nuoi thu cung|nuoi thu cung|thu cung|nuoi cho|nuoi meo|cho nuoi|pet friendly|pet-friendly|pets allowed|pet allowed|pets|pet|dogs|dog|cats|cat|с животными|животн\\p{L}*|с питомц\\p{L}*|питом\\p{L}*|с собак\\p{L}*|собак\\p{L}*|с кошк\\p{L}*|кошк\\p{L}*';
 const PARKING = 'cho dau o to|cho do o to|cho dau oto|cho do oto|dau o to|do o to|cho dau xe hoi|cho dau xe|bai do xe|ham xe|o to|oto|xe hoi|car parking|car park|parking|garage|car|парковк\\p{L}*|паркинг|машиноместо|гараж\\p{L}*';
+/** floor band (accent-free text): "tang cao", "lau thap", "high floor", "mid-floor" */
+const BANDS: ['low' | 'mid' | 'high', string][] = [
+  ['high', '(?:tang|lau) cao|high(?:er)?[\\s-]?floors?|upper[\\s-]?floors?'],
+  ['mid', '(?:tang|lau) (?:trung|giua)|mid(?:dle)?[\\s-]?floors?'],
+  ['low', '(?:tang|lau) thap|low(?:er)?[\\s-]?floors?'],
+];
 const VIEW_W = '(?:view|veiw|viu|vew|huong|nhin ra|nhin)';
 const VIEWS: [ViewKind, string][] = [
   ['sea', `${VIEW_W} (?:ra )?bien|sea[\\s-]?view|ocean view|view (?:sea|ocean)|(?:с )?вид(?:ом)? на море|морск\\p{L}* вид|вид на океан`],
@@ -211,6 +219,7 @@ export function parseSearch(raw: string, buildings: BuildingRef[] = []): Parsed 
   });
 
   for (const [kind, src] of VIEWS) take(src, () => { p.view ??= kind; });
+  for (const [kind, src] of BANDS) take(src, () => { p.floorBand ??= kind; });
   for (const [kind, src] of FURN) take(src, () => { p.furniture ??= kind; });
   take(PETS, () => { p.pets = true; });
   take(PARKING, () => { p.parking = true; });
@@ -239,4 +248,4 @@ export function parseSearch(raw: string, buildings: BuildingRef[] = []): Parsed 
 
 /** Does the query have anything besides free text? */
 export const hasCriteria = (p: Parsed) =>
-  p.building != null || p.beds != null || p.furniture != null || p.priceMin != null || p.priceMax != null || !!p.pets || !!p.parking || p.view != null;
+  p.building != null || p.beds != null || p.furniture != null || p.priceMin != null || p.priceMax != null || !!p.pets || !!p.parking || p.view != null || p.floorBand != null;

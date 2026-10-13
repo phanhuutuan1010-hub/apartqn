@@ -26,6 +26,8 @@ export type IndexListing = {
   pets: boolean;
   car_parking: boolean | null;
   view: ViewKind;
+  /** low / mid / high — never the floor number */
+  floor_band: 'low' | 'mid' | 'high' | null;
   status: ListingStatus;
   verified_at: string | null;
   published_at: string | null;

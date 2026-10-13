@@ -47,6 +47,7 @@ export function criteriaScore(x: IndexListing, p: Parsed, b: IndexBuilding | und
   check(!!p.pets, () => x.pets);
   check(!!p.parking, () => x.car_parking === true);
   check(p.view != null, () => x.view === p.view);
+  check(p.floorBand != null, () => x.floor_band === p.floorBand);
   for (const w of words(p.text)) check(true, () => textMatches(w, b));
   return { n, of };
 }

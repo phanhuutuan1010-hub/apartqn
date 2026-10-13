@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/admin/session';
-import { revalidatePublic } from '@/lib/revalidate';
+import { revalidatePublic, revalidatePublicMany } from '@/lib/revalidate';
 import { vnError } from '@/lib/admin/errors';
 import type { ListingStatusAll } from '@/lib/admin/labels';
 
@@ -107,4 +107,58 @@ export async function undoBulk(prev: Prev[]): Promise<{ ok?: string; error?: str
   }
   await refreshMany(prev.map((p) => p.id));
   return failed ? { error: `Hoàn tác được ${prev.length - failed}/${prev.length} căn (phần còn lại bị chặn bởi quyền).` } : { ok: 'Đã hoàn tác.' };
+}
+
+const BulkIds = z.array(z.string().uuid()).min(1).max(200);
+type Ref = { id: string; code: string | null; building_slug: string };
+
+/**
+ * Bulk "Xoá" → Thùng rác: ONE rpc for the batch (admin: any listing; sales: own never-published drafts — the rest is
+ * skipped and counted). Public pages + the search index are refreshed once.
+ */
+export async function trashListingsBulk(rawIds: string[]): Promise<{ ok?: string; error?: string; trashed: string[]; skipped: number }> {
+  await requireStaff();
+  const p = BulkIds.safeParse(rawIds);
+  if (!p.success) return { error: 'Chọn ít nhất 1 căn (tối đa 200).', trashed: [], skipped: 0 };
+  const sb = await supabaseServer();
+  const { data: refs } = await sb.from('admin_listings').select('id, code, building_slug').in('id', p.data);
+  const { data, error } = await sb.rpc('trash_listings', { p_ids: p.data });
+  if (error) return { error: vnError(error), trashed: [], skipped: 0 };
+  const r = data as { trashed: string[]; skipped: number };
+  const gone = new Set(r.trashed);
+  revalidatePublicMany(((refs ?? []) as Ref[]).filter((x) => gone.has(x.id) && x.code).map((x) => ({ code: x.code, building: x.building_slug })));
+  revalidatePath('/admin', 'layout');
+  const skip = r.skipped ? ` Bỏ qua ${r.skipped} căn không có quyền xoá.` : '';
+  return r.trashed.length
+    ? { ok: `Đã chuyển ${r.trashed.length} căn vào thùng rác.${skip}`, trashed: r.trashed, skipped: r.skipped }
+    : { error: `Không xoá được căn nào.${skip}`, trashed: [], skipped: r.skipped };
+}
+
+/** "Hoàn tác" of a bulk delete (admin, or whoever deleted within 10 minutes). */
+export async function restoreListingsBulk(rawIds: string[]): Promise<{ ok?: string; error?: string }> {
+  await requireStaff();
+  const p = BulkIds.safeParse(rawIds);
+  if (!p.success) return { error: 'Không hoàn tác được.' };
+  const sb = await supabaseServer();
+  const { data, error } = await sb.rpc('restore_listings', { p_ids: p.data });
+  if (error) return { error: vnError(error) };
+  const { data: refs } = await sb.from('admin_listings').select('id, code, building_slug').in('id', p.data);
+  revalidatePublicMany(((refs ?? []) as Ref[]).filter((x) => x.code).map((x) => ({ code: x.code, building: x.building_slug })));
+  revalidatePath('/admin', 'layout');
+  return Number(data) === p.data.length ? { ok: `Đã khôi phục ${data} căn.` } : { error: `Khôi phục được ${data}/${p.data.length} căn.` };
+}
+
+/** Bulk "Bỏ nhãn demo" (admin): the DỮ LIỆU DEMO badge leaves the site at once. */
+export async function clearListingsDemo(rawIds: string[]): Promise<{ ok?: string; error?: string }> {
+  const me = await requireStaff();
+  if (me.role !== 'admin') return { error: 'Chỉ quản trị viên đổi nhãn demo.' };
+  const p = BulkIds.safeParse(rawIds);
+  if (!p.success) return { error: 'Chọn ít nhất 1 căn.' };
+  const sb = await supabaseServer();
+  const { data, error } = await sb.from('listings').update({ is_demo: false }).in('id', p.data).eq('is_demo', true).select('id');
+  if (error) return { error: vnError(error) };
+  const { data: refs } = await sb.from('admin_listings').select('id, code, building_slug').in('id', p.data);
+  revalidatePublicMany(((refs ?? []) as Ref[]).filter((x) => x.code).map((x) => ({ code: x.code, building: x.building_slug })));
+  revalidatePath('/admin/can-ho');
+  return { ok: `Đã bỏ nhãn demo ${data?.length ?? 0} căn.` };
 }

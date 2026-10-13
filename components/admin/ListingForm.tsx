@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { ChevronDown, Lock } from 'lucide-react';
 import { saveListing, type ActionResult } from '@/lib/admin/listingActions';
 import { DIRS, FURNS, VIEWS, dirLabel, fmtVnd, furnLabel, parseVnd, viewLabel } from '@/lib/admin/labels';
+import { BAND_LABEL, FLOOR_BANDS, bandOf } from '@/lib/floorBand';
 import { effectiveFees, mgmtFormula, type BuildingFees, type OverrideKey, type Overrides } from '@/lib/fees';
 import dynamic from 'next/dynamic';
 import type { PasteBuilding, PasteValues } from './PasteBox';
@@ -21,12 +22,12 @@ const PasteBox = dynamic(() => import('./PasteBox').then((m) => m.PasteBox), {
 import { DescEditor } from './DescEditor';
 import type { EnStatus, GlossaryPair } from '@/lib/translateCore';
 
-export type BuildingOpt = { id: string; name: string; slug: string; aliases: string[]; prefix: string | null; default_fees: { net?: number }; fees: BuildingFees };
+export type BuildingOpt = { id: string; name: string; slug: string; aliases: string[]; prefix: string | null; total_floors: number | null; default_fees: { net?: number }; fees: BuildingFees };
 export type ListingData = Record<string, unknown> & {
   id: string; status: string; updated_at: string;
   desc_vi_updated_at: string | null; desc_en_updated_at: string | null;
 };
-export type UnitData = { building_id: string; floor: number; unit_no: string; owner_name: string | null; owner_phone: string | null; owner_notes: string | null; assigned_to: string | null };
+export type UnitData = { building_id: string; floor: number; unit_no: string | null; owner_name: string | null; owner_phone: string | null; owner_notes: string | null; assigned_to: string | null };
 
 type Props = {
   listing: ListingData;
@@ -36,6 +37,8 @@ type Props = {
   isAdmin: boolean;
   canPublish: boolean;
   photos: React.ReactNode;
+  /** photos this listing has (demo check: none = still placeholders) */
+  photoCount: number;
   /** signed-in user: the local draft is per user + listing */
   meId: string;
   enStatus: EnStatus;
@@ -53,7 +56,7 @@ const PASTE_DOM = ['floor', 'unit_no', 'beds', 'baths', 'furn', 'deposit', 'cycl
  * One page, phone first: paste box → the fields every listing needs → photos → "Thêm chi tiết" (fees and terms come
  * from the building). Sticky save bar. Unsaved edits are kept in this browser (per user + listing) until saved.
  */
-export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, canPublish, photos, meId, enStatus, glossary, queue }: Props) {
+export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, canPublish, photos, photoCount, meId, enStatus, glossary, queue }: Props) {
   const [state, action, pending] = useActionState<ActionResult, FormData>(saveListing.bind(null, L.id), {});
   const [updatedAt, setUpdatedAt] = useState(L.updated_at);
   const [dirty, setDirty] = useState(false);
@@ -64,6 +67,8 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   // building + area drive the fees; ov = fields typed by hand ("Ghi đè"), as display strings
   const initialOv = (L.fee_overrides ?? {}) as Overrides;
   const [f, setF] = useState({ building_id: U.building_id, area: s(L.area), net: fmtVnd(L.net as number | null) });
+  const [floor, setFloor] = useState(s(U.floor));
+  const [demo, setDemo] = useState(!!L.is_demo);
   const [ov, setOv] = useState<Partial<Record<OverrideKey, string>>>(() => {
     const o: Partial<Record<OverrideKey, string>> = Object.fromEntries(Object.entries(initialOv).map(([k, v]) => [k, fmtVnd(v as number)]));
     // a fee the building does not know yet keeps the listing's own stored value (typed earlier)
@@ -131,6 +136,16 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   });
 
   const building = buildings.find((b) => b.id === f.building_id);
+  const autoBand = bandOf(Number(floor) || null, building?.total_floors);
+  // "Dữ liệu demo" unticked: placeholder data that would now look real on the website
+  const [now] = useState(() => Date.now());
+  const verDays = L.verified_at ? Math.floor((now - new Date(L.verified_at as string).getTime()) / 86_400_000) : null;
+  const demoLeft = !L.is_demo || demo ? [] : [
+    /^demo/i.test(U.unit_no ?? '') && `Số căn vẫn là dữ liệu mẫu (“${U.unit_no}”)`,
+    !U.owner_name && !U.owner_phone && 'Chưa có tên / số điện thoại chủ nhà',
+    photoCount === 0 && 'Chưa có ảnh thật (website đang hiện ô ảnh giữ chỗ)',
+    (verDays == null || verDays > 14) && `Chưa xác nhận “còn trống” ${verDays == null ? '' : `trong ${verDays} ngày `}(quá 14 ngày)`,
+  ].filter(Boolean) as string[];
   const areaN = Number(f.area.replace(',', '.')) || null;
   const auto = building ? effectiveFees(building.fees, areaN, {}) : null;
   const onBuilding = (id: string) => {
@@ -162,7 +177,8 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
     if (v.area) setF((c) => ({ ...c, area: v.area! }));
     if (v.rent) setDom('rent', fmtVnd(Number(v.rent)));
     if (v.pets) setDom('pets', v.pets);
-    for (const k of PASTE_DOM) if (v[k] != null) setDom(k, v[k]!);
+    if (v.floor != null) setFloor(v.floor);
+    for (const k of PASTE_DOM) if (v[k] != null && k !== 'floor') setDom(k, v[k]!);
     if (Object.keys(v).some((k) => !['building', 'area', 'rent', 'floor', 'unit_no', 'beds', 'furn'].includes(k))) setMore(true);
     setDirty(true);
   };
@@ -172,9 +188,11 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
     for (const x of Array.from(form.current.elements) as HTMLInputElement[]) {
       if (!x.name || x.name === 'expected_updated_at' || x.name === 'intent') continue;
       if (x.type === 'checkbox') x.checked = m.has(x.name);
-      else if (m.has(x.name) && !['building_id', 'area', 'net'].includes(x.name) && !x.name.startsWith('ov_')) x.value = m.get(x.name)!;
+      else if (m.has(x.name) && !['building_id', 'area', 'net', 'floor'].includes(x.name) && !x.name.startsWith('ov_')) x.value = m.get(x.name)!;
     }
     setF({ building_id: m.get('building_id') ?? f.building_id, area: m.get('area') ?? f.area, net: m.get('net') ?? f.net });
+    setFloor(m.get('floor') ?? floor);
+    setDemo(m.has('is_demo'));
     setOv(Object.fromEntries([...m].filter(([k]) => k.startsWith('ov_')).map(([k, x]) => [k.slice(3), x])));
     setDraft(null);
     setDirty(true);
@@ -252,8 +270,16 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
                 {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>{err('building_id')}
             </label>
-            <label className={cls('floor')}>Tầng<input className="input" name="floor" inputMode="numeric" defaultValue={U.floor} />{err('floor')}</label>
-            <label className={cls('unit_no')}>Số căn<input className="input" name="unit_no" defaultValue={U.unit_no} maxLength={20} />{err('unit_no')}</label>
+            <label className={cls('floor')}>Tầng <span className="hint">nội bộ</span><input className="input" name="floor" inputMode="numeric" value={floor} onChange={(e) => setFloor(e.target.value)} />{err('floor')}</label>
+            <label className={cls('unit_no')}>Số căn <span className="hint">không bắt buộc · nội bộ</span><input className="input" name="unit_no" defaultValue={U.unit_no ?? ''} maxLength={20} />{err('unit_no')}</label>
+            <label className={cls('floor_band', 'span2')}>Tầng hiện trên website
+              <select className="input" name="floor_band" defaultValue={L.floor_band_manual || !autoBand ? s(L.floor_band) : ''}>
+                <option value="">{autoBand ? `Tự động · ${BAND_LABEL.vi[autoBand]} (tầng ${floor}/${building?.total_floors})` : 'Chưa xác định — chọn tay'}</option>
+                {FLOOR_BANDS.map((k) => <option key={k} value={k}>{BAND_LABEL.vi[k]}</option>)}
+              </select>
+              <span className="hint">{building?.total_floors ? 'Website chỉ hiện tầng thấp / trung / cao, không hiện số tầng và số căn.' : 'Toà nhà chưa có “Tổng số tầng” (quản trị viên nhập ở trang Toà nhà) — chọn tay.'}</span>
+              {err('floor_band')}
+            </label>
             <label className={cls('beds')}>Phòng ngủ <span className="hint">0 = studio</span><input className="input" name="beds" inputMode="numeric" defaultValue={s(L.beds)} />{err('beds')}</label>
             <label className={cls('area')}>Diện tích thông thủy
               <span className="a-suffix"><input className="input" name="area" inputMode="decimal" value={f.area} onChange={(e) => setF((c) => ({ ...c, area: e.target.value }))} /><span>m²</span></span>{err('area')}
@@ -294,6 +320,18 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
                 <select className="input" name="view" defaultValue={s(L.view)}><option value="">—</option>{VIEWS.map((d) => <option key={d} value={d}>{viewLabel(d)}</option>)}</select>{err('view')}
               </label>
               <label className="a-check"><input type="checkbox" name="verified" defaultChecked={!!L.verified} /> Đã xác minh tận nơi</label>
+              {isAdmin && (
+                <label className="a-check span2">
+                  <input type="hidden" name="demo_field" value="1" />
+                  <input type="checkbox" name="is_demo" checked={demo} onChange={(e) => setDemo(e.target.checked)} /> Dữ liệu demo (hiện nhãn DỮ LIỆU DEMO)
+                </label>
+              )}
+              {demoLeft.length > 0 && (
+                <div className="a-alert warn span4" role="status">
+                  <b>Bỏ nhãn demo — căn này sẽ hiện như căn thật.</b> Vẫn lưu được, nhưng còn dữ liệu mẫu:
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{demoLeft.map((x) => <li key={x}>{x}</li>)}</ul>
+                </div>
+              )}
             </div>
           </section>
 

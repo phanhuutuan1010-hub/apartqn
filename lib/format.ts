@@ -1,6 +1,7 @@
 /** Formatters — ported 1:1 from apartqn-data.js (money, mil, dShort, dFull, m2, pl, F.*). */
 import type { Locale } from '@/i18n/routing';
 import type { Listing } from '@/lib/types';
+import { BAND_LABEL, type FloorBand } from '@/lib/floorBand';
 
 const TAG: Record<Locale, string> = { vi: 'vi-VN', en: 'en-US' };
 
@@ -12,7 +13,11 @@ export const mil = money;
 
 // Dates are YYYY-MM-DD strings; format in UTC so server and browser agree.
 const d = (s: string) => new Date(s + 'T00:00:00Z');
-export const dShort = (s: string, l: Locale) => d(s).toLocaleDateString(TAG[l], { day: 'numeric', month: 'short', timeZone: 'UTC' });
+/** vi "05/11" · en "5 Nov" (never the "thg" abbreviation) */
+export const dShort = (s: string, l: Locale) =>
+  l === 'vi' ? s.slice(8, 10) + '/' + s.slice(5, 7) : d(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+/** today in Vietnam, YYYY-MM-DD */
+export const vnToday = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
 export const dFull = (s: string, l: Locale) => d(s).toLocaleDateString(TAG[l], { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
 export const M2 = 'm²';
 
@@ -21,7 +26,11 @@ const perMo = (l: Locale) => (l === 'vi' ? '/tháng' : '/month');
 export const F = {
   beds: (n: number, l: Locale) => (l === 'vi' ? n + ' PN' : n + ' bd'),
   bedsLong: (n: number, l: Locale) => (l === 'vi' ? n + ' phòng ngủ' : n + (n === 1 ? ' bedroom' : ' bedrooms')),
-  floor: (n: number, l: Locale) => (l === 'vi' ? 'Tầng ' + n : 'Floor ' + n),
+  /** "Tầng cao" / "High floor" — the public never sees the floor number */
+  floorBand: (b: FloorBand, l: Locale) => BAND_LABEL[l][b],
+  /** a past or today's date = free now: "Dọn vào ngay" · later: "Dọn vào từ 05/11" / "Available from 5 Nov" */
+  moveIn: (s: string, l: Locale, today = vnToday()) =>
+    s <= today ? (l === 'vi' ? 'Dọn vào ngay' : 'Available now') : (l === 'vi' ? 'Dọn vào từ ' : 'Available from ') + dShort(s, l),
   units: (n: number, l: Locale) => (l === 'vi' ? n + ' căn đang cho thuê' : n + (n === 1 ? ' apartment' : ' apartments') + ' for rent'),
   photos: (n: number, l: Locale) => (l === 'vi' ? n + ' ảnh' : n + ' photos'),
   months: (n: number, l: Locale) => (l === 'vi' ? n + ' tháng' : n + (n === 1 ? ' month' : ' months')),

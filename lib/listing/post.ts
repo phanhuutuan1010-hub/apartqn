@@ -4,12 +4,15 @@
  * Pure — unit-tested in tests/unit/post.test.ts.
  */
 
+import { BAND_LABEL } from '@/lib/floorBand';
+
 export type PostData = {
   code: string | null;
   building: string;
   beds: number | null;
   area: number | null;
-  floor: number | null;
+  /** public floor band — the floor number and unit number are never inputs */
+  floorBand: 'low' | 'mid' | 'high' | null;
   furn: 'full' | 'basic' | 'empty' | null;
   rent: number | null;
   mgmt: number | null;
@@ -30,13 +33,13 @@ const FURN = {
 } as const;
 
 const money = (n: number, l: PostLang) => (l === 'vi' ? new Intl.NumberFormat('vi-VN').format(n) + ' đ' : new Intl.NumberFormat('en-US').format(n) + ' VND');
-const dmy = (iso: string) => iso.split('-').reverse().join('/');
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function parts(d: PostData, l: PostLang, today: string) {
   const vi = l === 'vi';
   const beds = d.beds == null ? null : d.beds === 0 ? 'Studio' : vi ? `${d.beds} PN` : `${d.beds} bedroom${d.beds === 1 ? '' : 's'}`;
   const area = d.area ? `${String(d.area).replace('.', vi ? ',' : '.')} m²` : null;
-  const floor = d.floor != null ? (vi ? `Tầng ${d.floor}` : `Floor ${d.floor}`) : null;
+  const floor = d.floorBand ? BAND_LABEL[l][d.floorBand] : null;
   const furn = d.furn ? FURN[l][d.furn] : null;
   const rent = d.rent ? `${money(d.rent, l)}${vi ? '/tháng' : '/month'}` : null;
   const mgmt =
@@ -44,14 +47,14 @@ function parts(d: PostData, l: PostLang, today: string) {
     : d.mgmtPaidBy === 'tenant' && d.mgmt ? (vi ? `Phí quản lý: ${money(d.mgmt, l)}/tháng (khách trả)` : `Management fee: ${money(d.mgmt, l)}/month (tenant)`)
     : null;
   const moveIn = !d.moveIn ? null
-    : d.moveIn <= today ? (vi ? 'Dọn vào ở ngay' : 'Available now')
-    : vi ? `Dọn vào từ ${dmy(d.moveIn)}` : `Available from ${dmy(d.moveIn)}`;
+    : d.moveIn <= today ? (vi ? 'Dọn vào ngay' : 'Available now')
+    : vi ? `Dọn vào từ ${d.moveIn.slice(8, 10)}/${d.moveIn.slice(5, 7)}` : `Available from ${Number(d.moveIn.slice(8, 10))} ${MONTHS[Number(d.moveIn.slice(5, 7)) - 1]}`;
   return { beds, area, floor, furn, rent, mgmt, moveIn };
 }
 
 export function buildPost(d: PostData, o: { channel: PostChannel; lang: PostLang; phone: string; today?: string }): string {
   const vi = o.lang === 'vi';
-  const today = o.today ?? new Date().toISOString().slice(0, 10);
+  const today = o.today ?? new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
   const p = parts(d, o.lang, today);
   const phone = o.phone.trim();
   const join = (xs: (string | null | undefined | false)[], sep: string) => xs.filter(Boolean).join(sep);

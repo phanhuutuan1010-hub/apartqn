@@ -27,7 +27,7 @@ export default async function NewListingPage({ searchParams }: { searchParams: P
         <div>
           <Link href="/admin/can-ho" className="a-small" style={{ color: 'var(--blue-500)' }}>← Căn hộ</Link>
           <h1 className="a-h1">{source ? 'Nhân bản căn' : 'Thêm căn'}</h1>
-          {source && <div className="a-sub">Từ {source.code ?? 'căn nháp'} · {source.building_name} · Tầng {source.floor} · Căn {source.unit_no}</div>}
+          {source && <div className="a-sub">Từ {source.code ?? 'căn nháp'} · {source.building_name} · Tầng {source.floor}{source.unit_no ? ` · Căn ${source.unit_no}` : ''}</div>}
         </div>
       </div>
       <NewListingForm

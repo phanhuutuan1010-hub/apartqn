@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const b = await getBuilding(x.buildingId);
   const t = await getTranslations({ locale });
   const title = `${F.bedsLong(x.beds, locale)} · ${t(`v_${x.view}`)} – ${b?.name}, ${mil(x.rent, locale)}${t('perMonth')} | ApartQN`;
-  const description = `${x.code} · ${x.area} ${M2} · ${F.floor(x.floor, locale)} · ${t('estMonthly')}: ${money(total(x), locale)}. ${t('fAbout')}`;
+  const description = `${x.code} · ${x.area} ${M2}${x.floorBand ? ' · ' + F.floorBand(x.floorBand, locale) : ''} · ${t('estMonthly')}: ${money(total(x), locale)}. ${t('fAbout')}`;
   const image = x.photos[0] ?? b?.photos[0];
   return {
     title: { absolute: title },
@@ -63,12 +63,12 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
   const desc = listingDescription(x, b.name, l, t as unknown as Parameters<typeof listingDescription>[3]);
 
   const facts: [string, string][] = [
-    [t('area'), `${x.area} ${M2}`], [t('bedrooms'), String(x.beds)], [t('baths'), String(x.baths)], [t('floor'), String(x.floor)],
+    [t('area'), `${x.area} ${M2}`], [t('bedrooms'), String(x.beds)], [t('baths'), String(x.baths)], ...(x.floorBand ? [[t('floor'), F.floorBand(x.floorBand, l)] as [string, string]] : []),
     [t('direction'), t(`d_${x.dir}`)], [t('view'), t(`v_${x.view}`)], [t('furniture'), t(`furn_${x.furn}`)], [t('building'), b.name],
   ];
   const terms: [string, string][] = [
     [t('deposit'), F.months(x.deposit, l)], [t('cycle'), t(`cy_${x.cycle}`)], [t('minTerm'), F.months(x.minTerm, l)], [t('maxOcc'), F.people(x.maxOcc, l)],
-    [t('petsT'), t(x.pets ? 'allowed' : 'notAllowed')], [t('moveIn'), dFull(x.moveIn, l)], [t('tempReg'), t(x.tempReg ? 'yes' : 'no')],
+    [t('petsT'), t(x.pets ? 'allowed' : 'notAllowed')], [t('moveIn'), F.moveIn(x.moveIn, l)], [t('tempReg'), t(x.tempReg ? 'yes' : 'no')],
     [t('elec'), x.elec === 'evn' ? t('el_evn') : F.elecFixed(l)], [t('water'), x.water === 'meter' ? t('wa_meter') : F.waterPerson(l)],
     [t('motoParkFee'), m(x.moto) + t('perMonth')], [t('carParkFee'), m(x.car) + t('perMonth')], [t('internet'), x.net ? m(x.net) + t('perMonth') : t('included')],
   ];

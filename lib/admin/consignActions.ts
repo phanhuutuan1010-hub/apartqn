@@ -13,7 +13,7 @@ const Assign = z.object({
   assignee: z.string().uuid({ message: 'Chọn người phụ trách' }),
   building: z.string().uuid({ message: 'Chọn toà nhà' }),
   floor: z.coerce.number().int().min(-5).max(120),
-  unit_no: z.string().trim().min(1, 'Nhập số căn').max(20),
+  unit_no: z.string().trim().max(20).optional(), // optional, internal
 });
 
 /**
@@ -27,7 +27,7 @@ export async function assignConsign(_: Res, fd: FormData): Promise<Res> {
   const v = p.data;
   const sb = await supabaseServer();
   const { data: listingId, error } = await sb.rpc('assign_consign_lead', {
-    p_lead: v.consign, p_assignee: v.assignee, p_building: v.building, p_floor: v.floor, p_unit_no: v.unit_no,
+    p_lead: v.consign, p_assignee: v.assignee, p_building: v.building, p_floor: v.floor, p_unit_no: v.unit_no || null,
   });
   if (error) return { error: /already/.test(error.message) ? 'Yêu cầu này đã được xử lý.' : vnError(error) };
 

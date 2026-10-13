@@ -13,6 +13,7 @@ import { publicRef, refresh } from '@/lib/admin/refresh';
 import { parseVnd, type ListingStatusAll } from '@/lib/admin/labels';
 import { vnError } from '@/lib/admin/errors';
 import { copyListing } from '@/lib/admin/duplicate';
+import { floorLeaks } from '@/lib/floorBand';
 import { effectiveFees, FEE_FIELDS, toBuildingFees, type Overrides } from '@/lib/fees';
 
 export type ActionResult = { ok?: string; error?: string; warning?: string; fieldErrors?: Record<string, string>; updatedAt?: string };
@@ -36,11 +37,10 @@ export async function createDraft(_: ActionResult, fd: FormData): Promise<Action
   const fieldErrors: Record<string, string> = {};
   if (!building) fieldErrors.building = 'Chọn toà nhà';
   if (!Number.isInteger(floor) || floor < -5 || floor > 120) fieldErrors.floor = 'Tầng không hợp lệ';
-  if (!unitNo) fieldErrors.unit_no = 'Nhập số căn';
   if (Object.keys(fieldErrors).length) return { fieldErrors };
   const sb = await supabaseServer();
   const { data, error } = await sb.rpc('create_listing_draft', {
-    p_building: building, p_floor: floor, p_unit_no: unitNo,
+    p_building: building, p_floor: floor, p_unit_no: unitNo || null, // optional: empty stays empty, nothing is generated
     p_assigned_to: me.role === 'admin' && assignee ? assignee : null,
   });
   if (error) return { error: vnError(error) };
@@ -72,7 +72,8 @@ const SaveSchema = z.object({
   // unit
   building_id: z.string().uuid({ message: 'Chọn toà nhà' }),
   floor: int(-5, 120).refine((v) => v != null, 'Nhập tầng'),
-  unit_no: z.string().trim().min(1, 'Nhập số căn').max(20),
+  unit_no: text(20), // optional, internal — never public
+  floor_band: opt(['low', 'mid', 'high']), // '' = automatic (from the building's total floors)
   owner_name: text(120), owner_phone: text(40), owner_notes: text(4000),
   assigned_to: z.string().uuid().optional().or(z.literal('')),
   // listing
@@ -127,8 +128,10 @@ export async function saveListing(id: string, _: ActionResult, fd: FormData): Pr
   const eff = effectiveFees(fees, listing.area, overrides);
   // "Bản EN vẫn đúng": the English now counts as written from the current Vietnamese
   const confirmEn = fd.get('en_confirm') === 'on' && listing.desc_en ? { desc_en_vi_hash: viHash(listing.desc_vi) } : {};
+  // "Dữ liệu demo": admins only (the form sends demo_field only to them; a DB trigger refuses everyone else)
+  const demo = me.role === 'admin' && fd.get('demo_field') === '1' ? { is_demo: fd.get('is_demo') === 'on' } : {};
   const l = await sb.from('listings').update({
-    ...listing, ...confirmEn, video: !!listing.video_url, fee_overrides: overrides,
+    ...listing, ...confirmEn, ...demo, floor_band_manual: listing.floor_band != null, video: !!listing.video_url, fee_overrides: overrides,
     mgmt: eff.mgmt, moto: eff.moto, car: eff.car, car_parking: eff.carParking ?? car_parking,
   }).eq('id', id).select('updated_at');
   if (l.error) return { error: vnError(l.error) };
@@ -140,7 +143,12 @@ export async function saveListing(id: string, _: ActionResult, fd: FormData): Pr
     return { ...r, ok: r.ok ? r.ok : undefined, error: r.error ? 'Đã lưu, nhưng chưa gửi được: ' + r.error : undefined, updatedAt: after?.updated_at ?? l.data[0].updated_at };
   }
   await refresh(id, !!cur.code);
-  const warning = listing.desc_en ? mismatchText(listing.desc_vi ?? '', listing.desc_en) || undefined : undefined;
+  // the public sees a floor band only: an exact floor / unit number in the description would give it away
+  const leaks = [...new Set([...floorLeaks(listing.desc_vi, v.unit_no), ...floorLeaks(listing.desc_en, v.unit_no)])];
+  const warning = [
+    listing.desc_en ? mismatchText(listing.desc_vi ?? '', listing.desc_en) : '',
+    leaks.length ? `Mô tả đang ghi rõ tầng / số căn (${leaks.map((x) => `“${x}”`).join(', ')}) — xoá trước khi đăng: website chỉ hiện “tầng thấp / trung / cao”.` : '',
+  ].filter(Boolean).join(' ') || undefined;
   // translation queue: straight on to the next listing that needs English
   if (fd.get('intent') === 'next-en') {
     const { data: next } = await sb.from('admin_listings').select('id').in('en_status', ['none', 'stale']).neq('id', id)

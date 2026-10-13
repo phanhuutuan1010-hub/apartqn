@@ -3,7 +3,7 @@ import { MessageCircle, Phone } from 'lucide-react';
 import type { Listing } from '@/lib/types';
 import type { SiteContact } from '@/lib/repo';
 import { BAR_MESSENGER, contactLinks, contacts } from '@/lib/contacts';
-import { dShort, F, milShort, money, total } from '@/lib/format';
+import { F, milShort, money, total } from '@/lib/format';
 import { StatusBadge } from './Badges';
 import styles from './ContactBox.module.css';
 
@@ -21,7 +21,7 @@ export function ContactBox({ x, contact }: { x: Listing; contact: SiteContact })
       <div className={styles.priceBlock}>
         <div className={styles.price}><span className={styles.rent}>{money(x.rent, l)}</span><span className={styles.per}>{t('perMonth')}</span></div>
         <div className={styles.line}>{t('estMonthly')}: <b>{money(total(x), l)}</b></div>
-        <div className={styles.line}>{t('moveInFrom')} {dShort(x.moveIn, l)}</div>
+        <div className={styles.line}>{F.moveIn(x.moveIn, l)}</div>
       </div>
       <div className={styles.btns}>
         {cs.map((c, i) => (

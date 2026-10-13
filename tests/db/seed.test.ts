@@ -57,9 +57,9 @@ describe('seed → public views', () => {
     rows.forEach((r) => expect(r.code).toMatch(new RegExp(`^${PREFIX[r.building_slug]}-[0-9]{3}$`)));
     const got = rows.map((r) => ({ ...toListing(r, SB), code: r.legacy_code }));
     const strip = (x: Record<string, unknown>) => {
-      const { photos, thumbs, srcsets, photoMeta, desc, photoCount, verifiedAt, publishedAt, legacyCode, ...rest } = x;
+      const { photos, thumbs, srcsets, photoMeta, desc, floorBand, photoCount, verifiedAt, publishedAt, legacyCode, ...rest } = x;
       void legacyCode;
-      void photos; void thumbs; void srcsets; void photoMeta; void desc;
+      void photos; void thumbs; void srcsets; void photoMeta; void desc; void floorBand;
       // set by the import (now()), not part of the handoff data
       expect(typeof verifiedAt === 'string' || verifiedAt === undefined).toBe(true);
       expect(typeof publishedAt === 'string' || publishedAt === undefined).toBe(true);
@@ -67,8 +67,9 @@ describe('seed → public views', () => {
     };
     expect(got.map(strip)).toEqual(
       LISTINGS.map((x) => {
-        const { photos, ...rest } = x;
-        void photos;
+        // the exact floor is not public any more (migration 28)
+        const { photos, floor, ...rest } = x;
+        void photos; void floor;
         return rest;
       }),
     );

@@ -13,6 +13,7 @@ export function parsedToQuery(p: Parsed): Record<string, string> {
   if (p.pets) q.pets = '1';
   if (p.parking) q.car = '1';
   if (p.view) q.vw = p.view;
+  if (p.floorBand) q.fl = p.floorBand;
   if (p.text) q.q = p.text.slice(0, 80);
   return q;
 }

@@ -68,7 +68,7 @@ describe('anon', () => {
     const cols = r.fields.map((f) => f.name);
     for (const bad of ['unit_id', 'unit_no', 'owner_name', 'owner_phone', 'owner_notes', 'assigned_to', 'created_by', 'updated_by', 'id', 'rejection_reason'])
       expect(cols).not.toContain(bad);
-    expect(r.rows[0]).toMatchObject({ building_slug: 'altara', floor: 18, rent: '13500000' });
+    expect(r.rows[0]).toMatchObject({ building_slug: 'altara', floor: null, rent: '13500000' });
   });
 
   it('cannot write through the public views', async () => {
@@ -906,5 +906,78 @@ describe('photo variants (migration 25)', () => {
     expect(files.map((f) => `${f.bucket}:${f.path}`).sort()).toEqual(['listing-master:v25/p.webp', 'listing-public:v25/p-c2-1200.webp', 'listing-public:v25/p-c2-640.webp']);
     const b = (await root(`select file_size_limit from storage.buckets where id = 'listing-master'`)).rows[0];
     expect(Number(b.file_size_limit)).toBe(26214400);
+  });
+});
+
+describe('listing demo flag + bulk trash (migration 26)', () => {
+  it('only admins change is_demo', async () => {
+    expect(await as(id(U.s1), (q) => denied(q(`update public.listings set is_demo = true where id = $1`, [l1])))).toMatch(/only admins change the demo flag/);
+    await as(id(U.admin), async (q) => {
+      expect((await q(`update public.listings set is_demo = true where id = $1 returning is_demo`, [l1])).rows[0].is_demo).toBe(true);
+    });
+  });
+
+  it('trash_listings: one call; sales only own never-published drafts, the rest skipped; restore brings them back', async () => {
+    const u = (await root(`insert into public.units (building_id, floor, unit_no, assigned_to) values ($1, 7, 'bt-1', $2) returning id`, [B, U.s1])).rows[0].id;
+    const d1 = (await root(`insert into public.listings (unit_id) values ($1) returning id`, [u])).rows[0].id;
+    await as(id(U.s1), async (q) => {
+      // l1: own but published (has a code) · l2: someone else's · d1: own draft
+      const r = (await q(`select public.trash_listings($1) as r`, [[l1, l2, d1]])).rows[0].r;
+      expect(r).toEqual({ trashed: [d1], skipped: 2 });
+      expect((await q(`select public.restore_listings($1) as n`, [[d1, l1]])).rows[0].n).toBe(1);
+    });
+    await as(id(U.admin), async (q) => {
+      const r = (await q(`select public.trash_listings($1) as r`, [[l1, d1]])).rows[0].r;
+      expect(r.trashed.sort()).toEqual([l1, d1].sort());
+      expect(r.skipped).toBe(0);
+      // gone for staff and for the public; the row keeps its code (shown in Thùng rác)
+      expect((await q(`select id from public.listings where id = $1`, [l1])).rowCount).toBe(0);
+      expect((await q(`select label from public.trash_items() where id = $1`, [l1])).rows[0].label).toContain(code1);
+      expect((await q(`select public.restore_listings($1) as n`, [[l1, d1]])).rows[0].n).toBe(2);
+      expect((await q(`select status, code from public.listings where id = $1`, [l1])).rows[0]).toEqual({ status: 'available', code: code1 });
+    });
+    expect(await as('anon', (q) => denied(q(`select public.trash_listings($1)`, [[l1]])))).toMatch(/permission denied/);
+    await root(`delete from public.listings where id = $1`, [d1]);
+    await root(`delete from public.units where id = $1`, [u]);
+  });
+});
+
+describe('unit number optional + move-in default (migration 27)', () => {
+  it('empty unit number stays NULL, several per floor allowed; a filled one is still unique', async () => {
+    await as(id(U.admin), async (q) => {
+      const a = (await q(`select public.create_listing_draft($1, 9, '  ') as id`, [B])).rows[0].id;
+      const b = (await q(`select public.create_listing_draft($1, 9, null) as id`, [B])).rows[0].id;
+      const rows = (await q(`select u.unit_no, l.move_in::text from public.listings l join public.units u on u.id = l.unit_id where l.id = any($1)`, [[a, b]])).rows;
+      expect(rows.map((r) => r.unit_no)).toEqual([null, null]);
+      // new listings start with today's date (Vietnam time)
+      const today = (await q(`select (now() at time zone 'Asia/Ho_Chi_Minh')::date::text as d`)).rows[0].d;
+      expect(rows.map((r) => r.move_in)).toEqual([today, today]);
+      expect((await q(`select is_duplicate from public.check_duplicate($1, 9, '')`, [B])).rows[0].is_duplicate).toBe(false);
+      await q(`select public.create_listing_draft($1, 9, '9.01')`, [B]);
+      expect(await denied(q(`select public.create_listing_draft($1, 9, '901')`, [B]))).toMatch(/đã có trong hệ thống/);
+      // Thùng rác still shows a detail line for a listing without a unit number
+      await q(`select public.trash_listings($1)`, [[a]]);
+      expect((await q(`select detail from public.trash_items() where id = $1`, [a])).rows[0].detail).toBe('Tầng 9');
+    });
+  });
+});
+
+describe('public floor band (migration 28)', () => {
+  it('public_listings: no floor number, band from the building total; manual override wins; admins keep the exact floor', async () => {
+    const band = async () => (await as('anon', (q) => q(`select floor, floor_band from public.public_listings where code = $1`, [code1]))).rows[0];
+    expect(await band()).toEqual({ floor: null, floor_band: null }); // total_floors unknown: nothing is guessed
+    await root(`update public.buildings set total_floors = 30 where id = $1`, [B]);
+    expect(await band()).toEqual({ floor: null, floor_band: 'mid' }); // unit1 is on floor 18 of 30
+    await root(`update public.buildings set total_floors = 20 where id = $1`, [B]);
+    expect((await band()).floor_band).toBe('high'); // recomputed with the building, no listing write
+    await root(`update public.listings set floor_band = 'low', floor_band_manual = true where id = $1`, [l1]);
+    expect((await band()).floor_band).toBe('low');
+    const adm = await as(id(U.admin), (q) => q(`select floor, unit_no, floor_band, total_floors from public.admin_listings where id = $1`, [l1]));
+    expect(adm.rows[0]).toEqual({ floor: 18, unit_no: '18.05', floor_band: 'low', total_floors: 20 });
+    const cols = Object.keys((await as('anon', (q) => q(`select * from public.public_listings limit 1`))).rows[0]);
+    expect(cols).not.toContain('unit_no');
+    expect(await denied(root(`update public.listings set floor_band = 'top' where id = $1`, [l1]))).toMatch(/check/);
+    await root(`update public.listings set floor_band = null, floor_band_manual = false where id = $1`, [l1]);
+    await root(`update public.buildings set total_floors = null where id = $1`, [B]);
   });
 });

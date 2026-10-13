@@ -34,7 +34,7 @@ export function FilterPanel({ variant, value, listings, textOk, onApply, onClose
     else setDraft(next);
   };
 
-  const chip = (key: 'beds' | 'rent' | 'furn', v: string, label: string) => {
+  const chip = (key: 'beds' | 'rent' | 'furn' | 'fl', v: string, label: string) => {
     const on = st[key] === v;
     return (
       <button key={v} type="button" aria-pressed={on} className={`${styles.chip} ${on ? styles.chipOn : ''}`} onClick={() => upd({ [key]: on ? '' : v })}>
@@ -50,7 +50,7 @@ export function FilterPanel({ variant, value, listings, textOk, onApply, onClose
   );
 
   const n = listings.filter((x) => match(x, st, textOk)).length;
-  const reset = () => upd({ beds: '', rent: '', furn: '', pets: false, car: false, date: '', pmin: '', pmax: '', vw: '' });
+  const reset = () => upd({ beds: '', rent: '', furn: '', pets: false, car: false, date: '', pmin: '', pmax: '', vw: '', fl: '' });
 
   return (
     <div className={`${styles.panel} ${side ? styles.side : styles.sheet}`}>
@@ -75,6 +75,10 @@ export function FilterPanel({ variant, value, listings, textOk, onApply, onClose
         <fieldset className={styles.group}>
           <legend>{t('sFurn')}</legend>
           <div className={styles.chips}>{(['full', 'basic', 'empty'] as const).map((k) => chip('furn', k, t(`furn_${k}`)))}</div>
+        </fieldset>
+        <fieldset className={styles.group}>
+          <legend>{t('sFloor')}</legend>
+          <div className={styles.chips}>{(['low', 'mid', 'high'] as const).map((k) => chip('fl', k, F.floorBand(k, l)))}</div>
         </fieldset>
         <div className={styles.toggles}>
           {toggle('pets', t('pets'))}

@@ -53,7 +53,7 @@ export function ConsignActions({ id, buildingId, floor, staff, buildings }: { id
           <select className="input" name="building" required defaultValue={buildingId ?? ''}><option value="" disabled>Chọn…</option>{buildings.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}</select>
         </label>
         <label className="a-field">Tầng<input className="input" name="floor" inputMode="numeric" required defaultValue={(floor ?? '').replace(/[^\d-]/g, '')} /></label>
-        <label className="a-field">Số căn<input className="input" name="unit_no" required maxLength={20} placeholder="hỏi chủ nhà" /></label>
+        <label className="a-field">Số căn <span className="hint">không bắt buộc · nội bộ</span><input className="input" name="unit_no" maxLength={20} /></label>
       </div>
       {state.error && <div className="a-alert error">{state.error}</div>}
       <div style={{ display: 'flex', gap: 8 }}>

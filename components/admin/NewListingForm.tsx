@@ -63,8 +63,8 @@ export function NewListingForm({ buildings, staff, isAdmin, meId, from, pasteBui
           <input className="input" name="floor" inputMode="numeric" value={v.floor} onChange={set('floor')} required pattern="-?\d{1,3}" />
           {fe.floor && <span className="err">{fe.floor}</span>}
         </label>
-        <label className={`a-field ${fe.unit_no ? 'invalid' : ''}`}>Số căn <span className="hint">vd. 18.05</span>
-          <input className="input" name="unit_no" value={v.unit_no} onChange={set('unit_no')} required maxLength={20} />
+        <label className={`a-field ${fe.unit_no ? 'invalid' : ''}`}>Số căn <span className="hint">không bắt buộc · nội bộ</span>
+          <input className="input" name="unit_no" value={v.unit_no} onChange={set('unit_no')} maxLength={20} />
           {fe.unit_no && <span className="err">{fe.unit_no}</span>}
         </label>
         {isAdmin && (

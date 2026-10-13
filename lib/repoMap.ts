@@ -4,6 +4,7 @@
  */
 import { PHOTO_TAGS, type Building, type BuildingAmenity, type Descriptions, type Listing, type PhotoMeta, type PhotoTag } from './types';
 import { toBuildingFees } from './fees';
+import { isBand } from './floorBand';
 
 type PhotoRow = { path: string; thumb: string | null; w?: number | null; h?: number | null; tag?: string | null; source?: string | null; v?: { w: number; path: string }[] | null };
 /** "url 640w, url 1200w, …" from the photo's own variants (older photos: the 600 px thumb + the full file) */
@@ -34,7 +35,7 @@ export type PublicBuildingRow = {
 };
 
 export type PublicListingRow = {
-  code: string; building_slug: string; floor: number | string; area: number | string; beds: number | string;
+  code: string; building_slug: string; /** always null since migration 28 */ floor?: number | string | null; floor_band?: string | null; area: number | string; beds: number | string;
   baths: number | string; dir: string; view: string; furn: string; rent: number | string; deposit: number | string;
   cycle: string; mgmt: number | string; elec: string; water: string; moto: number | string; car: number | string;
   net: number | string; min_term: number | string; max_occ: number | string; pets: boolean; temp_reg: boolean;
@@ -101,7 +102,7 @@ export function toListing(r: PublicListingRow, supabaseUrl: string): Listing {
   return {
     code: r.code,
     buildingId: r.building_slug,
-    floor: n(r.floor),
+    ...(isBand(r.floor_band) ? { floorBand: r.floor_band } : {}),
     area: n(r.area),
     beds: n(r.beds),
     baths: n(r.baths),

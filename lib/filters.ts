@@ -1,5 +1,6 @@
 /** Filter + sort logic — ported 1:1 from apartqn-data.js (`RENT`, `EMPTY`, `match`) and Results sort. */
 import type { Listing } from '@/lib/types';
+import { vnToday } from '@/lib/format';
 
 export const RENT: [number, number][] = [[0, 8e6], [8e6, 12e6], [12e6, 18e6], [18e6, Infinity]];
 
@@ -16,12 +17,13 @@ export type Filters = {
   pmin: string; // rent ≥, VND millions ("10", "7.5")
   pmax: string; // rent ≤, VND millions
   vw: string; // '' | sea | city | river | lagoon
+  fl: string; // '' | low | mid | high (floor band)
   q: string; // leftover words → building name / alias / street / ward (see lib/search/suggest.ts textMatches)
 };
 
 export type Sort = 'new' | 'low' | 'high' | 'move';
 
-export const EMPTY: Filters = { b: '', beds: '', rent: '', furn: '', pets: false, car: false, date: '', rented: false, pmin: '', pmax: '', vw: '', q: '' };
+export const EMPTY: Filters = { b: '', beds: '', rent: '', furn: '', pets: false, car: false, date: '', rented: false, pmin: '', pmax: '', vw: '', fl: '', q: '' };
 export const SORTS: Sort[] = ['new', 'low', 'high', 'move'];
 
 export const hasCarData = (all: Listing[]) => all.some((x) => typeof x.carParking === 'boolean');
@@ -32,6 +34,7 @@ export const match = (x: Listing, f: Filters, textOk?: (x: Listing) => boolean) 
   (!f.pmin || x.rent >= Number(f.pmin) * 1e6) &&
   (!f.pmax || x.rent <= Number(f.pmax) * 1e6) &&
   (!f.vw || x.view === f.vw) &&
+  (!f.fl || x.floorBand === f.fl) &&
   (!f.q || !textOk || textOk(x)) &&
   (!f.b || x.buildingId === f.b) &&
   (!f.pets || x.pets) &&
@@ -39,13 +42,15 @@ export const match = (x: Listing, f: Filters, textOk?: (x: Listing) => boolean) 
   (!f.furn || x.furn === f.furn) &&
   (!f.beds || (f.beds === '3' ? x.beds >= 3 : String(x.beds) === f.beds)) &&
   (!f.rent || (x.rent >= RENT[+f.rent.slice(1)][0] && x.rent < RENT[+f.rent.slice(1)][1])) &&
-  (!f.date || x.moveIn <= f.date);
+  // a move-in date in the past means "free now": it fits any date asked for
+  (!f.date || x.moveIn <= f.date || x.moveIn <= vnToday());
 
 const CMP: Record<Sort, (a: Listing, b: Listing) => number> = {
   new: (a, b) => b.updated.localeCompare(a.updated),
   low: (a, b) => a.rent - b.rent,
   high: (a, b) => b.rent - a.rent,
-  move: (a, b) => a.moveIn.localeCompare(b.moveIn),
+  // everything already free sorts together, then by date
+  move: (a, b) => { const t = vnToday(), x = a.moveIn < t ? t : a.moveIn, y = b.moveIn < t ? t : b.moveIn; return x.localeCompare(y); },
 };
 
 /** Filter + sort. Rented listings always sort last. */
@@ -72,6 +77,7 @@ export const parseQuery = (q: URLSearchParams | Record<string, string | string[]
   if (!/^\d{1,4}(\.\d)?$/.test(f.pmin)) f.pmin = '';
   if (!/^\d{1,4}(\.\d)?$/.test(f.pmax)) f.pmax = '';
   if (!['sea', 'city', 'river', 'lagoon'].includes(f.vw)) f.vw = '';
+  if (!['low', 'mid', 'high'].includes(f.fl)) f.fl = '';
   f.q = f.q.trim().replace(/\s+/g, ' ').slice(0, 80);
   const s = get('sort') as Sort;
   const sort: Sort = SORTS.includes(s) ? s : 'new';

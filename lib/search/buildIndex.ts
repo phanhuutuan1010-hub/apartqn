@@ -14,7 +14,7 @@ export function buildIndex(buildings: Building[], listings: Listing[]): SearchIn
     })),
     listings: listings.map((x) => ({
       code: x.code, slug: codeSlug(x.code), legacy_code: x.legacyCode ?? null, building_slug: x.buildingId, beds: x.beds, rent: x.rent, furniture: x.furn,
-      pets: x.pets, car_parking: x.carParking ?? null, view: x.view, status: x.status,
+      pets: x.pets, car_parking: x.carParking ?? null, view: x.view, floor_band: x.floorBand ?? null, status: x.status,
       verified_at: x.verifiedAt ?? null, published_at: x.publishedAt ?? null, cover_thumb: x.thumbs[0] ?? null,
     })),
   };

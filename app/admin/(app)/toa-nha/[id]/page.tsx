@@ -32,6 +32,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
   let copiedFrom: string | null = null;
   let photos: PhotoView[] = [];
   let coded = 0, live = 0, visible = true;
+  let demoLeft: string[] = [];
   let meta: { updated_at: string; updated_by: string | null } | null = null;
   // "Nhân bản toà nhà": fees, amenities, default terms and descriptions; NOT name, slug, prefix, aliases, address, coordinates, photos
   if (isNew && from && /^[0-9a-f-]{36}$/.test(from)) {
@@ -46,14 +47,23 @@ export default async function BuildingEditPage({ params, searchParams }: { param
     }
   }
   if (!isNew) {
-    const [{ data }, { data: ph }, { count }, { count: liveCount }] = await Promise.all([
+    const [{ data }, { data: ph }, { count }, { count: liveCount }, { count: demoListings }] = await Promise.all([
       sb.from('buildings').select('*').eq('id', id).maybeSingle(),
       sb.from('photos').select('id, path, thumb_path, visibility, is_cover, width, height, watermark, tag, source').eq('building_id', id).order('sort'),
       sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).not('code', 'is', null),
       sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).not('code', 'is', null).in('status', ['available', 'reserved', 'rented']),
+      sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).eq('is_demo', true),
     ]);
     coded = count ?? 0;
     live = liveCount ?? 0;
+    if (data) demoLeft = [
+      !(ph ?? []).length && 'Chưa có ảnh toà nhà',
+      (data.lat == null || data.lng == null) && 'Chưa có vị trí (link Google Maps)',
+      !data.fee_verified && 'Phí toà nhà chưa xác minh',
+      !data.desc_vi && 'Chưa có mô tả',
+      data.total_floors == null && 'Chưa có tổng số tầng',
+      (demoListings ?? 0) > 0 && `${demoListings} căn của toà vẫn mang nhãn demo`,
+    ].filter(Boolean) as string[];
     if (!data) notFound();
     b = { ...(data as BuildingData), ...toBuildingFees(data) };
     meta = data;
@@ -86,7 +96,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
       </div>
       {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo toà nhà. Thêm ảnh bên dưới.</div>}
       {copiedFrom && <div className="a-alert info" style={{ marginBottom: 14 }}>Bản sao từ <b>{copiedFrom}</b>: đã chép phí, tiện ích, mô tả. Nhập tên, đường dẫn, tiền tố mã và địa chỉ rồi bấm Tạo toà nhà.</div>}
-      <BuildingForm b={b} codedListings={coded} enStatus={enStatusOf(b.desc_vi, b.desc_en, b.desc_en_vi_hash)} glossary={await loadGlossary(sb)} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
+      <BuildingForm b={b} demoLeft={demoLeft} codedListings={coded} enStatus={enStatusOf(b.desc_vi, b.desc_en, b.desc_en_vi_hash)} glossary={await loadGlossary(sb)} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
     </div>
   );
 }

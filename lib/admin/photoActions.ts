@@ -168,7 +168,7 @@ export async function moveTargets(owner: PhotoOwner): Promise<MoveTarget[]> {
     sb.from('buildings').select('name').eq('id', building).maybeSingle(),
   ]);
   const out: MoveTarget[] = (ls ?? []).filter((l) => l.id !== o.data.id)
-    .map((l) => ({ kind: 'listing', id: l.id, label: `${l.code ?? 'Nháp'} · tầng ${l.floor} · căn ${l.unit_no}` }));
+    .map((l) => ({ kind: 'listing', id: l.id, label: `${l.code ?? 'Nháp'} · tầng ${l.floor}${l.unit_no ? ` · căn ${l.unit_no}` : ''}` }));
   if (o.data.kind === 'listing' && me.role === 'admin' && b) out.unshift({ kind: 'building', id: building, label: `Toà nhà ${b.name}` });
   return out;
 }

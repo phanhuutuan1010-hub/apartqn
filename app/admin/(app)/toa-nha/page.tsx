@@ -6,13 +6,13 @@ import { supabaseServer } from '@/lib/supabase/server';
 import { enStatusOf } from '@/lib/enStatus';
 import { EN_STATUS_LABEL } from '@/lib/translate';
 import { fmtDateTime } from '@/lib/admin/labels';
-import { BuildingVisibility } from '@/components/admin/BuildingVisibility';
+import { BuildingVisibility, BuildingsDemoClear } from '@/components/admin/BuildingVisibility';
 
 export const metadata: Metadata = { title: 'Toà nhà' };
 
-export default async function BuildingsPage({ searchParams }: { searchParams: Promise<{ tr?: string }> }) {
+export default async function BuildingsPage({ searchParams }: { searchParams: Promise<{ tr?: string; demo?: string }> }) {
   await requireAdmin();
-  const { tr } = await searchParams;
+  const { tr, demo } = await searchParams;
   const sb = await supabaseServer();
   const [{ data: buildings }, { data: listings }, { data: photos }] = await Promise.all([
     sb.from('buildings').select('id, slug, name, street, lat, lng, amenities, default_fees, desc_vi, desc_en, desc_en_vi_hash, is_demo, is_visible, updated_at').order('sort'),
@@ -22,7 +22,8 @@ export default async function BuildingsPage({ searchParams }: { searchParams: Pr
   const count = (id: string, pred: (s: string) => boolean) => (listings ?? []).filter((l) => l.building_id === id && pred(l.status)).length;
   const all = (buildings ?? []).map((b) => ({ ...b, en: enStatusOf(b.desc_vi, b.desc_en, b.desc_en_vi_hash) }));
   const need = all.filter((b) => b.en === 'none' || b.en === 'stale').length;
-  const shown = tr === 'en' ? all.filter((b) => b.en === 'none' || b.en === 'stale') : all;
+  const demos = all.filter((b) => b.is_demo);
+  const shown = demo === '1' ? demos : tr === 'en' ? all.filter((b) => b.en === 'none' || b.en === 'stale') : all;
   // on the website now = what hiding the building takes down
   const live = (id: string) => (listings ?? []).filter((l) => l.building_id === id && l.code && ['available', 'reserved', 'rented'].includes(l.status)).length;
   const photoCount = (id: string) => (photos ?? []).filter((p) => p.building_id === id).length;
@@ -37,9 +38,11 @@ export default async function BuildingsPage({ searchParams }: { searchParams: Pr
         <Link href="/admin/toa-nha/moi" className="a-btn a-btn-primary"><Plus size={16} aria-hidden /> Thêm toà nhà</Link>
       </div>
       <div className="a-seg" role="group" aria-label="Lọc">
-        <Link href="/admin/toa-nha" className={tr !== 'en' ? 'on' : undefined}>Tất cả</Link>
-        <Link href="/admin/toa-nha?tr=en" className={tr === 'en' ? 'on' : undefined}>Cần dịch <span className="a-count">{need}</span></Link>
+        <Link href="/admin/toa-nha" className={tr !== 'en' && demo !== '1' ? 'on' : undefined}>Tất cả</Link>
+        <Link href="/admin/toa-nha?tr=en" className={tr === 'en' && demo !== '1' ? 'on' : undefined}>Cần dịch <span className="a-count">{need}</span></Link>
+        <Link href="/admin/toa-nha?demo=1" className={demo === '1' ? 'on' : undefined}>Demo <span className="a-count">{demos.length}</span></Link>
       </div>
+      {demo === '1' && demos.length > 0 && <BuildingsDemoClear ids={demos.map((b) => b.id)} />}
       <div className="a-table-wrap">
         <table className="a-table">
           <thead><tr><th>Toà nhà</th><th>Hiển thị</th><th>Vị trí</th><th className="num">Ảnh</th><th className="num">Đang đăng</th><th className="num">Tổng căn</th><th>Phí mặc định</th><th>Dịch</th><th>Sửa lúc</th></tr></thead>

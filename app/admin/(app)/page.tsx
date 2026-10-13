@@ -85,7 +85,7 @@ export default async function TodayPage() {
             return (
               <div key={r.id} className={`a-card ${styles.pending}`}>
                 <div style={{ minWidth: 0 }}>
-                  <Link href={`/admin/can-ho/${r.id}`} className={styles.title}>{r.units.buildings.name} · T{r.units.floor} · {r.units.unit_no}</Link>
+                  <Link href={`/admin/can-ho/${r.id}`} className={styles.title}>{r.units.buildings.name} · T{r.units.floor}{r.units.unit_no ? ` · ${r.units.unit_no}` : ''}</Link>
                   <div className="a-small a-muted">gửi bởi <b>{r.units.assigned_to ? dir.get(r.units.assigned_to)?.name : '—'}</b> · {fmtDateTime(r.submitted_at)}</div>
                   <div className={styles.facts}>
                     <b style={{ color: 'var(--red-500)' }}>{fmtVnd(r.rent)} ₫</b> · {r.area} m² · {r.beds === 0 ? 'Studio' : `${r.beds} PN`} · {furnLabel(r.furn)} · dọn vào {r.move_in}
@@ -115,7 +115,7 @@ export default async function TodayPage() {
             {due.map((r) => (
               <li key={r.id} className={styles.dueRow}>
                 <Link href={`/admin/can-ho/${r.id}`} className={styles.dueText}>
-                  <b>{r.code ?? '—'}</b> <span className="a-muted">· {r.building_name} · T{r.floor} · {r.unit_no}</span>
+                  <b>{r.code ?? '—'}</b> <span className="a-muted">· {r.building_name} · T{r.floor}{r.unit_no ? ` · ${r.unit_no}` : ''}</span>
                   <span className="a-small a-muted">{daysSince(r.verified_at)} ngày chưa xác nhận</span>
                 </Link>
                 <QuickConfirm id={r.id} />

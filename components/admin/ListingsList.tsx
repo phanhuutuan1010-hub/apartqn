@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { MoreHorizontal } from 'lucide-react';
 import { STATUS_LABEL, STATUS_TONE, fmtVnd, parseVnd, type ListingStatusAll } from '@/lib/admin/labels';
-import { bulkListings, undoBulk, updateRent, type BulkOp, type Prev } from '@/lib/admin/quickActions';
+import { bulkListings, clearListingsDemo, restoreListingsBulk, trashListingsBulk, undoBulk, updateRent, type BulkOp, type Prev } from '@/lib/admin/quickActions';
 import { changeStatus, confirmAvailable } from '@/lib/admin/listingActions';
 import { trashListing, restoreListing } from '@/lib/admin/trashActions';
 import { allowedStatuses } from './ListingRowActions';
@@ -16,7 +16,7 @@ import { ConfirmDialog } from './Danger';
 const PostDialog = dynamic(() => import('./PostDialog'), { ssr: false });
 
 export type ListRow = {
-  id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string;
+  id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string | null;
   beds: number | null; rent: number | null; assigned_to: string | null; assignee: string | null; verified_days: number | null;
   verify_tone: '' | 'warn' | 'red' | 'a-muted'; en_status: EnStatus; is_demo: boolean; rejected: boolean;
 };
@@ -29,7 +29,13 @@ const BULK_STATUSES: ListingStatusAll[] = ['available', 'reserved', 'rented', 'h
  * Căn hộ list: cards on phones, a table-like grid ≥ 1024. Inline: rent (one listing at a time), status, "✓ Còn trống".
  * Bulk (selected rows): confirm, status, hide, reassign (admin). Confirm dialog with the count, then a 5 s "Hoàn tác".
  */
-export function ListingsList({ rows, header, role, canPublish, staff, trashed }: { rows: ListRow[]; header: React.ReactNode; role: 'admin' | 'sales'; canPublish: boolean; staff: Opt[]; trashed?: { id: string; label: string } }) {
+export function ListingsList({ rows, header, role, canPublish, staff, trashed, backupDays = null, demoOnly = false }: {
+  rows: ListRow[]; header: React.ReactNode; role: 'admin' | 'sales'; canPublish: boolean; staff: Opt[]; trashed?: { id: string; label: string };
+  /** days since the last "Xuất dữ liệu" (bulk delete reminder) */
+  backupDays?: number | null;
+  /** the "Demo" filter is on: the delete button reads "Xoá căn demo" */
+  demoOnly?: boolean;
+}) {
   const [over, setOver] = useState<Record<string, Partial<ListRow>>>({});
   const [gone, setGone] = useState<Set<string>>(new Set());
   const [seen, setSeen] = useState(rows);
@@ -40,6 +46,7 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed }:
   const [toast, setToast] = useState<Toast | null>(null);
   const [postFor, setPostFor] = useState<string | null>(null);
   const [del, setDel] = useState<ListRow | null>(null);
+  const [bulkDel, setBulkDel] = useState(false);
   const [busy, start] = useTransition();
   const dialog = useRef<HTMLDialogElement>(null);
   const isAdmin = role === 'admin';
@@ -114,6 +121,37 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed }:
       setToast({ msg: r.ok ?? 'Đã xoá.', tone: 'ok', until: Date.now() + 5000, undoFn: undoTrash(row.id) });
     });
   };
+  /** Bulk "Xoá": one rpc; rows the caller may not delete are skipped and reported; 10 s "Hoàn tác" restores all. */
+  const runBulkDelete = () => {
+    const ids = [...sel];
+    setBulkDel(false);
+    setSel(new Set());
+    setGone((g) => new Set([...g, ...ids]));
+    start(async () => {
+      const r = await trashListingsBulk(ids);
+      const back = ids.filter((id) => !r.trashed.includes(id));
+      if (back.length) setGone((g) => { const n = new Set(g); back.forEach((id) => n.delete(id)); return n; });
+      if (r.error) return say(r.error, 'error');
+      setToast({
+        msg: r.ok ?? 'Đã xoá.', tone: 'ok', until: Date.now() + 10000,
+        undoFn: () => {
+          setToast(null);
+          start(async () => {
+            const u = await restoreListingsBulk(r.trashed);
+            if (!u.error) setGone((g) => { const n = new Set(g); r.trashed.forEach((id) => n.delete(id)); return n; });
+            say(u.error ?? u.ok ?? 'Đã khôi phục.', u.error ? 'error' : 'ok');
+          });
+        },
+      });
+    });
+  };
+  const runClearDemo = () => {
+    const ids = picked.filter((r) => r.is_demo).map((r) => r.id);
+    if (!ids.length || !confirm(`Bỏ nhãn demo của ${ids.length} căn? Nhãn DỮ LIỆU DEMO biến mất khỏi website ngay.`)) return;
+    ids.forEach((id) => patch(id, { is_demo: false }));
+    setSel(new Set());
+    start(async () => { const r = await clearListingsDemo(ids); say(r.error ?? r.ok ?? '', r.error ? 'error' : 'ok'); });
+  };
   const undo = () => {
     if (toast?.undoFn) return toast.undoFn();
     const prev = toast?.prev;
@@ -126,6 +164,9 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed }:
     });
   };
 
+  const picked = view.filter((r) => sel.has(r.id));
+  const pickedPublic = picked.filter((r) => r.code && (r.status === 'available' || r.status === 'reserved' || r.status === 'rented')).length;
+  const delLabel = demoOnly ? 'Xoá căn demo' : 'Xoá';
   const allOn = view.length > 0 && view.every((r) => sel.has(r.id));
   const toggle = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -141,13 +182,13 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed }:
           const pub = r.status === 'available' || r.status === 'reserved';
           return (
             <div key={r.id} className={`a-list-row ${sel.has(r.id) ? 'on' : ''}`}>
-              <label className="a-list-check"><input type="checkbox" aria-label={`Chọn ${r.code ?? r.unit_no}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></label>
+              <label className="a-list-check"><input type="checkbox" aria-label={`Chọn ${r.code ?? r.unit_no ?? 'căn nháp'}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></label>
               <div className="c-code">
                 <Link href={`/admin/can-ho/${r.id}`}>{r.code ?? 'Chưa có mã'}</Link>
                 {r.is_demo && <span className="a-badge outline">demo</span>}
               </div>
               <div className="c-bld">{r.building_name}</div>
-              <div className="c-unit">T{r.floor} · <span className="a-mono">{r.unit_no}</span>{r.beds != null && <span className="c-beds-m"> · {r.beds === 0 ? 'Studio' : `${r.beds} PN`}</span>}</div>
+              <div className="c-unit">T{r.floor}{r.unit_no && <> · <span className="a-mono">{r.unit_no}</span></>}{r.beds != null && <span className="c-beds-m"> · {r.beds === 0 ? 'Studio' : `${r.beds} PN`}</span>}</div>
               <div className="c-beds">{r.beds === 0 ? 'Studio' : r.beds ?? '—'}</div>
               <div className="c-rent">
                 {editRent === r.id ? (
@@ -226,6 +267,15 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed }:
               {staff.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           )}
+          {isAdmin && picked.some((r) => r.is_demo) && <button type="button" className="a-btn a-btn-sm a-btn-ghost" disabled={busy} onClick={runClearDemo}>Bỏ nhãn demo</button>}
+          {/* desktop: last before "Bỏ chọn"; phones: inside "…" so a thumb never lands on it by accident */}
+          <button type="button" className="a-btn a-btn-sm a-btn-danger a-bulk-del a-desk" disabled={busy} onClick={() => setBulkDel(true)}>{delLabel}</button>
+          <details className="a-menu up a-mob">
+            <summary className="a-btn a-btn-sm a-btn-ghost" aria-label="Thao tác khác"><MoreHorizontal size={16} aria-hidden /></summary>
+            <div role="menu" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute('open')}>
+              <button type="button" role="menuitem" className="danger" disabled={busy} onClick={() => setBulkDel(true)}>{delLabel}</button>
+            </div>
+          </details>
           <button type="button" className="a-btn a-btn-sm a-btn-ghost" onClick={() => setSel(new Set())}>Bỏ chọn</button>
         </div>
       )}
@@ -251,8 +301,15 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed }:
       )}
       <ConfirmDialog open={!!del} title={`Xoá ${del?.code ?? 'tin nháp'}?`} confirmLabel="Xoá tin" busy={busy}
         onClose={() => setDel(null)} onConfirm={() => del && runDelete(del)}>
-        {del?.building_name} · tầng {del?.floor} · căn {del?.unit_no}.<br />
+        {del?.building_name} · tầng {del?.floor}{del?.unit_no ? ` · căn ${del.unit_no}` : ''}.<br />
         {del?.code ? 'Tin gỡ khỏi website ngay; mã ' + del.code + ' không bao giờ dùng lại. ' : ''}Tin nằm trong Thùng rác 30 ngày (quản trị viên khôi phục được), sau đó xoá hẳn cùng ảnh.
+      </ConfirmDialog>
+      <ConfirmDialog open={bulkDel} title={`Xoá ${picked.length} căn?`} confirmLabel={`Xoá ${picked.length} căn`} busy={busy}
+        backupDays={picked.length >= 10 || picked.some((r) => !r.is_demo) ? backupDays : undefined}
+        onClose={() => setBulkDel(false)} onConfirm={runBulkDelete}>
+        Có thể khôi phục trong Thùng rác 30 ngày.
+        {pickedPublic > 0 && <><br /><b>{pickedPublic} căn đang hiện trên website sẽ bị gỡ.</b></>}
+        {!isAdmin && <><br />Bạn chỉ xoá được tin nháp chưa từng đăng của mình; các căn khác sẽ được bỏ qua.</>}
       </ConfirmDialog>
       {postFor && <PostDialog id={postFor} onClose={() => setPostFor(null)} />}
     </>

@@ -43,6 +43,8 @@ const Schema = z.object({
   fee_verified: z.preprocess((v) => v === 'on', z.boolean()),
   desc_vi: txt(8000), desc_en: txt(8000),
   sort: z.coerce.number().int().min(0).max(999),
+  // '' = unknown (never guessed); drives the public floor band of every listing in the building
+  total_floors: z.preprocess((v) => (v === '' || v == null ? null : Number(v)), z.number().int().min(1).max(150).nullable()),
   is_demo: z.preprocess((v) => v === 'on', z.boolean()),
 }).refine((v) => (v.lat == null) === (v.lng == null), { message: 'Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai', path: ['lat'] });
 
@@ -113,7 +115,7 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, v[k]])) as BuildingFees;
   const row = {
     name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street, video_url: v.video_url,
-    amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo,
+    amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo, total_floors: v.total_floors,
     // "Bản EN vẫn đúng": the English now counts as written from the current Vietnamese
     ...(fd.get('en_confirm') === 'on' && v.desc_en ? { desc_en_vi_hash: viHash(v.desc_vi) } : {}),
   };
@@ -172,6 +174,19 @@ export async function setBuildingVisible(id: string, visible: boolean): Promise<
   revalidatePath('/admin/toa-nha');
   revalidatePath(`/admin/toa-nha/${id}`);
   return { ok: true };
+}
+
+/** Toà nhà list, "Demo" filter → "Bỏ nhãn demo": the badge leaves the building pages at once. */
+export async function clearBuildingsDemo(ids: string[]): Promise<{ ok?: string; error?: string }> {
+  await requireAdmin();
+  if (!z.array(z.string().uuid()).min(1).max(100).safeParse(ids).success) return { error: 'Không có toà nhà nào.' };
+  const sb = await supabaseServer();
+  const { data, error } = await sb.from('buildings').update({ is_demo: false }).in('id', ids).eq('is_demo', true).select('slug');
+  if (error) return { error: 'Lỗi: ' + error.message };
+  (data ?? []).forEach((b) => revalidatePublic({ building: b.slug }));
+  revalidatePath('/[locale]', 'layout');
+  revalidatePath('/admin/toa-nha');
+  return { ok: `Đã bỏ nhãn demo ${data?.length ?? 0} toà nhà.` };
 }
 
 /** How many listings would take new fees from this form (before saving): drives the "Cập nhật N căn" dialog. */

@@ -60,7 +60,7 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
     }
   }, [typed, matched.length, f, l]);
 
-  const drawerN = (['beds', 'furn', 'pets', 'car', 'date'] as const).filter((k) => f[k]).length;
+  const drawerN = (['beds', 'furn', 'fl', 'pets', 'car', 'date'] as const).filter((k) => f[k]).length;
   const bedsLabel = (v: string) => t('sBeds') + ': ' + (v === '0' ? t('studio') : v === '3' ? '3+' : v);
   const pills: { label: string; clear: Partial<Filters> }[] = [];
   if (f.b && bById.get(f.b)) pills.push({ label: bById.get(f.b)!.name, clear: { b: '' } });
@@ -70,6 +70,7 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
   else if (f.pmax) pills.push({ label: '≤ ' + mil(+f.pmax * 1e6, l), clear: { pmax: '' } });
   else if (f.pmin) pills.push({ label: '≥ ' + mil(+f.pmin * 1e6, l), clear: { pmin: '' } });
   if (f.vw) pills.push({ label: t(`v_${f.vw}` as 'v_sea'), clear: { vw: '' } });
+  if (f.fl) pills.push({ label: F.floorBand(f.fl as 'low', l), clear: { fl: '' } });
   if (f.beds) pills.push({ label: bedsLabel(f.beds), clear: { beds: '' } });
   if (f.furn) pills.push({ label: t(`furn_${f.furn}` as 'furn_full'), clear: { furn: '' } });
   if (f.pets) pills.push({ label: t('pets'), clear: { pets: false } });

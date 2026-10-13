@@ -13,11 +13,16 @@ export type BuildingData = {
   id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; maps_url: string | null; video_url: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
-  desc_vi: string | null; desc_en: string | null; desc_en_vi_hash?: string | null; sort: number; is_demo: boolean;
+  desc_vi: string | null; desc_en: string | null; desc_en_vi_hash?: string | null; sort: number; is_demo: boolean; total_floors?: number | null;
 } & BuildingFees;
 
 /** `codedListings`: listings of this building that already carry a code → the prefix is frozen. */
-export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary }: { b: BuildingData; photos?: React.ReactNode; codedListings?: number; enStatus: EnStatus; glossary: GlossaryPair[] }) {
+export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary, demoLeft = [] }: {
+  b: BuildingData; photos?: React.ReactNode; codedListings?: number; enStatus: EnStatus; glossary: GlossaryPair[];
+  /** placeholder data still on a demo building (shown when "Dữ liệu demo" is unticked) */
+  demoLeft?: string[];
+}) {
+  const [demo, setDemo] = useState(b.is_demo);
   const [state, action, pending] = useActionState<BuildingResult, FormData>(saveBuilding.bind(null, b.id), {});
   const fe = state.fieldErrors ?? {};
   const cls = (k: string, extra = '') => `a-field ${extra} ${fe[k] ? 'invalid' : ''}`;
@@ -63,6 +68,9 @@ export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary 
             {err('code_prefix')}
           </label>
           <label className={cls('sort')}>Thứ tự hiển thị<input className="input" name="sort" inputMode="numeric" defaultValue={b.sort} /></label>
+          <label className={cls('total_floors')}>Tổng số tầng <span className="hint">để website hiện tầng thấp / trung / cao; trống = chưa rõ</span>
+            <input className="input" name="total_floors" inputMode="numeric" defaultValue={s(b.total_floors)} placeholder="chưa rõ" />{err('total_floors')}
+          </label>
           <div className={cls('aliases', 'span4')}>
             <label htmlFor="b-aliases">Tên gọi khác <span className="hint">tên khách hay gõ khi tìm (viết tắt, không dấu, tiếng Nga…), Enter để thêm, tối đa 20</span></label>
             <TagInput id="b-aliases" name="aliases" defaultValue={b.aliases ?? []} placeholder="vd. Altara, Алтара" />
@@ -73,7 +81,13 @@ export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary 
           <label className={cls('video_url', 'span4')}>Video YouTube <span className="hint">tải lên YouTube ở chế độ “Không công khai”, rồi dán link (không tải video lên website)</span>
             <input className="input" name="video_url" type="url" inputMode="url" placeholder="https://youtu.be/…" defaultValue={s(b.video_url)} maxLength={200} />{err('video_url')}
           </label>
-          <label className="a-check span4"><input type="checkbox" name="is_demo" defaultChecked={b.is_demo} /> Dữ liệu demo (hiện nhãn DỮ LIỆU DEMO)</label>
+          <label className="a-check span4"><input type="checkbox" name="is_demo" checked={demo} onChange={(e) => setDemo(e.target.checked)} /> Dữ liệu demo (hiện nhãn DỮ LIỆU DEMO)</label>
+          {b.is_demo && !demo && demoLeft.length > 0 && (
+            <div className="a-alert warn span4" role="status">
+              <b>Bỏ nhãn demo — toà này sẽ hiện như dữ liệu thật.</b> Vẫn lưu được, nhưng còn dữ liệu mẫu:
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>{demoLeft.map((x) => <li key={x}>{x}</li>)}</ul>
+            </div>
+          )}
         </div>
       </section>
 

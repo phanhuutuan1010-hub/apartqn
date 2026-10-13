@@ -6,7 +6,7 @@ import type { IndexBuilding, IndexListing, SearchIndex } from '@/lib/search/type
 const b = (slug: string, name: string, street: string, available_count: number, aliases: string[] = [], prefix = slug.slice(0, 3).toUpperCase()): IndexBuilding =>
   ({ slug, name, aliases, prefix, street, ward_old: null, ward_new: null, available_count });
 const x = (code: string, building_slug: string, o: Partial<IndexListing> = {}): IndexListing => ({
-  code, slug: code.toLowerCase(), legacy_code: null, building_slug, beds: 2, rent: 12e6, furniture: 'full', pets: false, car_parking: null, view: 'city',
+  code, slug: code.toLowerCase(), legacy_code: null, building_slug, beds: 2, rent: 12e6, furniture: 'full', pets: false, car_parking: null, view: 'city', floor_band: null,
   status: 'available', verified_at: '2026-09-01T00:00:00Z', published_at: '2026-08-01T00:00:00Z', cover_thumb: null, ...o,
 });
 const IDX: SearchIndex = {

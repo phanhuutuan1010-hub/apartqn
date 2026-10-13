@@ -17,7 +17,7 @@ import { enStatusOf } from '@/lib/enStatus';
 import { loadGlossary } from '@/lib/admin/glossary';
 
 export const metadata: Metadata = { title: 'Sửa căn' };
-const BUILDING_COLS = `id, name, slug, aliases, code_prefix, default_fees, ${FEE_FIELDS.join(', ')}`;
+const BUILDING_COLS = `id, name, slug, aliases, code_prefix, total_floors, default_fees, ${FEE_FIELDS.join(', ')}`;
 
 export default async function EditListingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string; copied?: string; copyError?: string; queue?: string }> }) {
   const { id } = await params;
@@ -67,7 +67,7 @@ export default async function EditListingPage({ params, searchParams }: { params
             {listing.is_demo && <span className="a-badge outline">demo</span>}
           </h1>
           <div className="a-sub">
-            {building?.name} · Tầng {unit.floor} · Căn {unit.unit_no}
+            {building?.name} · Tầng {unit.floor}{unit.unit_no ? ` · Căn ${unit.unit_no}` : ''}
             {' · '}Sửa lần cuối {editor ? <>bởi <b>{editor}</b> </> : ''}lúc {fmtDateTime(listing.updated_at)}
             {isPublic && vd != null && <> · Xác nhận còn trống {vd === 0 ? 'hôm nay' : `${vd} ngày trước`}</>}
           </div>
@@ -78,7 +78,7 @@ export default async function EditListingPage({ params, searchParams }: { params
           )}
           <PostButton id={id} />
           <ListingRowActions id={id} status={status} role={me.role} canPublish={me.can_publish} />
-          {(me.role === 'admin' || !listing.code) && <ListingDeleteMenu id={id} code={listing.code} label={`${building?.name ?? ''} · tầng ${unit.floor} · căn ${unit.unit_no}`} />}
+          {(me.role === 'admin' || !listing.code) && <ListingDeleteMenu id={id} code={listing.code} label={`${building?.name ?? ''} · tầng ${unit.floor}${unit.unit_no ? ` · căn ${unit.unit_no}` : ''}`} />}
         </div>
       </div>
 
@@ -93,11 +93,12 @@ export default async function EditListingPage({ params, searchParams }: { params
       <ListingForm
         listing={listing as ListingData}
         unit={unit as UnitData}
-        buildings={((buildings ?? []) as unknown as Record<string, unknown>[]).map((x) => ({ id: x.id, name: x.name, slug: x.slug, aliases: x.aliases ?? [], prefix: x.code_prefix ?? null, default_fees: x.default_fees ?? {}, fees: toBuildingFees(x) }) as BuildingOpt)}
+        buildings={((buildings ?? []) as unknown as Record<string, unknown>[]).map((x) => ({ id: x.id, name: x.name, slug: x.slug, aliases: x.aliases ?? [], prefix: x.code_prefix ?? null, total_floors: x.total_floors ?? null, default_fees: x.default_fees ?? {}, fees: toBuildingFees(x) }) as BuildingOpt)}
         staff={[...dir.values()].filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
         isAdmin={me.role === 'admin'}
         canPublish={me.role === 'admin' || me.can_publish}
         photos={<PhotoManagerLazy owner={{ kind: 'listing', id }} photos={photos} />}
+        photoCount={photos.length}
         meId={me.id}
         enStatus={enStatusOf(listing.desc_vi as string | null, listing.desc_en as string | null, listing.desc_en_vi_hash as string | null)}
         glossary={glossary}

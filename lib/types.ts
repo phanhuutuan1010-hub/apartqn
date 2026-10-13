@@ -51,7 +51,8 @@ export type Listing = {
   code: string;
   /** building slug */
   buildingId: string;
-  floor: number;
+  /** low / mid / high third of the building; the exact floor and unit number are never public */
+  floorBand?: import('./floorBand').FloorBand;
   area: number;
   beds: number;
   baths: number;

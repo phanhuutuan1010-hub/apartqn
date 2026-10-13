@@ -18,7 +18,7 @@ const SORTS: Record<string, string> = {
 };
 
 type Row = {
-  id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string;
+  id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string | null;
   beds: number | null; rent: number | null; assigned_to: string | null; verified_at: string | null;
   has_vi: boolean; has_en: boolean; en_outdated: boolean; en_status: EnStatus;
   photo_count: number; is_demo: boolean; rejection_reason: string | null;
@@ -31,7 +31,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   const [dir, { data: buildings }, { data: settings }] = await Promise.all([
     staffDirectory(),
     sb.from('buildings').select('slug, name').order('sort'),
-    sb.from('settings').select('verify_remind_days, verify_hide_days').maybeSingle(),
+    sb.from('settings').select('verify_remind_days, verify_hide_days, last_backup_at').maybeSingle(),
   ]);
   const remind = settings?.verify_remind_days ?? 14, hide = settings?.verify_hide_days ?? 21;
 
@@ -45,6 +45,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   if (sp.b) q = q.eq('building_slug', sp.b);
   if (sp.a && me.role === 'admin') q = sp.a === 'none' ? q.is('assigned_to', null) : q.eq('assigned_to', sp.a);
   if (sp.tr === 'en') q = q.in('en_status', ['none', 'stale']);
+  if (sp.demo === '1') q = q.eq('is_demo', true);
   if (sp.v === 'due') q = q.in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind));
   const sortCol = SORTS[sp.sort ?? ''] ?? 'updated_at';
   const asc = sp.sort ? sp.dir === 'asc' : false;
@@ -73,6 +74,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           ...(me.role === 'admin' ? [{ kind: 'select' as const, key: 'a', label: 'Phụ trách', options: [{ value: 'none', label: '— Chưa giao' }, ...staffOptions] }] : []),
           { kind: 'select', key: 'v', label: 'Xác nhận', options: [{ value: 'due', label: `Cần xác nhận (> ${remind} ngày)` }] },
           { kind: 'select', key: 'tr', label: 'Dịch', options: [{ value: 'en', label: 'Cần dịch' }] },
+          { kind: 'select', key: 'demo', label: 'Demo', options: [{ value: '1', label: 'Chỉ căn demo' }] },
         ]}
       />
 
@@ -104,6 +106,8 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           <div className="c-more" />
         </>}
         role={me.role}
+        backupDays={daysSince(settings?.last_backup_at)}
+        demoOnly={sp.demo === '1'}
         canPublish={me.can_publish}
         staff={staffOptions}
       />
