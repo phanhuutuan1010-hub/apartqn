@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -23,10 +23,26 @@ const FilterSheet = dynamic(() => import('./FilterSheet'), { ssr: false });
 
 type Props = { listings: Listing[]; buildings: Building[]; /** English pages only: numbers for the phone bottom bar */ contact?: SiteContact };
 
-/** Reads filters from the URL (?b=&beds=&rent=&furn=&pets=1&date=&rented=1&sort=). */
+/** Reports the URL query (?b=&beds=&rent=&furn=&pets=1&date=&rented=1&sort=) upwards; renders nothing. */
+function QuerySync({ onQuery }: { onQuery: (q: string) => void }) {
+  const q = useSearchParams().toString();
+  useEffect(() => onQuery(q), [q, onQuery]);
+  return null;
+}
+
+/**
+ * The results list, filtered by the URL. The list itself is in the static HTML and is hydrated in place — only the tiny
+ * URL reader sits behind Suspense. (Swapping a Suspense fallback for the list re-created every card, so the first photo,
+ * the page's largest paint, was painted a second time after hydration.)
+ */
 export function ResultsFromUrl(props: Props) {
-  const sp = useSearchParams();
-  return <ResultsView {...props} query={sp.toString()} />;
+  const [query, setQuery] = useState('');
+  return (
+    <>
+      <Suspense fallback={null}><QuerySync onQuery={setQuery} /></Suspense>
+      <ResultsView {...props} query={query} />
+    </>
+  );
 }
 
 /** Static fallback (prerender): default filters. */

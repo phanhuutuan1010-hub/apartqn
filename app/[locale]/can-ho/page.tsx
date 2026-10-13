@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { Locale } from '@/i18n/routing';
@@ -8,7 +7,7 @@ import { DEMO } from '@/data/site';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DemoBadge } from '@/components/Badges';
-import { ResultsFromUrl, ResultsView } from '@/components/ResultsView';
+import { ResultsFromUrl } from '@/components/ResultsView';
 
 export const revalidate = 3600;
 
@@ -38,10 +37,8 @@ export default async function ResultsPage({ params }: PageProps<'/[locale]/can-h
           <h1 style={{ fontSize: 'clamp(26px, 3.4vw, 40px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em', textWrap: 'balance', color: 'var(--ink-heading)' }}>{t('results')}</h1>
           {DEMO && <DemoBadge />}
         </div>
-        {/* Static prerender shows the unfiltered list; the URL-driven view takes over on the client. */}
-        <Suspense fallback={<ResultsView listings={listings} buildings={buildings} contact={contact} />}>
-          <ResultsFromUrl listings={listings} buildings={buildings} contact={contact} />
-        </Suspense>
+        {/* Static prerender shows the unfiltered list; the URL filters apply on the client, in place. */}
+        <ResultsFromUrl listings={listings} buildings={buildings} contact={contact} />
       </main>
       <Footer />
     </>

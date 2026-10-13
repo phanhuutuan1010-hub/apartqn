@@ -1,4 +1,3 @@
-import { preload } from 'react-dom';
 import { coverScale, scaleSizes } from '@/lib/photoSizes';
 import styles from './Photo.module.css';
 
@@ -35,8 +34,8 @@ export function Photo({ src, srcSet, alt, label, sizes: slot, ratio, box = 4 / 3
       </div>
     );
   }
-  // the LCP photo: fetched as soon as the HTML head arrives
-  if (priority) preload(src, { as: 'image', imageSrcSet: srcSet, imageSizes: srcSet ? sizes : undefined, fetchPriority: 'high' });
+  // No preload() for the priority photo: the <img> is in the HTML (the browser's scanner finds it at once), and a preload
+  // would also fire whenever another page merely prefetches this one — downloading a photo nobody is looking at.
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={src} srcSet={srcSet} sizes={srcSet ? sizes : undefined} alt={alt} className={`${styles.img} ${blur ? styles.blur : ''}`} decoding="async"

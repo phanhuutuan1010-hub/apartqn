@@ -3,22 +3,26 @@ import type { Locale } from '@/i18n/routing';
 import type { Listing } from '@/lib/types';
 import { BAND_LABEL, type FloorBand } from '@/lib/floorBand';
 
-const TAG: Record<Locale, string> = { vi: 'vi-VN', en: 'en-US' };
-
-/** The one money format: vi "9.000.000 đ", en "9,000,000 VND". Full numbers — no "9M", no conversion. */
-export const money = (n: number, l: Locale) => new Intl.NumberFormat(TAG[l], { maximumFractionDigits: 0 }).format(n) + (l === 'vi' ? ' đ' : ' VND');
+/**
+ * The one money format: vi "9.000.000 đ", en "9,000,000 VND". Full numbers — no "9M", no conversion.
+ * Grouped by hand: the first Intl.NumberFormat of a page load costs a phone a long task while the page hydrates.
+ */
+export const money = (n: number, l: Locale) =>
+  String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, l === 'vi' ? '.' : ',') + (l === 'vi' ? ' đ' : ' VND');
 
 /** kept as an alias: every price uses the same full format */
 export const mil = money;
 
-// Dates are YYYY-MM-DD strings; format in UTC so server and browser agree.
-const d = (s: string) => new Date(s + 'T00:00:00Z');
+// Dates are YYYY-MM-DD strings, formatted from the string itself: no time zone, server and browser always agree.
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 /** vi "05/11" · en "5 Nov" (never the "thg" abbreviation) */
 export const dShort = (s: string, l: Locale) =>
-  l === 'vi' ? s.slice(8, 10) + '/' + s.slice(5, 7) : d(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-/** today in Vietnam, YYYY-MM-DD */
-export const vnToday = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
-export const dFull = (s: string, l: Locale) => d(s).toLocaleDateString(TAG[l], { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
+  l === 'vi' ? s.slice(8, 10) + '/' + s.slice(5, 7) : `${Number(s.slice(8, 10))} ${MON[Number(s.slice(5, 7)) - 1]}`;
+/** today in Vietnam (UTC+7, no daylight saving), YYYY-MM-DD */
+export const vnToday = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+/** vi "05/11/2026" · en "11/05/2026" */
+export const dFull = (s: string, l: Locale) =>
+  l === 'vi' ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : `${s.slice(5, 7)}/${s.slice(8, 10)}/${s.slice(0, 4)}`;
 export const M2 = 'm²';
 
 const perMo = (l: Locale) => (l === 'vi' ? '/tháng' : '/month');

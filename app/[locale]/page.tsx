@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { preload } from 'react-dom';
 import { EnBarAuto } from '@/components/EnBarAuto';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
@@ -43,8 +42,6 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
   // 6 / 4 / 3 cards by breakpoint (extra cards hidden with CSS)
   const featured = listings.filter((x) => x.status !== 'rented').slice(0, 6);
 
-  // the LCP image: requested as soon as the HTML head arrives (browsers without AVIF skip the preload and take the WebP)
-  preload('/images/hero-quy-nhon-960.avif', { as: 'image', type: 'image/avif', imageSrcSet: HERO.avif, imageSizes: HERO.sizes, fetchPriority: 'high' });
   return (
     <>
       <Header inlineSearch={false} />

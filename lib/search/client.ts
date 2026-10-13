@@ -18,13 +18,18 @@ export function loadIndex(): Promise<SearchIndex | null> {
 
 type IdleWindow = Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
 
-/** Run `fn` (default: fetch the index) when the browser is idle after load — never competes with LCP / TBT. Returns a cleanup. */
+/**
+ * Run `fn` (default: fetch the index) a few seconds after load, when the browser is idle — well clear of hydration, so it
+ * never adds a task while the page is becoming interactive. Focusing the search box loads it at once anyway. Returns a cleanup.
+ */
 export function prefetchIndexWhenIdle(fn: () => void = () => void loadIndex()) {
   const w = window as IdleWindow;
   let idle: number | undefined, timer: ReturnType<typeof setTimeout> | undefined;
   const go = () => {
-    if (w.requestIdleCallback) idle = w.requestIdleCallback(fn, { timeout: 5000 });
-    else timer = setTimeout(fn, 2000);
+    timer = setTimeout(() => {
+      if (w.requestIdleCallback) idle = w.requestIdleCallback(fn, { timeout: 5000 });
+      else fn();
+    }, 6000);
   };
   if (document.readyState === 'complete') go();
   else window.addEventListener('load', go, { once: true });

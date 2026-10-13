@@ -18,7 +18,8 @@
 .est { font-size: 14px; color: var(--gray-700); }
 .est b { font-weight: 700; color: var(--ink-900); white-space: nowrap; }
 
-.sec { padding: 28px 0; border-top: 1px solid var(--gray-200); }
+/* sections below the first screen are laid out when they come near it (the first layout of the page is half as long on a phone) */
+.sec { padding: 28px 0; border-top: 1px solid var(--gray-200); content-visibility: auto; contain-intrinsic-size: auto 420px; }
 .h2 { margin-bottom: 16px; }
 .secHead { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin-bottom: 12px; }
 
