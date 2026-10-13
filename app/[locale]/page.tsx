@@ -5,13 +5,11 @@ import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { getBuildings, getListings } from '@/lib/repo';
 import { alternates, OG_LOCALE } from '@/lib/seo';
-import { DEMO } from '@/data/site';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { SmartSearch } from '@/components/SmartSearch';
 import { ListingCard } from '@/components/ListingCard';
 import { BuildingCard } from '@/components/BuildingCard';
-import { DemoBadge } from '@/components/Badges';
 import styles from './home.module.css';
 
 export const revalidate = 3600;
@@ -45,7 +43,6 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
           <div className={styles.heroText}>
             <div className={styles.pills}>
               <span className={styles.eyebrow}>{t('heroEyebrow')}</span>
-              {DEMO && <DemoBadge height={28} />}
             </div>
             <h1 className="h1">{t('heroTitle')}</h1>
             <p className={styles.sub}>{t('heroSub')}</p>
