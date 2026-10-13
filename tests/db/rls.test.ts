@@ -981,3 +981,22 @@ describe('public floor band (migration 28)', () => {
     await root(`update public.buildings set total_floors = null where id = $1`, [B]);
   });
 });
+
+describe('expected listing code (migration 29)', () => {
+  it('peeks the next code without taking it; staff only', async () => {
+    const seq = async () => (await root(`select code_prefix, code_seq from public.buildings where id = $1`, [B])).rows[0];
+    const b0 = await seq();
+    const want = `${b0.code_prefix}-${String(b0.code_seq + 1).padStart(3, '0')}`;
+    const got = async () => (await as(id(U.s1), (q) => q(`select public.peek_next_listing_code($1) as c`, [B]))).rows[0].c;
+    expect(await got()).toBe(want);
+    expect(await got()).toBe(want); // read-only: asking twice changes nothing
+    expect((await seq()).code_seq).toBe(b0.code_seq);
+    expect(await as('anon', (q) => denied(q(`select public.peek_next_listing_code($1)`, [B])))).toMatch(/permission denied/);
+    // the real code, when a listing is published, is exactly the one that was shown
+    await as(id(U.admin), async (q) => {
+      const c = (await q(`update public.listings set status = 'available' where id = $1 returning code`, [l2])).rows[0].code;
+      expect(c).toBe(want);
+      expect((await q(`select public.peek_next_listing_code($1) as c`, [B])).rows[0].c).not.toBe(want);
+    });
+  });
+});

@@ -16,7 +16,7 @@ import { ConfirmDialog } from './Danger';
 const PostDialog = dynamic(() => import('./PostDialog'), { ssr: false });
 
 export type ListRow = {
-  id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string | null;
+  id: string; code: string | null; /** drafts: the code the building would give next */ expected?: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string | null;
   beds: number | null; rent: number | null; assigned_to: string | null; assignee: string | null; verified_days: number | null;
   verify_tone: '' | 'warn' | 'red' | 'a-muted'; en_status: EnStatus; is_demo: boolean; rejected: boolean;
 };
@@ -184,7 +184,7 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed, b
             <div key={r.id} className={`a-list-row ${sel.has(r.id) ? 'on' : ''}`}>
               <label className="a-list-check"><input type="checkbox" aria-label={`Chọn ${r.code ?? r.unit_no ?? 'căn nháp'}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></label>
               <div className="c-code">
-                <Link href={`/admin/can-ho/${r.id}`}>{r.code ?? 'Chưa có mã'}</Link>
+                <Link href={`/admin/can-ho/${r.id}`}>{r.code ?? (r.expected ? <i className="a-muted" title="Mã dự kiến — cấp chính thức khi đăng">{r.expected}</i> : 'Chưa có mã')}</Link>
                 {r.is_demo && <span className="a-badge outline">demo</span>}
               </div>
               <div className="c-bld">{r.building_name}</div>

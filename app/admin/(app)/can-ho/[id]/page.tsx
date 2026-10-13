@@ -10,6 +10,7 @@ import { STATUS_LABEL, STATUS_TONE, fmtDateTime, daysSince, type ListingStatusAl
 import { ListingForm, type BuildingOpt, type ListingData, type UnitData } from '@/components/admin/ListingForm';
 import type { PhotoView } from '@/components/admin/PhotoManager';
 import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
+import { ExpectedCode } from '@/components/admin/ExpectedCode';
 import { ListingRowActions } from '@/components/admin/ListingRowActions';
 import { PostButton } from '@/components/admin/PostButton';
 import { ListingDeleteMenuLazy as ListingDeleteMenu } from '@/components/admin/ListingDeleteMenuLazy';
@@ -51,6 +52,8 @@ export default async function EditListingPage({ params, searchParams }: { params
   }));
 
   const status = listing.status as ListingStatusAll;
+  // draft / pending: the code the building would give next (preview only)
+  const expected = listing.code ? null : ((await sb.rpc('peek_next_listing_code', { p_building: unit.building_id })).data as string | null);
   const building = (buildings ?? []).find((b) => b.id === unit.building_id);
   const editor = listing.updated_by ? dir.get(listing.updated_by)?.name : null;
   const vd = daysSince(listing.verified_at);
@@ -62,7 +65,7 @@ export default async function EditListingPage({ params, searchParams }: { params
         <div>
           <Link href="/admin/can-ho" className="a-small" style={{ color: 'var(--blue-500)' }}>← Căn hộ</Link>
           <h1 className="a-h1" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            {listing.code ?? 'Căn mới (chưa có mã)'}
+            {listing.code ?? <ExpectedCode buildingId={unit.building_id} initial={expected} />}
             <span className={`a-badge dot ${STATUS_TONE[status]}`}>{STATUS_LABEL[status]}</span>
             {listing.is_demo && <span className="a-badge outline">demo</span>}
           </h1>

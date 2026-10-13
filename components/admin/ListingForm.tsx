@@ -20,6 +20,7 @@ const PasteBox = dynamic(() => import('./PasteBox').then((m) => m.PasteBox), {
   ),
 });
 import { DescEditor } from './DescEditor';
+import { BUILDING_EVENT, SAVED_EVENT } from './ExpectedCode';
 import type { EnStatus, GlossaryPair } from '@/lib/translateCore';
 
 export type BuildingOpt = { id: string; name: string; slug: string; aliases: string[]; prefix: string | null; total_floors: number | null; default_fees: { net?: number }; fees: BuildingFees };
@@ -97,6 +98,7 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   // saved → the local draft is obsolete
   useEffect(() => {
     if (state.ok) try { localStorage.removeItem(draftKey); } catch {}
+    if (state.ok) window.dispatchEvent(new Event(SAVED_EVENT));
   }, [state, draftKey]);
 
   // warn before leaving with unsaved changes
@@ -151,6 +153,7 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   const onBuilding = (id: string) => {
     const nb = buildings.find((b) => b.id === id);
     setF((c) => ({ ...c, building_id: id, net: c.net || (nb?.default_fees?.net != null ? fmtVnd(nb.default_fees.net) : '') }));
+    window.dispatchEvent(new CustomEvent(BUILDING_EVENT, { detail: id })); // header: "Mã dự kiến" follows the building
   };
   const net = {
     name: 'net', value: f.net, inputMode: 'numeric' as const, className: 'input',

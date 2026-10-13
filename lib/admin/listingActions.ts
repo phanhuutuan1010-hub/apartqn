@@ -60,6 +60,15 @@ export async function createDraft(_: ActionResult, fd: FormData): Promise<Action
   redirect(`/admin/can-ho/${data}?created=1${note}`);
 }
 
+/** "Mã dự kiến": the code this building would hand out next (read-only peek; null = the building has no prefix). */
+export async function peekListingCode(building: string): Promise<string | null> {
+  await requireStaff();
+  if (!/^[0-9a-f-]{36}$/.test(building)) return null;
+  const sb = await supabaseServer();
+  const { data } = await sb.rpc('peek_next_listing_code', { p_building: building });
+  return (data as string | null) ?? null;
+}
+
 // ───────────────────────── save ─────────────────────────
 const int = (min: number, max: number) => z.preprocess((v) => (v === '' || v == null ? null : Number(v)), z.number().int().min(min).max(max).nullable());
 const money = z.preprocess((v) => parseVnd(v as FormDataEntryValue), z.number().int().min(0).max(10_000_000_000).nullable());

@@ -19,6 +19,7 @@ const SORTS: Record<string, string> = {
 
 type Row = {
   id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string | null;
+  building_slug: string;
   beds: number | null; rent: number | null; assigned_to: string | null; verified_at: string | null;
   has_vi: boolean; has_en: boolean; en_outdated: boolean; en_status: EnStatus;
   photo_count: number; is_demo: boolean; rejection_reason: string | null;
@@ -30,7 +31,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   const sb = await supabaseServer();
   const [dir, { data: buildings }, { data: settings }] = await Promise.all([
     staffDirectory(),
-    sb.from('buildings').select('slug, name').order('sort'),
+    sb.from('buildings').select('slug, name, code_prefix, code_seq').order('sort'),
     sb.from('settings').select('verify_remind_days, verify_hide_days, last_backup_at').maybeSingle(),
   ]);
   const remind = settings?.verify_remind_days ?? 14, hide = settings?.verify_hide_days ?? 21;
@@ -54,6 +55,8 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   const rows = (data ?? []) as Row[];
   const base = '/admin/can-ho';
 
+  // drafts: the code their building would hand out next (same rule as peek_next_listing_code)
+  const nextCode = new Map((buildings ?? []).map((b) => [b.slug, b.code_prefix ? `${b.code_prefix}-${String(b.code_seq + 1).padStart(3, '0')}` : null]));
   const staffOptions = [...dir.values()].filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }));
 
   return (
@@ -87,7 +90,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           const d = daysSince(r.verified_at);
           const isPublic = r.status === 'available' || r.status === 'reserved';
           return {
-            id: r.id, code: r.code, status: r.status, building_name: r.building_name, floor: r.floor, unit_no: r.unit_no,
+            id: r.id, code: r.code, expected: r.code ? null : nextCode.get(r.building_slug) ?? null, status: r.status, building_name: r.building_name, floor: r.floor, unit_no: r.unit_no,
             beds: r.beds, rent: r.rent, assigned_to: r.assigned_to, assignee: r.assigned_to ? dir.get(r.assigned_to)?.name ?? '—' : null,
             verified_days: d, verify_tone: !isPublic || d == null ? 'a-muted' : d > hide ? 'red' : d > remind ? 'warn' : '',
             en_status: r.en_status, is_demo: r.is_demo, rejected: !!r.rejection_reason,
