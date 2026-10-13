@@ -295,5 +295,9 @@
   "qcBarForm": "Điền form ↓",
   "goneTitle": "Căn này hiện không còn",
   "goneSub": "Căn hộ bạn tìm đã được cho thuê hoặc gỡ khỏi website. Xem các căn đang trống khác bên dưới.",
-  "goneSee": "Xem căn đang trống"
+  "goneSee": "Xem căn đang trống",
+  "ebUnits": "Xem căn đang trống",
+  "ebBrowse": "Xem căn hộ",
+  "ebHelp": "Nhờ tìm giúp",
+  "ebAria": "Liên hệ ApartQN"
 }

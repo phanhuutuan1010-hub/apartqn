@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { Locale } from '@/i18n/routing';
-import { getBuildings, getListings } from '@/lib/repo';
+import { getBuildings, getListings, getContact } from '@/lib/repo';
 import { alternates, OG_LOCALE } from '@/lib/seo';
 import { DEMO } from '@/data/site';
 import { Header } from '@/components/Header';
@@ -28,7 +28,7 @@ export default async function ResultsPage({ params }: PageProps<'/[locale]/can-h
   const { locale } = (await params) as { locale: Locale };
   setRequestLocale(locale);
   const t = await getTranslations();
-  const [listings, buildings] = await Promise.all([getListings(), getBuildings()]);
+  const [listings, buildings, contact] = await Promise.all([getListings(), getBuildings(), locale === 'en' ? getContact() : undefined]);
 
   return (
     <>
@@ -39,8 +39,8 @@ export default async function ResultsPage({ params }: PageProps<'/[locale]/can-h
           {DEMO && <DemoBadge />}
         </div>
         {/* Static prerender shows the unfiltered list; the URL-driven view takes over on the client. */}
-        <Suspense fallback={<ResultsView listings={listings} buildings={buildings} />}>
-          <ResultsFromUrl listings={listings} buildings={buildings} />
+        <Suspense fallback={<ResultsView listings={listings} buildings={buildings} contact={contact} />}>
+          <ResultsFromUrl listings={listings} buildings={buildings} contact={contact} />
         </Suspense>
       </main>
       <Footer />

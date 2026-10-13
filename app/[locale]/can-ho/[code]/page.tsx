@@ -14,6 +14,7 @@ import { Gallery } from '@/components/Gallery';
 import { galleryLabels } from '@/lib/galleryLabels';
 import { CostBreakdown } from '@/components/CostBreakdown';
 import { ContactBox, MobileContactBar } from '@/components/ContactBox';
+import { EnBarAuto } from '@/components/EnBarAuto';
 import { ViewingRequestForm } from '@/components/ViewingRequestForm';
 import { LocationBlock } from '@/components/LocationBlock';
 import { ListingCard } from '@/components/ListingCard';
@@ -207,10 +208,14 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
         </section>
       </div>
 
-      <div className={styles.bar}>
-        <MobileContactBar x={x} contact={contact} />
-      </div>
+      {/* phones: vi keeps its in-page bar; en pages use the global bar */}
+      {l === 'vi' && (
+        <div className={styles.bar}>
+          <MobileContactBar x={x} contact={contact} />
+        </div>
+      )}
       <Footer />
+      <EnBarAuto kind="listing" listing={x} />
     </>
   );
 }

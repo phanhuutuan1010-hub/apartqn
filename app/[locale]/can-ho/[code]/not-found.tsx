@@ -4,6 +4,7 @@ import { getBuildings, getListings } from '@/lib/repo';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ListingCard } from '@/components/ListingCard';
+import { EnBarAuto } from '@/components/EnBarAuto';
 
 /**
  * A listing code that is no longer public (rented out and removed, hidden, deleted). 404 → not indexed, not in the sitemap.
@@ -34,6 +35,7 @@ export default async function ListingGone() {
         )}
       </main>
       <Footer />
+      <EnBarAuto kind="home" />
     </>
   );
 }

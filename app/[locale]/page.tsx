@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { preload } from 'react-dom';
+import { EnBarAuto } from '@/components/EnBarAuto';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
@@ -109,6 +110,7 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
         </section>
       </main>
       <Footer />
+      <EnBarAuto kind="home" />
     </>
   );
 }

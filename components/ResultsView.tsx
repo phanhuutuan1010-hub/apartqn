@@ -11,6 +11,9 @@ import { textMatches } from '@/lib/search/text';
 import { similarListings } from '@/lib/search/similar';
 import { logSearchMiss } from '@/lib/search/miss';
 import { SearchRequestForm } from './SearchRequestForm';
+import { EnBar } from './EnBar';
+import { minRent } from '@/lib/minRent';
+import type { SiteContact } from '@/lib/repo';
 import { FilterPanel } from './FilterPanel';
 import { SmartSearch } from './SmartSearch';
 import { ListingCard } from './ListingCard';
@@ -18,7 +21,7 @@ import styles from './ResultsView.module.css';
 
 const FilterSheet = dynamic(() => import('./FilterSheet'), { ssr: false });
 
-type Props = { listings: Listing[]; buildings: Building[] };
+type Props = { listings: Listing[]; buildings: Building[]; /** English pages only: numbers for the phone bottom bar */ contact?: SiteContact };
 
 /** Reads filters from the URL (?b=&beds=&rent=&furn=&pets=1&date=&rented=1&sort=). */
 export function ResultsFromUrl(props: Props) {
@@ -27,7 +30,7 @@ export function ResultsFromUrl(props: Props) {
 }
 
 /** Static fallback (prerender): default filters. */
-export function ResultsView({ listings, buildings, query = '' }: Props & { query?: string }) {
+export function ResultsView({ listings, buildings, contact, query = '' }: Props & { query?: string }) {
   const t = useTranslations();
   const l = useLocale();
   const { f, sort } = useMemo(() => parseQuery(new URLSearchParams(query)), [query]);
@@ -164,6 +167,8 @@ export function ResultsView({ listings, buildings, query = '' }: Props & { query
         </div>
       </div>
 
+      {/* en phones: "From {lowest rent of these results}" + "Help me find" (steps aside while the inline request form is open) */}
+      {contact && l === 'en' && <EnBar contact={contact} message={F.msgG('en')} price={minRent(matched)} from cta="help" hideIds={['sr-title']} query={typed} criteria={f} />}
       {sheet && (
         <FilterSheet
           value={f}

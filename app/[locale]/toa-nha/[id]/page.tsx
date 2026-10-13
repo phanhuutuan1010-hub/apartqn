@@ -1,3 +1,4 @@
+import { EnBarAuto } from '@/components/EnBarAuto';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
@@ -186,6 +187,7 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
         </section>
       </div>
       <Footer />
+      <EnBarAuto kind="building" building={b} />
     </>
   );
 }

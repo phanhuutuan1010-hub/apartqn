@@ -2,6 +2,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { EnBarAuto } from '@/components/EnBarAuto';
 
 export default function NotFound() {
   const t = useTranslations();
@@ -13,6 +14,7 @@ export default function NotFound() {
         <Link href="/" className="btn btn-secondary">{t('nfBack')}</Link>
       </main>
       <Footer />
+      <EnBarAuto kind="home" />
     </>
   );
 }

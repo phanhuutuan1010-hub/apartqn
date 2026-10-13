@@ -1,0 +1,20 @@
+/* English pages, phones only: the global bottom contact bar */
+.wrap, .space { display: none; }
+@media (max-width: 767.98px) {
+  .wrap { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; transition: transform .2s; }
+  .hidden { transform: translateY(110%); visibility: hidden; transition: transform .2s, visibility 0s .2s; }
+  /* room under the page so the bar never covers the last lines */
+  .space { display: block; height: calc(80px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) { .wrap, .hidden { transition: none; } }
+.btn { border: 0; font: inherit; cursor: pointer; width: 100%; }
+/* the longest labels ("See available units") must fit a 320 px phone on one line */
+.label { font-size: clamp(13px, 4.1vw, 17px); }
+
+.dlg { width: 100%; max-width: 520px; max-height: 92dvh; margin: auto auto 0; padding: 0; border: 0; border-radius: 20px 20px 0 0; background: var(--white); color: var(--ink-900); overflow: auto; }
+.dlg::backdrop { background: rgba(13, 15, 20, .55); }
+.sheet { display: flex; flex-direction: column; gap: 12px; padding: 20px var(--px) calc(20px + env(safe-area-inset-bottom)); }
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.title { margin: 0; font-size: 20px; font-weight: 800; line-height: 1.25; }
+.sub { margin: 0; font-size: 15px; line-height: 1.5; color: var(--gray-700); }
+.x { flex: none; width: 44px; height: 44px; margin: -8px -8px 0 0; border: 0; border-radius: 50%; background: var(--gray-100, #F2F4F7); color: var(--ink-900); font-size: 24px; line-height: 1; cursor: pointer; }
