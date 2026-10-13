@@ -6,7 +6,7 @@ import { requireStaff, staffDirectory } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
 import { FEE_FIELDS, toBuildingFees } from '@/lib/fees';
-import { STATUS_LABEL, STATUS_TONE, fmtDateTime, daysSince, type ListingStatusAll } from '@/lib/admin/labels';
+import { daysAgoIso, STATUS_LABEL, STATUS_TONE, fmtDateTime, daysSince, type ListingStatusAll } from '@/lib/admin/labels';
 import { ListingForm, type BuildingOpt, type ListingData, type UnitData } from '@/components/admin/ListingForm';
 import type { PhotoView } from '@/components/admin/PhotoManager';
 import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
@@ -53,6 +53,17 @@ export default async function EditListingPage({ params, searchParams }: { params
 
   const status = listing.status as ListingStatusAll;
   // draft / pending: the code the building would give next (preview only)
+  // posts: clicks on this listing's short link and leads that came from it, last 30 days
+  let postStats: { n: number; fb: number; zalo: number; leads: number } | null = null;
+  if (listing.code) {
+    const since = daysAgoIso(30);
+    const [{ data: clicks }, { count: leadN }] = await Promise.all([
+      sb.from('post_clicks').select('source').eq('code', listing.code).gte('created_at', since).limit(5000),
+      sb.from('leads').select('id', { count: 'exact', head: true }).eq('listing_id', id).eq('utm_campaign', 'post').gte('created_at', since),
+    ]);
+    const c = clicks ?? [];
+    postStats = { n: c.length, fb: c.filter((x) => x.source === 'fb').length, zalo: c.filter((x) => x.source === 'zalo').length, leads: leadN ?? 0 };
+  }
   const expected = listing.code ? null : ((await sb.rpc('peek_next_listing_code', { p_building: unit.building_id })).data as string | null);
   const building = (buildings ?? []).find((b) => b.id === unit.building_id);
   const editor = listing.updated_by ? dir.get(listing.updated_by)?.name : null;
@@ -74,12 +85,13 @@ export default async function EditListingPage({ params, searchParams }: { params
             {' · '}Sửa lần cuối {editor ? <>bởi <b>{editor}</b> </> : ''}lúc {fmtDateTime(listing.updated_at)}
             {isPublic && vd != null && <> · Xác nhận còn trống {vd === 0 ? 'hôm nay' : `${vd} ngày trước`}</>}
           </div>
+          {postStats && <div className="a-sub">Từ bài đăng: <b>{postStats.n}</b> lượt bấm (FB {postStats.fb} · Zalo {postStats.zalo}) · <b>{postStats.leads}</b> lead (30 ngày)</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {isPublic && listing.code && (
             <a className="a-btn a-btn-ghost a-btn-sm" href={`/can-ho/${listing.code.toLowerCase()}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
           )}
-          <PostButton id={id} />
+          <PostButton id={id} disabled={!(isPublic && listing.code) && status !== 'rented'} />
           <ListingRowActions id={id} status={status} role={me.role} canPublish={me.can_publish} />
           {(me.role === 'admin' || !listing.code) && <ListingDeleteMenu id={id} code={listing.code} label={`${building?.name ?? ''} · tầng ${unit.floor}${unit.unit_no ? ` · căn ${unit.unit_no}` : ''}`} />}
         </div>

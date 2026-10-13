@@ -235,7 +235,7 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed, b
                   <summary className="a-btn a-btn-ghost a-btn-sm" aria-label="Thao tác"><MoreHorizontal size={16} aria-hidden /></summary>
                   <div role="menu" onClick={(e) => (e.currentTarget.parentElement as HTMLDetailsElement).removeAttribute('open')}>
                     <Link role="menuitem" href={`/admin/can-ho/${r.id}`}>Mở / sửa</Link>
-                    <button type="button" role="menuitem" onClick={() => setPostFor(r.id)}>Tạo bài đăng</button>
+                    <button type="button" role="menuitem" disabled={!(r.code && ['available', 'reserved', 'rented'].includes(r.status))} title="Đăng căn để có link" onClick={() => setPostFor(r.id)}>Tạo bài đăng</button>
                     <Link role="menuitem" href={`/admin/can-ho/moi?from=${r.id}`}>Nhân bản</Link>
                     {r.code && (r.status === 'available' || r.status === 'reserved' || r.status === 'rented') && (
                       <a role="menuitem" href={`/can-ho/${r.code.toLowerCase()}`} target="_blank" rel="noopener">Xem trên website</a>

@@ -1,79 +1,86 @@
 import { describe, expect, it } from 'vitest';
-import { buildPost, type PostData } from '@/lib/listing/post';
+import { buildPost, hooksFor, shortLink, type PostData } from '@/lib/listing/post';
+import { utmFromCookie } from '@/lib/attribution';
 
 const L: PostData = {
-  code: 'ALT-001', building: 'Altara Residences', beds: 2, area: 68, floorBand: 'high', furn: 'full',
-  rent: 13_500_000, mgmt: 822_800, mgmtPaidBy: 'tenant', moveIn: '2026-10-20', url: 'https://apartqn.vercel.app/can-ho/alt-001',
+  code: 'ALT-001', building: 'Altara Residences', beds: 2, floorBand: 'high', furn: 'full', view: 'sea',
+  rent: 13_500_000, moveIn: '2026-10-01', photoCount: 9, ownPhotos: true, published: true,
 };
-const today = '2026-10-09';
+const o = { origin: 'https://apartqn.vercel.app', today: '2026-10-13' };
+const lines = (s: string) => s.split('\n\n').map((b) => b.split('\n'));
 
-describe('Tạo bài đăng', () => {
-  it('Facebook vi: every listed field, hotline and link', () => {
-    const t = buildPost(L, { channel: 'facebook', lang: 'vi', phone: '0363 480 154', today });
-    expect(t).toContain('🏢 CHO THUÊ CĂN HỘ 2 PN · Altara Residences');
-    expect(t).toContain('• Mã căn: ALT-001');
-    expect(t).toContain('• Diện tích 68 m² · Tầng cao');
-    expect(t).toContain('• Nội thất đầy đủ');
-    expect(t).toContain('• Giá thuê: 13.500.000 đ/tháng');
-    expect(t).toContain('• Phí quản lý: 822.800 đ/tháng (khách trả)');
-    expect(t).toContain('• Dọn vào từ 20/10');
-    expect(t).toContain('📞 Liên hệ: 0363 480 154');
-    expect(t).toContain('🔗 https://apartqn.vercel.app/can-ho/alt-001');
+describe('Tạo bài đăng v2', () => {
+  it('Facebook VI/EN with photos: two blocks of at most 4 lines, city in the hook, short link, hashtags, no phone', () => {
+    const p = buildPost(L, { ...o, channel: 'facebook', pair: 'vi-en', mode: 'img', hook: 'price' });
+    const [vi, en, tags] = lines(p.text);
+    expect(vi).toEqual([
+      '🏠 2 phòng ngủ · Altara Residences, Quy Nhơn — chỉ 13.500.000 đ/tháng',
+      'Dọn vào ngay · Tầng cao',
+      '📸 9 ảnh thực tế + chi phí hằng tháng chi tiết',
+      '👉 https://apartqn.vercel.app/c/alt-001?s=fb&v=img&l=vi-en',
+    ]);
+    expect(en[0]).toBe('🏠 2-bedroom · Altara Residences, Quy Nhon — only 13,500,000 VND/month');
+    expect(en[1]).toBe('Available now · High floor');
+    expect(en.length).toBeLessThanOrEqual(4);
+    expect(tags).toEqual(['#ApartQN #QuyNhon #ChoThueCanHo #QuyNhonApartment']);
+    expect(p.text).not.toMatch(/\b0\d{9}\b|📞|Tầng \d|Floor \d|undefined|null/);
+    expect(p.comment).toBeUndefined();
   });
 
-  it('Zalo is short (few lines) and keeps code, price, phone, link', () => {
-    const t = buildPost(L, { channel: 'zalo', lang: 'vi', phone: '0900', today });
-    expect(t.split('\n').length).toBeLessThanOrEqual(5);
-    expect(t).toMatch(/^Cho thuê ALT-001 · Altara Residences — 2 PN · 68 m² · Tầng cao · Nội thất đầy đủ · 13\.500\.000 đ\/tháng/);
-    expect(t).toContain('LH: 0900');
-    expect(t).toContain('https://apartqn.vercel.app/can-ho/alt-001');
+  it('link in the first comment: no link in the post, a separate comment line', () => {
+    const p = buildPost(L, { ...o, channel: 'facebook', pair: 'vi-en', mode: 'comment', hook: 'price' });
+    expect(p.text).not.toContain('/c/alt-001');
+    expect(p.comment).toBe('👉 https://apartqn.vercel.app/c/alt-001?s=fb&v=comment&l=vi-en');
+    expect(lines(p.text)[0]).toHaveLength(3);
   });
 
-  it('English templates', () => {
-    const fb = buildPost(L, { channel: 'facebook', lang: 'en', phone: '+84 900', today });
-    expect(fb).toContain('🏢 APARTMENT FOR RENT 2 bedrooms · Altara Residences');
-    expect(fb).toContain('• Rent: 13,500,000 VND/month');
-    expect(fb).toContain('• Management fee: 822,800 VND/month (tenant)');
-    expect(fb).toContain('• Available from 20 Oct');
-    expect(buildPost({ ...L, beds: 1 }, { channel: 'zalo', lang: 'en', phone: '', today })).toMatch(/^For rent: ALT-001 · Altara Residences — 1 bedroom/);
+  it('hooks rotate: feature-first only with a stored feature; move-in-first leads with the date', () => {
+    expect(hooksFor(L)).toEqual(['price', 'feature', 'move']);
+    expect(hooksFor({ ...L, view: 'city', furn: 'basic', floorBand: 'mid' })).toEqual(['price', 'move']);
+    const f = buildPost(L, { ...o, channel: 'facebook', hook: 'feature' });
+    expect(lines(f.text)[0].slice(0, 2)).toEqual(['🌊 View biển · 2 phòng ngủ · Altara Residences, Quy Nhơn', '💰 13.500.000 đ/tháng · Dọn vào ngay']);
+    const m = buildPost({ ...L, moveIn: '2026-11-05' }, { ...o, channel: 'facebook', hook: 'move' });
+    expect(lines(m.text)[0][0]).toBe('🔑 Dọn vào từ 05/11 · 2 phòng ngủ · Altara Residences, Quy Nhơn');
+    expect(lines(m.text)[1][0]).toBe('🔑 Available from 5 Nov · 2-bedroom · Altara Residences, Quy Nhon');
+    // a hook the listing cannot use falls back to the first usable one
+    expect(buildPost({ ...L, view: null, furn: null, floorBand: null }, { ...o, channel: 'facebook', hook: 'feature' }).text).toMatch(/^🏠/);
   });
 
-  it('skips empty fields and never prints placeholders', () => {
-    const t = buildPost({ ...L, area: null, floorBand: null, furn: null, mgmt: null, mgmtPaidBy: null, moveIn: null, url: null }, { channel: 'facebook', lang: 'vi', phone: '', today });
-    expect(t).not.toMatch(/Diện tích|Tầng|Nội thất|Phí quản lý|Dọn vào|🔗|📞|undefined|null|NaN/);
-    expect(t).toContain('• Giá thuê: 13.500.000 đ/tháng');
+  it('RU/EN: Russian block from templates, city in Russian, link lands on the English page pair', () => {
+    const p = buildPost(L, { ...o, channel: 'facebook', pair: 'ru-en', mode: 'link', hook: 'price' });
+    const [ru, en, tags] = lines(p.text);
+    expect(ru[0]).toBe('🏠 2 спальни · Altara Residences, Куинён — всего 13 500 000 VND/мес.');
+    expect(ru[1]).toBe('Заезд сразу · Высокий этаж');
+    expect(ru[2]).toBe('📸 9 реальных фото + подробные ежемесячные расходы');
+    expect(ru[3]).toBe('👉 https://apartqn.vercel.app/c/alt-001?s=fb&v=link&l=ru-en');
+    expect(en[0]).toContain('Quy Nhon');
+    expect(tags[0]).toBe('#ApartQN #QuyNhon #АрендаКвартиры #Куинён');
   });
 
-  it('owner pays the management fee; move-in in the past = available now', () => {
-    const t = buildPost({ ...L, mgmtPaidBy: 'owner', moveIn: '2026-10-01' }, { channel: 'facebook', lang: 'vi', phone: '1', today });
-    expect(t).toContain('• Phí quản lý: chủ nhà trả');
-    expect(t).not.toContain('822.800');
-    expect(t).toContain('• Dọn vào ngay');
+  it('Zalo: Vietnamese only, 2 lines (hook with the city + short link)', () => {
+    const p = buildPost(L, { ...o, channel: 'zalo', hook: 'price' });
+    expect(p.text.split('\n')).toEqual(['🏠 2 phòng ngủ · Altara Residences, Quy Nhơn — chỉ 13.500.000 đ/tháng', '👉 https://apartqn.vercel.app/c/alt-001?s=zalo&v=link&l=vi-en']);
   });
 
-  it('studio, unpublished (no link)', () => {
-    const t = buildPost({ ...L, beds: 0, code: null, url: null }, { channel: 'zalo', lang: 'vi', phone: '0900', today });
-    expect(t).toMatch(/^Cho thuê · Altara Residences — Studio/);
-    expect(t).not.toContain('http');
+  it('the city is not repeated when the building name already has it; empty fields are skipped', () => {
+    const p = buildPost({ ...L, building: 'HAGL Quy Nhơn', photoCount: 0, ownPhotos: false, floorBand: null }, { ...o, channel: 'facebook', hook: 'price' });
+    const [vi, en] = lines(p.text);
+    expect(vi[0]).toBe('🏠 2 phòng ngủ · HAGL Quy Nhơn — chỉ 13.500.000 đ/tháng');
+    expect(en[0]).not.toContain('Quy Nhon');
+    expect(vi[1]).toBe('Dọn vào ngay');
+    expect(vi[2]).toBe('📋 Chi phí hằng tháng chi tiết ở trang căn hộ');
+    expect(buildPost({ ...L, photoCount: 5, ownPhotos: false }, { ...o, channel: 'facebook' }).text).toContain('📸 5 ảnh + chi phí');
   });
 });
 
-describe('Tạo bài đăng EN excerpt', () => {
-  const base = { code: 'ALT-001', building: 'Altara', beds: 2, area: 68, floorBand: null, furn: 'full' as const, rent: 13_500_000, mgmt: null, mgmtPaidBy: null, moveIn: null, url: null };
-  it('EN Facebook includes the translated excerpt; VI and Zalo do not', () => {
-    const d = { ...base, excerptEn: 'Bright corner unit with sea view.' };
-    expect(buildPost(d, { channel: 'facebook', lang: 'en', phone: '0905' })).toContain('Bright corner unit with sea view.');
-    expect(buildPost(d, { channel: 'facebook', lang: 'vi', phone: '0905' })).not.toContain('Bright corner');
-    expect(buildPost(d, { channel: 'zalo', lang: 'en', phone: '0905' })).not.toContain('Bright corner');
+describe('short link + attribution', () => {
+  it('link carries source, post form and language pair', () => {
+    expect(shortLink('https://x.vn/', 'ALT-001', 'facebook', 'comment', 'ru-en')).toBe('https://x.vn/c/alt-001?s=fb&v=comment&l=ru-en');
   });
-  it('no excerpt → structured fields only', () => expect(buildPost(base, { channel: 'facebook', lang: 'en', phone: '' })).not.toMatch(/undefined|null/));
-});
-
-describe('public wording: floor band + move-in', () => {
-  it('never prints a floor number; EN date is "5 Nov"', () => {
-    const t = buildPost({ ...L, moveIn: '2026-11-05' }, { channel: 'facebook', lang: 'en', phone: '', today });
-    expect(t).toContain('High floor');
-    expect(t).toContain('Available from 5 Nov');
-    expect(t).not.toMatch(/Floor 18|thg/);
+  it('first-touch cookie → utm fields; anything malformed is ignored', () => {
+    expect(utmFromCookie('a=1; aqn_ft=fb.img.vi-en.ALT-001; b=2')).toEqual({ utm_source: 'facebook', utm_medium: 'social', utm_campaign: 'post', utm_content: 'ALT-001_img_vi-en' });
+    expect(utmFromCookie('aqn_ft=zalo.link.vi-en.TMS-012').utm_source).toBe('zalo');
+    expect(utmFromCookie('aqn_ft=evil.img.vi-en.ALT-001')).toEqual({});
+    expect(utmFromCookie(null)).toEqual({});
   });
 });

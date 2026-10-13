@@ -1000,3 +1000,30 @@ describe('expected listing code (migration 29)', () => {
     });
   });
 });
+
+describe('post clicks (migration 30)', () => {
+  it('anon logs through the rpc only; junk dropped; staff read, anon cannot; leads carry utm fields', async () => {
+    await root(`delete from public.post_clicks`);
+    await as('anon', async (q) => {
+      await q(`select public.log_post_click('alt-001', 'fb', 'img', 'vi-en')`);
+      await q(`select public.log_post_click('ALT-001', 'zalo', 'link', 'vi-en')`);
+      await q(`select public.log_post_click('not a code', 'fb', 'img', 'vi-en')`);
+      await q(`select public.log_post_click('ALT-001', 'tiktok', 'img', 'vi-en')`);
+      expect(await denied(q(`insert into public.post_clicks (code, source, variant, lang_pair) values ('ALT-001', 'fb', 'img', 'vi-en')`))).toMatch(/permission denied/);
+      expect(await denied(q(`select * from public.post_clicks`))).toMatch(/permission denied/);
+    });
+    // as() rolls back: log for real, then read as staff
+    await root(`select public.log_post_click('alt-001', 'fb', 'img', 'vi-en')`);
+    await root(`select public.log_post_click('ALT-001', 'zalo', 'link', 'vi-en')`);
+    await root(`select public.log_post_click('nope', 'fb', 'img', 'vi-en')`);
+    const rows = (await as(id(U.s1), (q) => q(`select code, source, variant, lang_pair from public.post_clicks order by id`))).rows;
+    expect(rows).toEqual([{ code: 'ALT-001', source: 'fb', variant: 'img', lang_pair: 'vi-en' }, { code: 'ALT-001', source: 'zalo', variant: 'link', lang_pair: 'vi-en' }]);
+    const cols = Object.keys((await root(`select * from public.post_clicks limit 1`)).rows[0]).sort();
+    expect(cols).toEqual(['code', 'created_at', 'id', 'lang_pair', 'source', 'variant']); // nothing about the visitor
+    await as('service', async (q) => {
+      const r = await q(`insert into public.leads (name, phone, utm_source, utm_medium, utm_campaign, utm_content) values ('A', '0905123456', 'facebook', 'social', 'post', 'ALT-001_img_vi-en') returning utm_campaign`);
+      expect(r.rows[0].utm_campaign).toBe('post');
+    });
+    await root(`delete from public.post_clicks`);
+  });
+});

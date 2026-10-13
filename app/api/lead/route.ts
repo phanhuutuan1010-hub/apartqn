@@ -5,6 +5,7 @@ import { clientIp, rateLimit } from '@/lib/rateLimit';
 import { supabaseSecret } from '@/lib/supabase/secret';
 import { adminUrl, htmlRows, leadEmail, telegram, tgRows } from '@/lib/notify';
 import { fmtPhone, isVnMobile } from '@/lib/phone';
+import { utmFromCookie, type Utm } from '@/lib/attribution';
 
 export const runtime = 'nodejs';
 
@@ -28,7 +29,7 @@ async function notifyTelegram(targets: (string | null | undefined)[], html: stri
   return res.some(Boolean);
 }
 
-async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>) {
+async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>, attr: Partial<Utm>) {
   const code = lead.code.toUpperCase();
   const { data: l } = await sb.from('listings')
     .select('id, code, status, units(assigned_to, buildings(name))')
@@ -45,6 +46,7 @@ async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>) {
 
   const duration = vi[`dur${lead.duration}` as 'dur0'];
   const { data: row, error } = await sb.from('leads').insert({
+    ...attr,
     listing_id: l.id, name: lead.name, phone: lead.phone, channel: 'web', locale: lead.locale,
     preferred_date: lead.date || null, duration_months: duration, page: lead.page || null, assigned_to: assignee?.id ?? null,
   }).select('id').single();
@@ -66,8 +68,9 @@ async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>) {
 }
 
 /** "Để lại số, chúng tôi gọi lại" on /ky-gui: a consign lead with only a name + phone (admins only until assigned). */
-async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>) {
+async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, attr: Partial<Utm>) {
   const { data: row, error } = await sb.from('leads').insert({
+    ...attr,
     type: 'consign', name: lead.owner, phone: lead.phone, channel: 'web', locale: lead.locale, page: lead.page || null,
     photo_paths: [], payload: { source: 'callback' }, assigned_to: null,
     message: 'Chủ nhà nhờ gọi lại (để lại số ở trang ký gửi).',
@@ -85,7 +88,7 @@ async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>) 
   return { saved: !error, tg, mail };
 }
 
-async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>) {
+async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, attr: Partial<Utm>) {
   // photos must really exist in the upload folder we issued
   let photos: string[] = [];
   if (lead.photos.length) {
@@ -105,6 +108,7 @@ async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>) {
     floor: lead.floor || null, area: lead.area || null, beds: lead.beds || null, rent: lead.rent,
   }).filter(([, v]) => v != null));
   const { data: row, error } = await sb.from('leads').insert({
+    ...attr,
     type: 'consign', name: lead.owner, phone: lead.phone, channel: 'web', locale: lead.locale, page: lead.page || null,
     photo_paths: photos, payload, assigned_to: null,
   }).select('id').single();
@@ -145,7 +149,7 @@ function criteriaLine(c: Extract<Lead, { type: 'search_request' }>['criteria'], 
   return parts.join(' · ');
 }
 
-async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_request' }>) {
+async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_request' }>, attr: Partial<Utm>) {
   let bName: string | undefined;
   if (lead.criteria.b) {
     const { data: b } = await sb.from('buildings').select('name').eq('slug', lead.criteria.b).maybeSingle();
@@ -155,6 +159,7 @@ async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_r
   const adminList = await admins(sb);
   const message = [lead.need, lead.query && `Đã tìm: “${lead.query}”`, line && `Điều kiện: ${line}`].filter(Boolean).join('\n');
   const { data: row, error } = await sb.from('leads').insert({
+    ...attr,
     name: lead.name, phone: lead.phone, channel: 'web', locale: lead.locale, message: message || null, page: lead.page || null,
     assigned_to: adminList[0]?.id ?? null, type: 'search', search: { query: lead.query, criteria: lead.criteria },
   }).select('id').single();
@@ -196,7 +201,9 @@ export async function POST(req: Request) {
     return fail('CONFIG_MISSING', 500);
   }
   const sb = supabaseSecret();
-  const r = lead.type === 'viewing' ? await handleViewing(sb, lead) : lead.type === 'consign' ? await (lead.source === 'callback' ? handleCallback(sb, lead) : handleConsign(sb, lead)) : await handleSearchRequest(sb, lead);
+  // came from a post's short link in the last 30 days (first touch) → utm_* on the lead
+  const attr = utmFromCookie(req.headers.get('cookie'));
+  const r = lead.type === 'viewing' ? await handleViewing(sb, lead, attr) : lead.type === 'consign' ? await (lead.source === 'callback' ? handleCallback(sb, lead, attr) : handleConsign(sb, lead, attr)) : await handleSearchRequest(sb, lead, attr);
   if ('invalid' in r) return fail('INVALID', 400, ['code']);
   if (!r.saved && !r.tg && !r.mail) return fail('SEND_FAILED', 502, { db: 'failed', telegram: r.tg, email: r.mail });
   return NextResponse.json({ ok: true, channels: { db: r.saved ? 'saved' : 'failed', telegram: r.tg ? 'sent' : 'off', email: r.mail ? 'sent' : 'off' } });

@@ -76,6 +76,8 @@ export async function GET(req: NextRequest) {
   if (mErr) console.error('[cron] search_misses cleanup', mErr);
   const { count: clicksDeleted, error: cErr } = await sb.from('contact_clicks').delete({ count: 'exact' }).lt('created_at', new Date(now - 90 * DAY).toISOString());
   if (cErr) console.error('[cron] contact_clicks cleanup', cErr);
+  const { error: pErr } = await sb.from('post_clicks').delete().lt('created_at', new Date(now - 180 * DAY).toISOString());
+  if (pErr) console.error('[cron] post_clicks cleanup', pErr);
   const purged = await purgeExpired(sb);
   if (purged.errors.length) console.error('[cron] trash purge', purged.errors);
 

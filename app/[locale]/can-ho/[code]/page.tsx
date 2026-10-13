@@ -39,12 +39,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const t = await getTranslations({ locale });
   const title = `${F.bedsLong(x.beds, locale)} · ${t(`v_${x.view}`)} – ${b?.name}, ${mil(x.rent, locale)}${t('perMonth')} | ApartQN`;
   const description = `${x.code} · ${x.area} ${M2}${x.floorBand ? ' · ' + F.floorBand(x.floorBand, locale) : ''} · ${t('estMonthly')}: ${money(total(x), locale)}. ${t('fAbout')}`;
-  const image = x.photos[0] ?? b?.photos[0];
+  // 1200×630 card rendered for this listing (cover, building, rent…)
+  const image = `/og/listing/${codeSlug(x.code)}${locale === 'en' ? '.en' : ''}`;
   return {
     title: { absolute: title },
     description,
     alternates: alternates(locale, { pathname: '/can-ho/[code]', params: { code: codeSlug(x.code) } }),
-    openGraph: { title, description, locale: OG_LOCALE[locale], type: 'website', siteName: 'ApartQN', ...(image ? { images: [image] } : {}) },
+    openGraph: { title, description, locale: OG_LOCALE[locale], type: 'website', siteName: 'ApartQN', images: [{ url: image, width: 1200, height: 630 }] },
+    twitter: { card: 'summary_large_image', title, description, images: [image] },
   };
 }
 

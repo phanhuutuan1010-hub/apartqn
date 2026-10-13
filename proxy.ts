@@ -126,5 +126,6 @@ export default async function proxy(req: NextRequest) {
 
 export const config = {
   // Skip API, Next internals, and any path with a file extension (images, manifest, sitemap.xml…)
-  matcher: '/((?!api|_next|_vercel|.*\\..*).*)',
+  // … and the post short link (/c/…) and social cards (/og/…), which are route handlers, not localized pages
+  matcher: '/((?!api|_next|_vercel|c/|og/|.*\\..*).*)',
 };

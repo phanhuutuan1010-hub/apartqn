@@ -29,6 +29,11 @@ export default async function TodayPage() {
   const remind = settings?.verify_remind_days ?? 14;
   const warnBackup = settings?.backup_warn_days ?? 7;
   const head = { count: 'exact' as const, head: true };
+  // posts: the 3 listings whose short links were clicked most in the last 7 days
+  const { data: postClicks } = await sb.from('post_clicks').select('code').gte('created_at', daysAgoIso(7)).limit(5000);
+  const byCode = new Map<string, number>();
+  for (const r of postClicks ?? []) byCode.set(r.code, (byCode.get(r.code) ?? 0) + 1);
+  const topPosts = [...byCode].sort((x, y) => y[1] - x[1]).slice(0, 3);
 
   const [pendingRes, dueRes, dueCount, leadsRes, leadCount, trEn, all, missRes, dir, { data: buildings }, clicksRes] = await Promise.all([
     isAdmin
@@ -103,6 +108,12 @@ export default async function TodayPage() {
             );
           })}
         </section>
+      )}
+
+      {topPosts.length > 0 && (
+        <p className="a-small" style={{ margin: '0 0 14px' }}>
+          <b>Bài đăng (7 ngày):</b> {topPosts.map(([code, n], i) => <span key={code}>{i > 0 && ' · '}{code} <b>{n}</b> lượt bấm</span>)}
+        </p>
       )}
 
       {due.length > 0 && (
