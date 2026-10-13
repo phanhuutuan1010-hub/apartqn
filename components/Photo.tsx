@@ -1,4 +1,5 @@
 import { preload } from 'react-dom';
+import { coverScale, scaleSizes } from '@/lib/photoSizes';
 import styles from './Photo.module.css';
 
 type Props = {
@@ -8,7 +9,12 @@ type Props = {
   alt: string;
   /** optional mono label on the striped placeholder (no photo) — listing codes / fake shot names are not shown */
   label?: string;
+  /** slot widths (CSS). With `ratio` they are widened for photos the cover crop draws larger than the slot. */
   sizes: string;
+  /** the photo's own width / height */
+  ratio?: number;
+  /** the slot's width / height (default 4:3) */
+  box?: number;
   priority?: boolean;
   tone?: 'unit' | 'building';
   /** soft neutral backdrop while the photo loads (the photo paints over it) */
@@ -20,7 +26,8 @@ type Props = {
  * A plain <img>: the files were rendered once on upload at the widths we serve, so nothing re-compresses them
  * (and no image-optimizer quota is used).
  */
-export function Photo({ src, srcSet, alt, label, sizes, priority, tone = 'unit', blur }: Props) {
+export function Photo({ src, srcSet, alt, label, sizes: slot, ratio, box = 4 / 3, priority, tone = 'unit', blur }: Props) {
+  const sizes = scaleSizes(slot, coverScale(ratio, box));
   if (!src) {
     return (
       <div className={`${styles.ph} ${tone === 'building' ? styles.bld : ''}`} role="img" aria-label={alt}>

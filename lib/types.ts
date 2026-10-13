@@ -13,6 +13,8 @@ export const PHOTO_TAGS = ['toan-canh', 'tien-ich', 'sanh', 'view', 'can-ho', 'k
 export type PhotoTag = (typeof PHOTO_TAGS)[number];
 /** src: own shot / reference image; missing = not stated (no badge) */
 export type PhotoMeta = { tag: PhotoTag; src?: 'own' | 'reference'; w?: number; h?: number };
+/** width / height of a photo, when known */
+export const ratioOf = (m?: PhotoMeta) => (m?.w && m.h ? m.w / m.h : undefined);
 
 export type Building = {
   /** URL slug (e.g. "altara") */

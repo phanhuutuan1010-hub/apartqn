@@ -16,7 +16,7 @@ import { ConfirmDialog } from './Danger';
 const PostDialog = dynamic(() => import('./PostDialog'), { ssr: false });
 
 export type ListRow = {
-  id: string; code: string | null; /** drafts: the code the building would give next */ expected?: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string | null; floor_band?: 'low' | 'mid' | 'high' | null;
+  id: string; code: string | null; /** drafts: the code the building would give next */ expected?: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string | null; floor_band?: 'low' | 'mid' | 'high' | null; /** public photos flagged "tải lại ảnh gốc" */ low_photos?: number;
   beds: number | null; rent: number | null; assigned_to: string | null; assignee: string | null; verified_days: number | null;
   verify_tone: '' | 'warn' | 'red' | 'a-muted'; en_status: EnStatus; is_demo: boolean; rejected: boolean;
 };
@@ -188,7 +188,7 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed, b
                 {r.is_demo && <span className="a-badge outline">demo</span>}
               </div>
               <div className="c-bld">{r.building_name}</div>
-              <div className="c-unit">T{r.floor} · {r.floor_band ? { low: 'Thấp', mid: 'Trung', high: 'Cao' }[r.floor_band] : <span className="a-badge warn" title="Thiếu mức tầng">?</span>}{r.unit_no && <> · <span className="a-mono">{r.unit_no}</span></>}{r.beds != null && <span className="c-beds-m"> · {r.beds === 0 ? 'Studio' : `${r.beds} PN`}</span>}</div>
+              <div className="c-unit">T{r.floor} · {r.floor_band ? { low: 'Thấp', mid: 'Trung', high: 'Cao' }[r.floor_band] : <span className="a-badge warn" title="Thiếu mức tầng">?</span>}{r.unit_no && <> · <span className="a-mono">{r.unit_no}</span></>}{r.beds != null && <span className="c-beds-m"> · {r.beds === 0 ? 'Studio' : `${r.beds} PN`}</span>}{!!r.low_photos && <> <span className="a-badge warn" title="Ảnh chất lượng thấp – tải lại ảnh gốc">{r.low_photos} ảnh cần tải lại</span></>}</div>
               <div className="c-beds">{r.beds === 0 ? 'Studio' : r.beds ?? '—'}</div>
               <div className="c-rent">
                 {editRent === r.id ? (

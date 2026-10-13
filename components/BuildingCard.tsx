@@ -1,3 +1,4 @@
+import { ratioOf } from '@/lib/types';
 import { useLocale, useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import type { Building } from '@/lib/types';
@@ -16,7 +17,7 @@ export function BuildingCard({ b, listings }: { b: Building; listings: Listing[]
   return (
     <article className={styles.card}>
       <div className={styles.photo}>
-        <Photo src={b.thumbs[0]} srcSet={b.srcsets[0]} alt={b.name} label="building facade" tone="building" sizes="(min-width:1024px) 290px, (min-width:768px) 33vw, 50vw" />
+        <Photo src={b.thumbs[0]} srcSet={b.srcsets[0]} ratio={ratioOf(b.photoMeta?.[0])} alt={b.name} label="building facade" tone="building" sizes="(min-width:1024px) 290px, (min-width:768px) 33vw, 50vw" />
       </div>
       <div className={styles.body}>
         <Link href={{ pathname: '/toa-nha/[id]', params: { id: b.id } }} className={styles.name}>{b.name}</Link>

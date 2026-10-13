@@ -32,6 +32,14 @@ describe('watermark render', () => {
     expect(meta.format).toBe('webp');
     expect(meta.exif).toBeUndefined();
   });
+  it('portrait phone photo: master keeps 2400 px of width; public files come straight from the original without its GPS', async () => {
+    const tall = await sharp({ create: { width: 3024, height: 4032, channels: 3, background: '#888' } }).jpeg().withExif({ IFD3: { GPSLatitudeRef: 'N' } }).toBuffer();
+    const m = await renderMaster(tall);
+    expect([m.width, m.height]).toEqual([2400, 3200]);
+    const v = await renderVariant(tall, 1920, true);
+    expect([v.width, v.height]).toEqual([1920, 2560]);
+    expect((await sharp(v.data).metadata()).exif?.toString('latin1') ?? '').not.toContain('GPS');
+  });
   it('1600: logo ~20% wide in the lower third, © metadata', async () => {
     const out = await renderVariant(await photo(), 1600, true);
     expect([out.width, out.height]).toEqual([1600, 1067]);

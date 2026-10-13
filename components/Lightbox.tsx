@@ -100,7 +100,7 @@ export default function Lightbox({ photos, srcsets, meta, start, alt, labels, on
             }}>
             {seen.has(p)
               // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={photos[p]} srcSet={srcsets?.[p]} sizes="100vw" alt={`${alt} · ${p + 1}/${photos.length}`} decoding="async" draggable={false} />
+              ? <img src={photos[p]} srcSet={srcsets?.[p]} sizes={zoom && i === cur ? '200vw' : '100vw'} alt={`${alt} · ${p + 1}/${photos.length}`} decoding="async" draggable={false} />
               : <span className={styles.ph} aria-hidden />}
           </div>
         ))}

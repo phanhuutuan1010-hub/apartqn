@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Photo } from './Photo';
-import type { PhotoMeta, PhotoTag } from '@/lib/types';
+import { ratioOf, type PhotoMeta, type PhotoTag } from '@/lib/types';
+import { coverSizes } from '@/lib/photoSizes';
 import styles from './Gallery.module.css';
 
 const Lightbox = dynamic(() => import('./Lightbox'), { ssr: false });
@@ -30,8 +31,26 @@ type Props = {
   labels: GalleryLabels;
 };
 
-const BIG = '(min-width:1240px) 760px, (min-width:768px) 62vw, 100vw';
-const SMALL = '(min-width:1240px) 300px, (min-width:768px) 20vw, 50vw';
+/**
+ * md+ grid: share of the gallery width and shape (w/h) of each tile, per photo count — at lg (1200 × 460 strip) and at
+ * md (16:9). [big tile, small tiles]. Used to tell the browser how wide each photo is really drawn (cover crop).
+ */
+const GRID: Record<number, { frac: [number, number]; lg: [number, number]; md: [number, number] }> = {
+  1: { frac: [1, 1], lg: [2.61, 2.61], md: [1.78, 1.78] },
+  2: { frac: [0.5, 0.5], lg: [1.3, 1.3], md: [0.89, 0.89] },
+  3: { frac: [0.667, 0.333], lg: [1.74, 1.74], md: [1.18, 1.18] },
+  4: { frac: [0.667, 0.333], lg: [1.74, 2.65], md: [1.18, 1.75] },
+  5: { frac: [0.5, 0.25], lg: [1.3, 1.3], md: [0.89, 0.89] },
+};
+const gridSizes = (shown: number, big: boolean, ratio?: number) => {
+  const g = GRID[Math.max(1, shown)], k = big ? 0 : 1, f = g.frac[k];
+  return coverSizes([
+    { media: '(min-width:1264px)', width: `${Math.round(1200 * f)}px`, box: g.lg[k] },
+    { media: '(min-width:1024px)', width: `${Math.round(100 * f)}vw`, box: g.lg[k] },
+    { media: '(min-width:768px)', width: `${Math.round(100 * f)}vw`, box: g.md[k] },
+    { width: '100vw', box: 4 / 3 },
+  ], ratio);
+};
 
 /**
  * Phones: scroll-snap strip with "1 / 12". md+: adaptive grid — 1 large + up to 4 small, never an empty slot;
@@ -48,9 +67,9 @@ export function Gallery({ photos, srcsets, meta, count = 0, alt, tone = 'unit', 
   const badge = (i: number) => meta?.[i]?.src && (
     <span className={`${styles.src} ${meta[i].src === 'reference' ? styles.srcRef : ''}`}>{meta[i].src === 'reference' ? labels.reference : labels.own}</span>
   );
-  const tile = (i: number, sizes: string, cls = '') => (
+  const tile = (i: number, big: boolean, cls = '') => (
     <button key={i} type="button" className={`${styles.cell} ${cls}`} onClick={() => setOpen(i)} aria-label={`${labels.showAll} · ${i + 1}/${n}`}>
-      <Photo src={photos[i]} srcSet={srcsets?.[i]} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes={sizes} priority={i === 0} blur />
+      <Photo src={photos[i]} srcSet={srcsets?.[i]} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes={gridSizes(shown, big, ratioOf(meta?.[i]))} priority={i === 0} blur />
       {i === shown - 1 && n > shown && <span className={styles.more}>{labels.more.replace('{n}', String(n - shown))}</span>}
       {i === 0 && badge(0)}
     </button>
@@ -64,7 +83,7 @@ export function Gallery({ photos, srcsets, meta, count = 0, alt, tone = 'unit', 
           {n > 0
             ? photos.map((src, i) => (
               <button key={i} type="button" className={styles.slide} onClick={() => setOpen(i)} aria-label={`${labels.showAll} · ${i + 1}/${n}`}>
-                {i <= far + 2 && <Photo src={src} srcSet={srcsets?.[i]} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes="100vw" priority={i === 0} blur />}
+                {i <= far + 2 && <Photo src={src} srcSet={srcsets?.[i]} ratio={ratioOf(meta?.[i])} alt={`${alt} · ${i + 1}/${n}`} tone={tone} sizes="100vw" priority={i === 0} blur />}
                 {badge(i)}
               </button>
             ))
@@ -77,8 +96,8 @@ export function Gallery({ photos, srcsets, meta, count = 0, alt, tone = 'unit', 
       {/* md+ */}
       <div className={`${styles.grid} ${styles['n' + Math.max(1, shown)]}`}>
         {n > 0
-          ? Array.from({ length: shown }, (_, i) => tile(i, i === 0 && shown > 1 ? BIG : shown === 1 ? '(min-width:1240px) 1200px, 100vw' : SMALL, i === 0 ? styles.big : ''))
-          : <div className={`${styles.cell} ${styles.big}`}><Photo alt={alt} tone={tone} sizes={BIG} /></div>}
+          ? Array.from({ length: shown }, (_, i) => tile(i, i === 0, i === 0 ? styles.big : ''))
+          : <div className={`${styles.cell} ${styles.big}`}><Photo alt={alt} tone={tone} sizes="100vw" /></div>}
         {(n > 0 || videoHref) && (
           <div className={styles.actions}>
             {videoHref && <a href={videoHref} className={styles.act}>▶ {labels.video}</a>}

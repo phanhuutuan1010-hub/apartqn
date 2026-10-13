@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase/server';
 import { BUCKET, col, masterFromOriginal, refreshOwner, removeFiles, renderVariants, type PhotoOwner } from '@/lib/admin/photoPipeline';
+import { MIN_SOURCE_WIDTH } from '@/lib/watermark';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,9 +18,10 @@ const Body = z.object({
 const fail = (status: number, error: string) => NextResponse.json({ ok: false, error }, { status });
 
 /**
- * ONE uploaded original (listing-master/<prefix>orig-<photoId>, put there untouched through a signed URL) → clean master
- * (≤ 2400 px WebP q90, the original is deleted) → public variants 640 / 1200 / 1920 px, watermarked by default for listing
- * photos (lib/watermark.ts), + the photos row. One encode per file from the original. Runs as the signed-in staff member:
+ * ONE uploaded original (listing-master/<prefix>orig-<photoId>, put there untouched through a signed URL) → public
+ * variants 640 / 1200 / 1920 px rendered straight from it (one encode per file), watermarked by default for listing
+ * photos (lib/watermark.ts), + the clean master for later re-renders (≤ 2400 px WebP q90; the original is then deleted),
+ * + the photos row. Runs as the signed-in staff member:
  * storage and table RLS decide what they may touch.
  */
 export async function POST(req: NextRequest) {
@@ -54,7 +56,8 @@ export async function POST(req: NextRequest) {
   try {
     const m = await masterFromOriginal(sb, prefix, photoId);
     master_path = m.master_path;
-    out = await renderVariants(sb, prefix, photoId, m.master, watermark);
+    // straight from the uploaded original: one lossy encode per public file
+    out = await renderVariants(sb, prefix, photoId, m.original, watermark);
   } catch (e) {
     return fail(500, (e as Error).message);
   }
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
   const { error } = await sb.from('photos').insert({
     id: photoId, [col(owner)]: owner.id, bucket: BUCKET.public, visibility: 'public',
     path: out.path, thumb_path: out.thumb_path, variants: out.variants, width: out.width, height: out.height,
-    master_path, watermark, wm_version: out.wm_version,
+    master_path, watermark, wm_version: out.wm_version, needs_reupload: out.width < MIN_SOURCE_WIDTH,
     sort: Math.max(-1, ...(existing ?? []).map((p) => p.sort)) + 1,
     is_cover: !(existing ?? []).some((p) => p.is_cover),
   });

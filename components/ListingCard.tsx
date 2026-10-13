@@ -5,6 +5,7 @@ import type { Listing } from '@/lib/types';
 import { codeSlug, F, M2, money, total } from '@/lib/format';
 import { StatusBadge, VerifiedBadge } from './Badges';
 import { CardPhotos } from './CardPhotos';
+import { ratioOf } from '@/lib/types';
 import { Photo } from './Photo';
 import styles from './ListingCard.module.css';
 
@@ -23,6 +24,7 @@ export function ListingCard({ x, building, slider = false, priority = false, siz
   const title = F.bedsLong(x.beds, l) + ' · ' + t(`v_${x.view}`);
   const alt = `${title} · ${x.code}`;
   const count = x.photos.length || x.photoCount;
+  const ratios = (x.photoMeta ?? []).map(ratioOf);
 
   const badges = (
     <div className={styles.badges}>
@@ -35,9 +37,9 @@ export function ListingCard({ x, building, slider = false, priority = false, siz
     <article className={`${styles.card} ${x.status === 'rented' ? styles.dim : ''}`}>
       <div className={styles.photo}>
         {slider && count > 1 ? (
-          <CardPhotos photos={x.thumbs} srcsets={x.srcsets} count={count} alt={alt} sizes={sizes} priority={priority} photoLabel={t('photoOf')} />
+          <CardPhotos photos={x.thumbs} srcsets={x.srcsets} ratios={ratios} count={count} alt={alt} sizes={sizes} priority={priority} photoLabel={t('photoOf')} />
         ) : (
-          <Photo src={x.thumbs[0]} srcSet={x.srcsets[0]} alt={alt} sizes={sizes} priority={priority} />
+          <Photo src={x.thumbs[0]} srcSet={x.srcsets[0]} ratio={ratios[0]} alt={alt} sizes={sizes} priority={priority} />
         )}
         {badges}
       </div>

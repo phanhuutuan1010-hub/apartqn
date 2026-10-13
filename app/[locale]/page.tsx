@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
+import { preload } from 'react-dom';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
@@ -26,6 +26,13 @@ export async function generateMetadata({ params }: PageProps<'/[locale]'>): Prom
   };
 }
 
+/**
+ * Hero photo: files rendered once from the original (sharp: AVIF q58, WebP q80 fallback) and served as they are — no
+ * image optimizer in between. It is 16:9: the 4:3 slot on phones and lg draws it 1.34× wider than the slot.
+ */
+const heroSet = (ext: string) => [640, 960, 1280, 1600, 2000].map((w) => `/images/hero-quy-nhon-${w}.${ext} ${w}w`).join(', ');
+const HERO = { avif: heroSet('avif'), webp: heroSet('webp'), sizes: '(min-width:1024px) 660px, (min-width:768px) calc(100vw - 48px), calc((100vw - 32px) * 1.34)' };
+
 export default async function Home({ params }: PageProps<'/[locale]'>) {
   const { locale } = (await params) as { locale: Locale };
   setRequestLocale(locale);
@@ -35,6 +42,8 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
   // 6 / 4 / 3 cards by breakpoint (extra cards hidden with CSS)
   const featured = listings.filter((x) => x.status !== 'rented').slice(0, 6);
 
+  // the LCP image: requested as soon as the HTML head arrives (browsers without AVIF skip the preload and take the WebP)
+  preload('/images/hero-quy-nhon-960.avif', { as: 'image', type: 'image/avif', imageSrcSet: HERO.avif, imageSizes: HERO.sizes, fetchPriority: 'high' });
   return (
     <>
       <Header inlineSearch={false} />
@@ -48,7 +57,10 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
             <p className={styles.sub}>{t('heroSub')}</p>
           </div>
           <div className={styles.heroImg}>
-            <Image src="/images/hero-quy-nhon.webp" alt={t('heroTitle').replace(/ /g, ' ')} fill priority fetchPriority="high" sizes="(min-width:1024px) 480px, 100vw" />
+            <picture>
+              <source type="image/avif" srcSet={HERO.avif} sizes={HERO.sizes} />
+              <img src="/images/hero-quy-nhon-1280.webp" srcSet={HERO.webp} sizes={HERO.sizes} alt={t('heroTitle').replace(/ /g, ' ')} width={2000} height={1125} decoding="async" fetchPriority="high" loading="eager" />
+            </picture>
           </div>
           <div className={styles.search}>
             <SmartSearch listings={listings} />

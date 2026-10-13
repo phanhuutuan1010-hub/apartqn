@@ -28,8 +28,13 @@ export const WATERMARK = {
  */
 export const PUBLIC_WIDTHS = [640, 1200, 1920] as const;
 export const PUBLIC_QUALITY = 85;
-/** Clean master kept in listing-master: the single encode of the uploaded original. */
-export const MASTER = { edge: 2400, quality: 90 } as const;
+/** A source narrower than this cannot fill a phone screen sharply: the photo is flagged "tải lại ảnh gốc" in the admin. */
+export const MIN_SOURCE_WIDTH = 1200;
+/**
+ * Clean master kept in listing-master (for later re-renders, e.g. watermark on/off): ≤ 2400 px wide and ≤ 3200 px tall,
+ * so a portrait phone photo keeps a 1920 px variant.
+ */
+export const MASTER = { edge: 2400, tall: 3200, quality: 90 } as const;
 
 /** Full-image SVG overlay for a w×h image. */
 export function watermarkSvg(w: number, h: number): Buffer {
@@ -86,9 +91,9 @@ export async function imageWidth(buf: Buffer): Promise<number> {
   return ((m.orientation ?? 1) >= 5 ? m.height : m.width) ?? 0;
 }
 
-/** Uploaded original (JPEG / PNG / WebP / AVIF, any size) → clean master: orientation applied, ≤ 2400 px, no camera metadata (GPS). */
+/** Uploaded original (JPEG / PNG / WebP / AVIF, any size) → clean master: orientation applied, ≤ 2400 × 3200 px, no camera metadata (GPS). */
 export async function renderMaster(input: Buffer) {
-  const { data, info } = await sharp(input).rotate().resize({ width: MASTER.edge, height: MASTER.edge, fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' })
+  const { data, info } = await sharp(input).rotate().resize({ width: MASTER.edge, height: MASTER.tall, fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' })
     .webp({ quality: MASTER.quality, effort: 5 }).toBuffer({ resolveWithObject: true });
   return { data, width: info.width, height: info.height };
 }

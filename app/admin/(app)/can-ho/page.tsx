@@ -36,6 +36,12 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   ]);
   const remind = settings?.verify_remind_days ?? 14, hide = settings?.verify_hide_days ?? 21;
 
+  // listings with public photos whose source is too small / browser-compressed ("tải lại ảnh gốc")
+  const { data: lowRows } = await sb.from('photos').select('listing_id').eq('needs_reupload', true).eq('visibility', 'public').not('listing_id', 'is', null).is('deleted_at', null);
+  const lowN = new Map<string, number>();
+  (lowRows ?? []).forEach((p) => lowN.set(p.listing_id, (lowN.get(p.listing_id) ?? 0) + 1));
+  const lowIds = [...lowN.keys()];
+
   const page = Math.max(1, Number(sp.page) || 1);
   let q = sb.from('admin_listings').select('*', { count: 'exact' });
   if (sp.q) {
@@ -48,6 +54,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   if (sp.tr === 'en') q = q.in('en_status', ['none', 'stale']);
   if (sp.demo === '1') q = q.eq('is_demo', true);
   if (sp.band === 'none') q = q.is('floor_band', null);
+  if (sp.ph === 'low') q = q.in('id', lowIds.length ? lowIds : ['00000000-0000-0000-0000-000000000000']);
   if (sp.v === 'due') q = q.in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind));
   const sortCol = SORTS[sp.sort ?? ''] ?? 'updated_at';
   const asc = sp.sort ? sp.dir === 'asc' : false;
@@ -78,6 +85,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           ...(me.role === 'admin' ? [{ kind: 'select' as const, key: 'a', label: 'Phụ trách', options: [{ value: 'none', label: '— Chưa giao' }, ...staffOptions] }] : []),
           { kind: 'select', key: 'v', label: 'Xác nhận', options: [{ value: 'due', label: `Cần xác nhận (> ${remind} ngày)` }] },
           { kind: 'select', key: 'tr', label: 'Dịch', options: [{ value: 'en', label: 'Cần dịch' }] },
+          { kind: 'select', key: 'ph', label: 'Ảnh', options: [{ value: 'low', label: `Ảnh cần tải lại (${lowIds.length})` }] },
           { kind: 'select', key: 'band', label: 'Mức tầng', options: [{ value: 'none', label: 'Thiếu mức tầng' }] },
           { kind: 'select', key: 'demo', label: 'Demo', options: [{ value: '1', label: 'Chỉ căn demo' }] },
         ]}
@@ -92,7 +100,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           const d = daysSince(r.verified_at);
           const isPublic = r.status === 'available' || r.status === 'reserved';
           return {
-            id: r.id, code: r.code, expected: r.code ? null : nextCode.get(r.building_slug) ?? null, status: r.status, building_name: r.building_name, floor: r.floor, unit_no: r.unit_no, floor_band: r.floor_band,
+            id: r.id, code: r.code, expected: r.code ? null : nextCode.get(r.building_slug) ?? null, status: r.status, building_name: r.building_name, floor: r.floor, unit_no: r.unit_no, floor_band: r.floor_band, low_photos: lowN.get(r.id) ?? 0,
             beds: r.beds, rent: r.rent, assigned_to: r.assigned_to, assignee: r.assigned_to ? dir.get(r.assigned_to)?.name ?? '—' : null,
             verified_days: d, verify_tone: !isPublic || d == null ? 'a-muted' : d > hide ? 'red' : d > remind ? 'warn' : '',
             en_status: r.en_status, is_demo: r.is_demo, rejected: !!r.rejection_reason,

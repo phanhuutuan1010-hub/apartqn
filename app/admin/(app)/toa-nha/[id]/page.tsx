@@ -49,7 +49,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
   if (!isNew) {
     const [{ data }, { data: ph }, { count }, { count: liveCount }, { count: demoListings }] = await Promise.all([
       sb.from('buildings').select('*').eq('id', id).maybeSingle(),
-      sb.from('photos').select('id, path, thumb_path, visibility, is_cover, width, height, watermark, tag, source').eq('building_id', id).order('sort'),
+      sb.from('photos').select('id, path, thumb_path, visibility, is_cover, width, height, watermark, tag, source, needs_reupload').eq('building_id', id).order('sort'),
       sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).not('code', 'is', null),
       sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).not('code', 'is', null).in('status', ['available', 'reserved', 'rented']),
       sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).eq('is_demo', true),
@@ -68,7 +68,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
     b = { ...(data as BuildingData), ...toBuildingFees(data) };
     meta = data;
     visible = data.is_visible !== false;
-    photos = (ph ?? []).map((p) => ({ id: p.id, visibility: 'public', is_cover: p.is_cover, watermark: p.watermark, tag: p.tag, source: p.source, width: p.width, height: p.height, url: publicPhotoUrl(SUPABASE_URL, p.thumb_path ?? p.path) }));
+    photos = (ph ?? []).map((p) => ({ id: p.id, visibility: 'public', is_cover: p.is_cover, watermark: p.watermark, tag: p.tag, source: p.source, needs_reupload: p.needs_reupload, width: p.width, height: p.height, url: publicPhotoUrl(SUPABASE_URL, p.thumb_path ?? p.path) }));
   }
   const dir = await staffDirectory();
 

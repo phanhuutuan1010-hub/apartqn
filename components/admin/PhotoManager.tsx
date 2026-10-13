@@ -13,6 +13,8 @@ import styles from './PhotoManager.module.css';
 export type PhotoView = {
   id: string; url: string; visibility: 'public' | 'internal'; is_cover: boolean; width: number | null; height: number | null; watermark: boolean;
   tag: PhotoTagV; source: 'own' | 'reference' | null;
+  /** source too small / browser-compressed: ask for the original file again */
+  needs_reupload?: boolean;
 };
 type PhotoTagV = 'toan-canh' | 'tien-ich' | 'sanh' | 'view' | 'can-ho' | 'khac';
 const TAG_LABEL: Record<PhotoTagV, string> = { 'toan-canh': 'Toàn cảnh', 'tien-ich': 'Tiện ích', sanh: 'Sảnh', view: 'View', 'can-ho': 'Căn hộ', khac: 'Khác' };
@@ -55,6 +57,7 @@ const Tile = memo(function Tile({ p, i, selecting, selected, dragging, open, onT
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={p.url} alt={selecting ? '' : `Ảnh ${i + 1}`} loading="lazy" decoding="async" draggable={false} />
         {p.is_cover && <span className={`a-badge blue ${styles.cover}`}><Star size={12} aria-hidden /> Bìa</span>}
+        {p.needs_reupload && p.visibility === 'public' && <span className={`a-badge warn ${styles.low}`} title={`Ảnh nguồn nhỏ hoặc đã bị nén (${p.width ?? '?'} px). Xoá ảnh này và tải lại tệp gốc từ máy ảnh / điện thoại.`}>Ảnh chất lượng thấp – tải lại ảnh gốc</span>}
         {selecting && <span className={styles.check} aria-hidden>{selected && <Check size={16} strokeWidth={3} />}</span>}
       </div>
       <div className={styles.foot}>

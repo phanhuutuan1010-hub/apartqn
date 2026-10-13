@@ -36,7 +36,7 @@ export async function copyListing(sb: Sb, from: string, to: string, opts: { phot
   let copied = 0;
   if (opts.photos) {
     const { data: photos } = await sb.from('photos')
-      .select('id, bucket, path, thumb_path, variants, master_path, visibility, is_cover, sort, width, height, watermark, wm_version, tag, source')
+      .select('id, bucket, path, thumb_path, variants, master_path, visibility, is_cover, sort, width, height, watermark, wm_version, tag, source, needs_reupload')
       .eq('listing_id', from).order('sort');
     for (const p of photos ?? []) {
       const id = crypto.randomUUID();
@@ -54,7 +54,7 @@ export async function copyListing(sb: Sb, from: string, to: string, opts: { phot
       const { error: pe } = await sb.from('photos').insert({
         id, listing_id: to, bucket: p.bucket, path: move(p.path), thumb_path: move(p.thumb_path), master_path: move(p.master_path),
         variants: p.variants ? vs.map((v) => ({ ...v, path: move(v.path) })) : null,
-        visibility: p.visibility, is_cover: p.is_cover, sort: p.sort, width: p.width, height: p.height, watermark: p.watermark, wm_version: p.wm_version, tag: p.tag, source: p.source,
+        visibility: p.visibility, is_cover: p.is_cover, sort: p.sort, width: p.width, height: p.height, watermark: p.watermark, wm_version: p.wm_version, tag: p.tag, source: p.source, needs_reupload: p.needs_reupload,
       });
       if (pe) throw new Error(pe.message);
       copied++;

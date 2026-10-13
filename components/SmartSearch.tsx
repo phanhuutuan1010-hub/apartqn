@@ -3,7 +3,6 @@
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Building2, Clock, Hash, MapPin, Search, X } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
@@ -146,7 +145,10 @@ export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: {
   };
   const listingNode = ({ x, building }: ListingSug) => (
     <>
-      <span className={styles.thumb}>{x.cover_thumb && <Image src={x.cover_thumb} alt="" width={56} height={42} sizes="56px" />}</span>
+      <span className={styles.thumb}>{x.cover_thumb && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={x.cover_thumb} alt="" width={56} height={42} loading="lazy" decoding="async" />
+      )}</span>
       <span className={styles.main}>
         <span className={styles.title}>{x.code} · {building?.name ?? ''}</span>
         <span className={styles.sub}>{x.beds === 0 ? t('studio') : F.beds(x.beds, l)} · {mil(x.rent, l)}{t('perMonth')}</span>

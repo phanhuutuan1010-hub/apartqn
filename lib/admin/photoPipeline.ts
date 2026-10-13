@@ -7,8 +7,9 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * Public photo pipeline (sharp, one photo per call — fits Vercel Hobby limits):
- *   uploaded original → clean master (listing-master, private, ≤ 2400 px q90) → watermarked or clean public variants
- *   640 / 1200 / 1920 px wide (listing-public). One encode from the original to each public file.
+ *   uploaded original → public variants 640 / 1200 / 1920 px wide (listing-public), watermarked or clean: ONE lossy
+ *   encode from the original to each public file. The original also gives the clean master (listing-master, private,
+ *   ≤ 2400 px q90), used only when a photo is re-rendered later (watermark on / off).
  * Every storage/DB call goes through the caller's client: the signed-in staff member (RLS) in the app.
  */
 export const BUCKET = { master: 'listing-master', public: 'listing-public', internal: 'listing-internal' } as const;
@@ -43,13 +44,14 @@ async function put(sb: Sb, bucket: string, path: string, data: Buffer) {
 /** The untouched upload sits next to the master until the master exists. */
 export const originalPath = (prefix: string, photoId: string) => `${prefix}orig-${photoId}`;
 
-/** Original → master in listing-master (the one lossy step before the public files); the original is then deleted. */
-export async function masterFromOriginal(sb: Sb, prefix: string, photoId: string): Promise<{ master: Buffer; master_path: string }> {
+/** Original → master in listing-master; the original is then deleted. `original` is returned so the public files are rendered straight from it. */
+export async function masterFromOriginal(sb: Sb, prefix: string, photoId: string): Promise<{ master: Buffer; master_path: string; original: Buffer }> {
   const orig = originalPath(prefix, photoId), master_path = `${prefix}${photoId}.webp`;
-  const { data } = await renderMaster(await download(sb, BUCKET.master, orig));
+  const original = await download(sb, BUCKET.master, orig);
+  const { data } = await renderMaster(original);
   await put(sb, BUCKET.master, master_path, data);
   await removeFiles(sb, BUCKET.master, [orig]);
-  return { master: data, master_path };
+  return { master: data, master_path, original };
 }
 
 /** Render + upload the public variants of one photo. File names carry the render version and width, so CDN caches never go stale. */
@@ -115,7 +117,7 @@ export async function movePhoto(sb: Sb, p: PhotoRow, to: 'public' | 'internal') 
     await put(sb, BUCKET.internal, path, master);
     await put(sb, BUCKET.internal, thumb_path, await renderCleanThumb(master));
     const { error } = await sb.from('photos').update({
-      bucket: BUCKET.internal, visibility: 'internal', path, thumb_path, variants: null, master_path: null, wm_version: null, is_cover: false,
+      bucket: BUCKET.internal, visibility: 'internal', path, thumb_path, variants: null, master_path: null, wm_version: null, is_cover: false, needs_reupload: false,
     }).eq('id', p.id);
     if (error) throw new Error(error.message);
     await removeFiles(sb, BUCKET.public, publicFiles(p));
@@ -128,7 +130,8 @@ export async function movePhoto(sb: Sb, p: PhotoRow, to: 'public' | 'internal') 
   const out = await renderVariants(sb, prefix, p.id, master, p.watermark);
   const { error } = await sb.from('photos').update({
     bucket: BUCKET.public, visibility: 'public', path: out.path, thumb_path: out.thumb_path, variants: out.variants, width: out.width, height: out.height,
-    master_path, wm_version: out.wm_version,
+    // internal photos were compressed in the browser (≤ 1600 px): fine for notes, soft as a public photo
+    master_path, wm_version: out.wm_version, needs_reupload: true,
   }).eq('id', p.id);
   if (error) throw new Error(error.message);
   await removeFiles(sb, BUCKET.internal, [p.path, p.thumb_path]);
