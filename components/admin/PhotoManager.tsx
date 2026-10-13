@@ -22,6 +22,8 @@ const TAGS = Object.keys(TAG_LABEL) as PhotoTagV[];
 const SOURCE_LABEL = { own: 'Thực tế', reference: 'Tham khảo', '': 'Chưa rõ' };
 type Source = 'own' | 'reference' | null;
 
+const NO_COVER = 'Ảnh nội bộ không thể làm bìa';
+
 /** photos per listing / building */
 const MAX_PHOTOS = 40;
 
@@ -214,6 +216,13 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
   const active = queue.some((q) => q.status === 'waiting' || q.status === 'processing' || q.status === 'uploading');
 
   const reorder = (ids: string[]) => { setOrder(ids); act(() => reorderPhotos(owner, ids)); };
+  /** the photo becomes the cover and moves to position 1 */
+  const cover = (p: PhotoView) => {
+    if (p.visibility !== 'public') return;
+    setMenu(null);
+    setOrder([p.id, ...listRef.current.map((x) => x.id).filter((x) => x !== p.id)]);
+    act(() => setCover(owner, p.id));
+  };
   const move = (id: string, d: -1 | 1) => {
     const ids = list.map((p) => p.id);
     const i = ids.indexOf(id), j = i + d;
@@ -416,7 +425,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
                 onTap={onTap} onMenu={onMenu} onDrag={setDrag} onDrop={onDrop}>
                 {open === p && (
                   <div className={`${styles.menu} ${menuUp ? styles.up : ''}`} role="menu" onClick={(e) => { if ((e.target as HTMLElement).tagName === 'SELECT') e.stopPropagation(); }}>
-                    {p.visibility === 'public' && !p.is_cover && <button type="button" role="menuitem" onClick={() => act(() => setCover(owner, p.id))}>Đặt làm bìa</button>}
+                    {!p.is_cover && <button type="button" role="menuitem" disabled={p.visibility !== 'public'} title={p.visibility !== 'public' ? NO_COVER : undefined} onClick={() => cover(p)}>Đặt làm bìa</button>}
                     <select aria-label="Gắn nhãn" value={p.tag} onChange={(e) => { setMenu(null); setTag([p.id], e.target.value as PhotoTagV); }}>
                       {TAGS.map((k) => <option key={k} value={k}>Nhãn: {TAG_LABEL[k]}</option>)}
                     </select>
@@ -452,6 +461,9 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
           {job && <b className={styles.progress} aria-live="polite">Watermark {job.done}/{job.total}…</b>}
           {picked.length > 0 && (
             <>
+              {picked.length === 1 && !picked[0].is_cover && (
+                <button type="button" className={styles.chip} disabled={picked[0].visibility !== 'public'} title={picked[0].visibility !== 'public' ? NO_COVER : undefined} onClick={() => cover(picked[0])}>Đặt làm bìa</button>
+              )}
               <button type="button" className={`${styles.chip} ${styles.danger}`} onClick={() => del(picked.map((p) => p.id))}>Xoá</button>
               <button type="button" className={styles.chip} onClick={() => openPicker(picked.map((p) => p.id))}>{isBuilding ? 'Chuyển sang căn hộ…' : 'Chuyển…'}</button>
               <select className={styles.chip} aria-label="Gắn nhãn" value="" onChange={(e) => e.target.value && setTag(picked.map((p) => p.id), e.target.value as PhotoTagV)}>

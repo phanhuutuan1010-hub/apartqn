@@ -831,6 +831,26 @@ describe('photo bulk actions (migration 24)', () => {
   });
   afterAll(async () => { await root(`delete from public.photos where path like 'bulk/%'`); });
 
+  it('set cover (migration 32): one rpc — only cover, position 1; public photos only; sales own listings, buildings admin', async () => {
+    await as(id(U.s1), async (q) => {
+      expect(await denied(q(`select public.set_photo_cover($1)`, [o]))).toMatch(/not allowed/);
+      expect(await denied(q(`select public.set_photo_cover($1)`, [bp]))).toMatch(/not allowed/);
+      await q(`select public.set_photo_cover($1)`, [c]);
+      const rows = (await q(`select id, is_cover, sort from public.photos where listing_id = $1 and path like 'bulk/%' order by sort`, [l1])).rows;
+      expect(rows.map((r) => [r.id, r.is_cover])).toEqual([[c, true], [a, false], [b, false]]);
+      expect(rows[0].sort).toBe(0);
+      const pub = await q(`select photos from public.public_listings where code = $1`, [code1]);
+      expect((pub.rows[0].photos as { path: string }[])[0].path).toBe('bulk/c.webp');
+      await q(`update public.photos set visibility = 'internal', bucket = 'listing-internal', is_cover = false where id = $1`, [b]);
+      expect(await denied(q(`select public.set_photo_cover($1)`, [b]))).toMatch(/internal photo/);
+    });
+    expect(await as('anon', (q) => denied(q(`select public.set_photo_cover($1)`, [a])))).toMatch(/permission denied/);
+    await as(id(U.admin), async (q) => {
+      await q(`select public.set_photo_cover($1)`, [bref]);
+      expect((await q(`select id from public.photos where building_id = $1 and is_cover`, [B])).rows.map((r) => r.id)).toEqual([bref]);
+    });
+  });
+
   it('trash: one rpc, own listing only; cover moves on; hidden from staff and the public view; restore brings it back', async () => {
     await as(id(U.s1), async (q) => {
       expect(await denied(q(`select public.trash_photos($1)`, [[a, o]]))).toMatch(/not allowed/);

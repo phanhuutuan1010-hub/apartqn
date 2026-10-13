@@ -72,6 +72,7 @@ export async function registerPhotos(owner: PhotoOwner, items: z.infer<typeof Up
   return { ok: true };
 }
 
+/** New order of the grid. The photo dropped on position 1 becomes the cover when it is public (internal photos never are). */
 export async function reorderPhotos(owner: PhotoOwner, ids: string[]): Promise<Res> {
   await requireStaff();
   const sb = await supabaseServer();
@@ -79,21 +80,28 @@ export async function reorderPhotos(owner: PhotoOwner, ids: string[]): Promise<R
     const { error } = await sb.from('photos').update({ sort: i }).eq('id', id).eq(col(owner), owner.id);
     if (error) return { error: vnError(error) };
   }
+  if (ids[0]) {
+    const { data: first } = await sb.from('photos').select('visibility, is_cover').eq('id', ids[0]).eq(col(owner), owner.id).maybeSingle();
+    if (first && first.visibility === 'public' && !first.is_cover) {
+      const { error } = await sb.rpc('set_photo_cover', { p_id: ids[0] });
+      if (error) return { error: coverError(error) };
+    }
+  }
   await after(owner);
   return { ok: true };
 }
 
+const coverError = (e: { message: string; code?: string }) =>
+  /internal photo/.test(e.message) ? 'Ảnh nội bộ không thể làm bìa.' : /photo not found/.test(e.message) ? 'Không tìm thấy ảnh.' : /not allowed/.test(e.message) ? 'Bạn không có quyền sửa ảnh này.' : vnError(e);
+
+/** One rpc: the photo is the only cover of its listing / building and moves to position 1. Public pages, cards, the search index and the social card refresh. */
 export async function setCover(owner: PhotoOwner, photoId: string): Promise<Res> {
   await requireStaff();
   const sb = await supabaseServer();
-  const { data: p } = await sb.from('photos').select('visibility').eq('id', photoId).eq(col(owner), owner.id).maybeSingle();
+  const { data: p } = await sb.from('photos').select('id').eq('id', photoId).eq(col(owner), owner.id).maybeSingle();
   if (!p) return { error: 'Không tìm thấy ảnh.' };
-  if (p.visibility !== 'public') return { error: 'Ảnh nội bộ không thể làm ảnh bìa.' };
-  // unset first (one cover per owner is enforced by a unique index)
-  const a = await sb.from('photos').update({ is_cover: false }).eq(col(owner), owner.id).eq('is_cover', true);
-  if (a.error) return { error: vnError(a.error) };
-  const b = await sb.from('photos').update({ is_cover: true }).eq('id', photoId);
-  if (b.error) return { error: vnError(b.error) };
+  const { error } = await sb.rpc('set_photo_cover', { p_id: photoId });
+  if (error) return { error: coverError(error) };
   await after(owner);
   return { ok: true };
 }

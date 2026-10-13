@@ -41,7 +41,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const title = `${F.bedsLong(x.beds, locale)} · ${t(`v_${x.view}`)} – ${b?.name}, ${mil(x.rent, locale)}${t('perMonth')} | ApartQN`;
   const description = `${x.code} · ${x.area} ${M2}${x.floorBand ? ' · ' + F.floorBand(x.floorBand, locale) : ''} · ${t('estMonthly')}: ${money(total(x), locale)}. ${t('fAbout')}`;
   // 1200×630 card rendered for this listing (cover, building, rent…)
-  const image = `/og/listing/${codeSlug(x.code)}${locale === 'en' ? '.en' : ''}`;
+  // ?v= follows the cover photo: a new cover gives a new card URL (social networks cache cards by URL)
+  const cover = (x.photos[0] ?? '').split('/').pop()?.slice(0, 8);
+  const image = `/og/listing/${codeSlug(x.code)}${locale === 'en' ? '.en' : ''}${cover ? `?v=${cover}` : ''}`;
   return {
     title: { absolute: title },
     description,
