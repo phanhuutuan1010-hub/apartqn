@@ -26,7 +26,7 @@ export async function removeObjects(sb: Sb, objects: StorageObject[] | null | un
 /** Daily cron (service role): hard-delete everything trashed more than 30 days ago, then its files. */
 export async function purgeExpired(sb: Sb) {
   const before = new Date(Date.now() - TRASH_DAYS * DAY).toISOString();
-  const out = { listings: 0, leads: 0, buildings: 0, filesFailed: 0, errors: [] as string[] };
+  const out = { listings: 0, leads: 0, buildings: 0, photos: 0, filesFailed: 0, errors: [] as string[] };
   const run = async (table: 'listings' | 'leads' | 'buildings', rpc: string, arg: string) => {
     const { data } = await sb.from(table).select('id').lt('deleted_at', before).limit(200);
     for (const r of (data ?? []) as { id: string }[]) {
@@ -40,5 +40,13 @@ export async function purgeExpired(sb: Sb) {
   await run('listings', 'purge_listing', 'p_listing');
   await run('leads', 'purge_lead', 'p_lead');
   await run('buildings', 'purge_building', 'p_building');
+  // photos deleted on their own (grid "Xoá"): rows first, then public + thumb + master files
+  const { data: files, error } = await sb.rpc('purge_photos', { p_before: before });
+  if (error) out.errors.push(`photos: ${error.message}`);
+  else {
+    const list = (files ?? []) as StorageObject[];
+    out.photos = list.filter((f) => f.bucket !== 'listing-master' && !f.path.includes('/thumbs/')).length;
+    out.filesFailed += await removeObjects(sb, list);
+  }
   return out;
 }

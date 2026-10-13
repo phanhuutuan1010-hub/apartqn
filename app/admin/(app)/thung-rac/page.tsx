@@ -7,7 +7,7 @@ import { TrashList, type TrashRow } from '@/components/admin/TrashList';
 
 export const metadata: Metadata = { title: 'Thùng rác' };
 
-const KINDS = [['listing', 'Căn hộ'], ['building', 'Toà nhà'], ['lead', 'Khách']] as const;
+const KINDS = [['listing', 'Căn hộ'], ['building', 'Toà nhà'], ['lead', 'Khách'], ['photo', 'Ảnh']] as const;
 type Kind = (typeof KINDS)[number][0];
 
 /** Admin: what was deleted in the last 30 days — restore, or delete for good. The daily cron empties older items. */

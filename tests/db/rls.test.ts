@@ -814,3 +814,81 @@ describe('EN translation status (migration 21)', () => {
     await as(id(U.admin), (q) => q(`insert into public.translation_glossary (vi, en) values ('ban công', 'balcony')`));
   });
 });
+
+describe('photo bulk actions (migration 24)', () => {
+  const ins = async (owner: 'listing_id' | 'building_id', oid: string, name: string, extra = '') =>
+    (await root(`insert into public.photos (${owner}, bucket, path, thumb_path, master_path, sort${extra ? ', ' + extra.split('=')[0] : ''})
+                 values ($1, 'listing-public', $2, $3, $4, (select count(*) from public.photos)${extra ? ', ' + extra.split('=')[1] : ''}) returning id`,
+      [oid, `bulk/${name}.webp`, `bulk/thumbs/${name}.webp`, `bulk/m-${name}.webp`])).rows[0].id as string;
+  let a = '', b = '', c = '', o = '', bp = '', bref = '';
+  beforeAll(async () => {
+    a = await ins('listing_id', l1, 'a', 'is_cover=true');
+    b = await ins('listing_id', l1, 'b');
+    c = await ins('listing_id', l1, 'c');
+    o = await ins('listing_id', l2, 'o');
+    bp = await ins('building_id', B, 'bp');
+    bref = await ins('building_id', B, 'bref', `source='reference'`);
+  });
+  afterAll(async () => { await root(`delete from public.photos where path like 'bulk/%'`); });
+
+  it('trash: one rpc, own listing only; cover moves on; hidden from staff and the public view; restore brings it back', async () => {
+    await as(id(U.s1), async (q) => {
+      expect(await denied(q(`select public.trash_photos($1)`, [[a, o]]))).toMatch(/not allowed/);
+      expect(await denied(q(`select public.trash_photos($1)`, [[bp]]))).toMatch(/not allowed/);
+      expect(await denied(q(`update public.photos set deleted_at = now() where id = $1`, [a]))).toMatch(/row-level security/);
+      expect((await q(`select public.trash_photos($1) as n`, [[a, b]])).rows[0].n).toBe(2);
+      expect((await q(`select id from public.photos where listing_id = $1 and path like 'bulk/%'`, [l1])).rows.map((r) => r.id)).toEqual([c]);
+      expect((await q(`select is_cover from public.photos where id = $1`, [c])).rows[0].is_cover).toBe(true);
+      expect(await denied(q(`select public.purge_photos($1)`, [[a]]))).toMatch(/admin only/);
+      expect((await q(`select public.restore_photos($1) as n`, [[a, b]])).rows[0].n).toBe(2);
+      const back = (await q(`select id, is_cover from public.photos where listing_id = $1 and path like 'bulk/%' order by sort`, [l1])).rows;
+      expect(back).toEqual([{ id: a, is_cover: false }, { id: b, is_cover: false }, { id: c, is_cover: true }]);
+    });
+    await root(`select public.trash_photos($1)`, [[b]]);
+    const pub = await as('anon', (q) => q(`select photos from public.public_listings where code = $1`, [code1]));
+    expect((pub.rows[0].photos as { path: string }[]).map((p) => p.path)).not.toContain('bulk/b.webp');
+    expect((await as(id(U.s2), (q) => denied(q(`select public.restore_photos($1)`, [[b]]))))).toMatch(/not allowed/);
+    const items = await as(id(U.admin), (q) => q(`select kind, label, detail from public.trash_items() where kind = 'photo'`));
+    expect(items.rows).toEqual([{ kind: 'photo', label: '1 ảnh', detail: expect.stringContaining(code1) }]);
+    await root(`select public.restore_photos($1, true)`, [[b]]);
+    expect((await root(`select deleted_at from public.photos where id = $1`, [b])).rows[0].deleted_at).toBeNull();
+  });
+
+  it('purge: admin or the server, trashed photos only; returns public, thumb and master files', async () => {
+    await as(id(U.admin), async (q) => {
+      await q(`select public.trash_photos($1)`, [[b]]);
+      const files = (await q(`select public.purge_photos($1) as f`, [[b, c]])).rows[0].f as { bucket: string; path: string }[];
+      expect(files.map((f) => `${f.bucket}:${f.path}`).sort()).toEqual(['listing-master:bulk/m-b.webp', 'listing-public:bulk/b.webp', 'listing-public:bulk/thumbs/b.webp']);
+    });
+    await as('service', async (q) => {
+      await q(`update public.photos set deleted_at = now() - interval '31 days' where id = $1`, [c]);
+      const files = (await q(`select public.purge_photos(null, false, now() - interval '30 days') as f`)).rows[0].f as unknown[];
+      expect(files).toHaveLength(3);
+      expect((await q(`select count(*)::int as n from public.photos where path like 'bulk/%'`)).rows[0].n).toBe(5);
+    });
+  });
+
+  it('move: same building only, admin (sales between own listings); never direct; watermark to-do list', async () => {
+    await as(id(U.s1), async (q) => {
+      expect(await denied(q(`select public.move_photos($1, 'listing', $2)`, [[b], l2]))).toMatch(/not allowed/);
+      expect(await denied(q(`select public.move_photos($1, 'building', $2)`, [[b], B]))).toMatch(/not allowed/);
+      expect(await denied(q(`select public.move_photos($1, 'listing', $2)`, [[bp], l1]))).toMatch(/not allowed/);
+    });
+    await as(id(U.admin), async (q) => {
+      // the guard trigger keeps the owner on a plain update
+      await q(`update public.photos set listing_id = $2 where id = $1`, [b, l2]);
+      expect((await q(`select listing_id from public.photos where id = $1`, [b])).rows[0].listing_id).toBe(l1);
+      const other = (await q(`insert into public.buildings (slug, name, street, code_prefix) values ('mv-other', 'Other', 'X', 'MVO') returning id`)).rows[0].id;
+      expect(await denied(q(`select public.move_photos($1, 'building', $2)`, [[b], other]))).toMatch(/other building/);
+      const r = (await q(`select public.move_photos($1, 'listing', $2) as r`, [[bp, bref], l1])).rows[0].r;
+      expect(r).toEqual({ moved: 2, need_watermark: [bp] });
+      const rows = (await q(`select id, listing_id, building_id, is_cover from public.photos where id = any($1) order by sort`, [[bp, bref]])).rows;
+      expect(rows).toEqual([{ id: bp, listing_id: l1, building_id: null, is_cover: false }, { id: bref, listing_id: l1, building_id: null, is_cover: false }]);
+      const back = (await q(`select public.move_photos($1, 'building', $2) as r`, [[a], B])).rows[0].r;
+      expect(back.moved).toBe(1);
+      // the listing lost its cover → the next photo takes over; the building had none left → the moved photo
+      expect((await q(`select count(*)::int as n from public.photos where listing_id = $1 and is_cover`, [l1])).rows[0].n).toBe(1);
+      expect((await q(`select is_cover from public.photos where id = $1`, [a])).rows[0].is_cover).toBe(true);
+    });
+  });
+});

@@ -22,7 +22,7 @@ export function TrashList({ rows, backupDays }: { rows: TrashRow[]; backupDays: 
       {rows.length ? (
         <ul className="a-rows">
           {rows.map((r) => (
-            <li key={r.id} className="a-row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <li key={r.id + r.when} className="a-row" style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <b>{r.label}</b>
                 <span className="a-row-sub">{r.detail}</span>
@@ -48,7 +48,7 @@ export function TrashList({ rows, backupDays }: { rows: TrashRow[]; backupDays: 
           setPurge(null);
           done(r);
         })}>
-        <b>{purge?.label}</b> {purge?.kind === 'listing' ? 'cùng mọi ảnh (công khai, nội bộ, bản gốc) và thông tin căn/chủ nhà' : purge?.kind === 'lead' ? 'cùng ghi chú và ảnh gửi kèm' : 'cùng ảnh toà nhà'} sẽ bị xoá hẳn, không khôi phục được.
+        <b>{purge?.label}</b> {purge?.kind === 'listing' ? 'cùng mọi ảnh (công khai, nội bộ, bản gốc) và thông tin căn/chủ nhà' : purge?.kind === 'lead' ? 'cùng ghi chú và ảnh gửi kèm' : purge?.kind === 'photo' ? `(${purge.detail}, kể cả bản gốc)` : 'cùng ảnh toà nhà'} sẽ bị xoá hẳn, không khôi phục được.
         {purge?.kind === 'listing' && ' Khách liên quan vẫn giữ mã căn để tra cứu.'}
       </ConfirmDialog>
     </>

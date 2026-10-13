@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/admin/session';
 import { vnError } from '@/lib/admin/errors';
-import { BUCKET, movePhoto, refreshOwner, removeFiles, setPhotoWatermark, type PhotoOwner, type PhotoRow } from '@/lib/admin/photoPipeline';
+import { BUCKET, movePhoto, refreshOwner, type PhotoOwner, type PhotoRow } from '@/lib/admin/photoPipeline';
 
 /** Whose photos: a listing (public + internal) or a building (public only, admin). */
 export type { PhotoOwner };
@@ -115,60 +115,105 @@ export async function setVisibility(owner: PhotoOwner, photoId: string, visibili
   return { ok: true };
 }
 
-/** "Gắn watermark" on/off for one public photo → its public files are re-rendered from the clean master. */
-export async function setWatermark(owner: PhotoOwner, photoId: string, on: boolean): Promise<Res> {
-  const me = await requireStaff();
-  if (owner.kind === 'building' && me.role !== 'admin') return { error: 'Chỉ quản trị viên sửa ảnh toà nhà.' };
-  const sb = await supabaseServer();
-  const { data: p } = await sb.from('photos').select('*').eq('id', photoId).eq(col(owner), owner.id).maybeSingle();
-  if (!p) return { error: 'Không tìm thấy ảnh.' };
-  if (p.visibility !== 'public') return { error: 'Ảnh nội bộ không gắn watermark.' };
-  if (on && p.source === 'reference') return { error: 'Ảnh tham khảo không gắn watermark.' };
-  try {
-    await setPhotoWatermark(sb, p as PhotoRow, on);
-  } catch (e) {
-    return { error: 'Không tạo lại được ảnh: ' + (e as Error).message };
-  }
-  await after(owner);
-  return { ok: true };
-}
-
 const Meta = z.object({
   tag: z.enum(['toan-canh', 'tien-ich', 'sanh', 'view', 'can-ho', 'khac']).optional(),
   source: z.enum(['own', 'reference']).nullable().optional(),
 });
 
-/** Per-photo tag (lightbox tabs) and source (Ảnh thực tế / Ảnh tham khảo). A reference photo loses its watermark first. */
-export async function setPhotoMeta(owner: PhotoOwner, photoId: string, patch: z.infer<typeof Meta>): Promise<Res> {
-  const me = await requireStaff();
-  if (owner.kind === 'building' && me.role !== 'admin') return { error: 'Chỉ quản trị viên sửa ảnh toà nhà.' };
-  const o = Owner.safeParse(owner), m = Meta.safeParse(patch);
-  if (!o.success || !m.success || (!m.data.tag && m.data.source === undefined)) return { error: 'Dữ liệu không hợp lệ.' };
+const Ids = z.array(z.string().uuid()).min(1).max(200);
+const rpcError = (m: string) =>
+  /not allowed|admin only/.test(m) ? 'Bạn không có quyền với (một số) ảnh này.'
+    : /other building/.test(m) ? 'Chỉ chuyển được ảnh trong cùng một toà nhà.'
+      : /internal photo/.test(m) ? 'Ảnh nội bộ không chuyển sang toà nhà được — chuyển sang công khai trước.'
+        : /target not found/.test(m) ? 'Không tìm thấy nơi chuyển đến.'
+          : 'Lỗi: ' + m;
+
+/** "Xoá" (one or many): one rpc, soft delete → Thùng rác for 30 days. A deleted cover hands over to the next photo. */
+export async function trashPhotos(owner: PhotoOwner, ids: string[]): Promise<Res & { n?: number }> {
+  await requireStaff();
+  const o = Owner.safeParse(owner), i = Ids.safeParse(ids);
+  if (!o.success || !i.success) return { error: 'Dữ liệu không hợp lệ.' };
   const sb = await supabaseServer();
-  const { data: p } = await sb.from('photos').select('*').eq('id', photoId).eq(col(o.data), o.data.id).maybeSingle();
-  if (!p) return { error: 'Không tìm thấy ảnh.' };
-  if (m.data.source === 'reference' && p.watermark) {
-    try {
-      await setPhotoWatermark(sb, p as PhotoRow, false);
-    } catch (e) {
-      return { error: 'Không bỏ được watermark: ' + (e as Error).message };
-    }
-  }
-  const { error } = await sb.from('photos').update(m.data).eq('id', photoId);
-  if (error) return { error: vnError(error) };
+  const { data, error } = await sb.rpc('trash_photos', { p_ids: i.data });
+  if (error) return { error: rpcError(error.message) };
+  await after(o.data);
+  return { ok: true, n: data as number };
+}
+
+/** "Hoàn tác" right after a delete. */
+export async function restorePhotos(owner: PhotoOwner, ids: string[]): Promise<Res> {
+  await requireStaff();
+  const o = Owner.safeParse(owner), i = Ids.safeParse(ids);
+  if (!o.success || !i.success) return { error: 'Dữ liệu không hợp lệ.' };
+  const sb = await supabaseServer();
+  const { error } = await sb.rpc('restore_photos', { p_ids: i.data });
+  if (error) return { error: rpcError(error.message) };
   await after(o.data);
   return { ok: true };
 }
 
-export async function deletePhoto(owner: PhotoOwner, photoId: string): Promise<Res> {
-  await requireStaff();
+export type MoveTarget = { kind: 'listing' | 'building'; id: string; label: string };
+
+/** Where this owner's photos may go: the other listings of the same building (yours, for sales) and, for admins, the building. */
+export async function moveTargets(owner: PhotoOwner): Promise<MoveTarget[]> {
+  const me = await requireStaff();
+  const o = Owner.safeParse(owner);
+  if (!o.success) return [];
   const sb = await supabaseServer();
-  const { data: p } = await sb.from('photos').select('*').eq('id', photoId).eq(col(owner), owner.id).maybeSingle();
-  if (!p) return { error: 'Không tìm thấy ảnh.' };
-  const { error } = await sb.from('photos').delete().eq('id', photoId);
+  let building = o.data.kind === 'building' ? o.data.id : null;
+  if (!building) building = (await sb.from('admin_listings').select('building_id').eq('id', o.data.id).maybeSingle()).data?.building_id ?? null;
+  if (!building) return [];
+  const [{ data: ls }, { data: b }] = await Promise.all([
+    sb.from('admin_listings').select('id, code, floor, unit_no').eq('building_id', building).order('code'),
+    sb.from('buildings').select('name').eq('id', building).maybeSingle(),
+  ]);
+  const out: MoveTarget[] = (ls ?? []).filter((l) => l.id !== o.data.id)
+    .map((l) => ({ kind: 'listing', id: l.id, label: `${l.code ?? 'Nháp'} · tầng ${l.floor} · căn ${l.unit_no}` }));
+  if (o.data.kind === 'listing' && me.role === 'admin' && b) out.unshift({ kind: 'building', id: building, label: `Toà nhà ${b.name}` });
+  return out;
+}
+
+/**
+ * "Chuyển sang căn hộ…" / "Chuyển sang toà nhà": one rpc reassigns the rows (same building only; files stay in place).
+ * `needWatermark` = moved public photos that a listing shows watermarked — the grid re-renders them through its queue.
+ */
+export async function movePhotos(owner: PhotoOwner, ids: string[], target: PhotoOwner): Promise<Res & { moved?: number; needWatermark?: string[] }> {
+  await requireStaff();
+  const o = Owner.safeParse(owner), t = Owner.safeParse(target), i = Ids.safeParse(ids);
+  if (!o.success || !t.success || !i.success) return { error: 'Dữ liệu không hợp lệ.' };
+  const sb = await supabaseServer();
+  const { data, error } = await sb.rpc('move_photos', { p_ids: i.data, p_kind: t.data.kind, p_target: t.data.id });
+  if (error) return { error: rpcError(error.message) };
+  const r = data as { moved: number; need_watermark: string[] };
+  await after(o.data);
+  await after(t.data);
+  return { ok: true, moved: r.moved, needWatermark: r.need_watermark };
+}
+
+/**
+ * Bulk "Gắn nhãn" / "Nguồn": one update (RLS: admins; sales on their own listings). Watermarked photos can't become
+ * reference photos in SQL — they come back in `needClean` and the grid's queue strips the watermark first.
+ */
+export async function bulkPhotoMeta(owner: PhotoOwner, ids: string[], patch: z.infer<typeof Meta>): Promise<Res & { n?: number; needClean?: string[] }> {
+  const me = await requireStaff();
+  if (owner.kind === 'building' && me.role !== 'admin') return { error: 'Chỉ quản trị viên sửa ảnh toà nhà.' };
+  const o = Owner.safeParse(owner), i = Ids.safeParse(ids), m = Meta.safeParse(patch);
+  if (!o.success || !i.success || !m.success || (!m.data.tag && m.data.source === undefined)) return { error: 'Dữ liệu không hợp lệ.' };
+  const sb = await supabaseServer();
+  let q = sb.from('photos').update(m.data).in('id', i.data).eq(col(o.data), o.data.id);
+  if (m.data.source === 'reference') q = q.eq('watermark', false);
+  const { data, error } = await q.select('id');
   if (error) return { error: vnError(error) };
-  await removeFiles(sb, p.bucket, [p.path, p.thumb_path]);
-  await removeFiles(sb, BUCKET.master, [p.master_path]);
-  await after(owner);
+  const done = new Set((data ?? []).map((r) => r.id));
+  await after(o.data);
+  return { ok: true, n: done.size, needClean: m.data.source === 'reference' ? i.data.filter((x) => !done.has(x)) : [] };
+}
+
+/** After the watermark queue (POST /admin/photos/watermark, one photo each): refresh the affected pages once. */
+export async function refreshPhotos(owner: PhotoOwner): Promise<Res> {
+  await requireStaff();
+  const o = Owner.safeParse(owner);
+  if (!o.success) return { error: 'Dữ liệu không hợp lệ.' };
+  await after(o.data);
   return { ok: true };
 }

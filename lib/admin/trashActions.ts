@@ -7,6 +7,7 @@ import { supabaseSecret } from '@/lib/supabase/secret';
 import { revalidatePublic } from '@/lib/revalidate';
 import { publicRef } from '@/lib/admin/refresh';
 import { removeObjects, type StorageObject } from '@/lib/admin/purge';
+import { refreshOwner } from '@/lib/admin/photoPipeline';
 
 type Res = { ok?: string; error?: string };
 
@@ -112,13 +113,22 @@ export async function purgeLeadNow(id: string, typedName: string): Promise<Res> 
 
 // ───────────── trash page ─────────────
 
-export type TrashKind = 'listing' | 'building' | 'lead';
+export type TrashKind = 'listing' | 'building' | 'lead' | 'photo';
 
 export async function restoreItem(kind: TrashKind, id: string): Promise<Res> {
   if (kind === 'listing') return restoreListing(id);
   if (kind === 'lead') return restoreLeads([id]);
   await requireAdmin();
   const sb = await supabaseServer();
+  if (kind === 'photo') {
+    // `id` stands for the whole batch deleted together
+    const { data, error } = await sb.rpc('restore_photos', { p_ids: [id], p_batch: true });
+    if (error) return { error: vn(error.message) };
+    const { data: p } = await sb.from('photos').select('listing_id, building_id').eq('id', id).maybeSingle();
+    if (p) await refreshOwner(sb, p.listing_id ? { kind: 'listing', id: p.listing_id } : { kind: 'building', id: p.building_id });
+    adminPaths();
+    return { ok: `Đã khôi phục ${data} ảnh.` };
+  }
   const { error } = await sb.rpc('restore_building', { p_building: id });
   if (error) return { error: vn(error.message) };
   const { data: b } = await sb.from('buildings').select('slug').eq('id', id).maybeSingle();
@@ -132,7 +142,7 @@ export async function purgeItem(kind: TrashKind, id: string): Promise<Res> {
   await requireAdmin();
   if (!isUuid(id)) return { error: 'Dữ liệu không hợp lệ.' };
   const sb = await supabaseServer();
-  const fn = kind === 'listing' ? sb.rpc('purge_listing', { p_listing: id }) : kind === 'building' ? sb.rpc('purge_building', { p_building: id }) : sb.rpc('purge_lead', { p_lead: id });
+  const fn = kind === 'photo' ? sb.rpc('purge_photos', { p_ids: [id], p_batch: true }) : kind === 'listing' ? sb.rpc('purge_listing', { p_listing: id }) : kind === 'building' ? sb.rpc('purge_building', { p_building: id }) : sb.rpc('purge_lead', { p_lead: id });
   const { data, error } = await fn;
   if (error) return { error: /still has units/.test(error.message) ? 'Toà nhà vẫn còn căn — xoá vĩnh viễn các căn trước.' : vn(error.message) };
   const failed = await removeObjects(sb, data as StorageObject[]);
