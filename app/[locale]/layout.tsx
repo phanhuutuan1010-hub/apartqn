@@ -18,6 +18,13 @@ const noto = localFont({
   fallback: ['system-ui', 'Segoe UI', 'Roboto', 'Arial', 'sans-serif'],
 });
 
+/**
+ * Photo order: lazy photos stay out of the page until the main (fetchpriority=high) image has painted, so the cards
+ * further down never compete with it for bandwidth. Any scroll / tap / key, or 3 s, lifts the hold. Without JS the
+ * attribute is never set and every photo loads as usual. (CSS: html[data-pw] img[loading=lazy] in globals.css)
+ */
+const PHOTO_WAIT = `(function(){var d=document.documentElement,on=0;d.setAttribute('data-pw','');function go(){if(on)return;on=1;d.removeAttribute('data-pw')}function soon(){requestAnimationFrame(function(){requestAnimationFrame(function(){setTimeout(go,300)})})}addEventListener('DOMContentLoaded',function(){var h=document.querySelector('img[fetchpriority=high]');if(!h||h.complete)soon();else{h.addEventListener('load',soon);h.addEventListener('error',go)}});setTimeout(go,3000);['scroll','pointerdown','keydown'].forEach(function(e){addEventListener(e,go,{once:true,passive:true})})})()`;
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
@@ -51,8 +58,9 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
   if (process.env.NEXT_PUBLIC_SUPABASE_URL) preconnect(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin);
 
   return (
-    <html lang={locale} className={noto.variable}>
+    <html lang={locale} className={noto.variable} suppressHydrationWarning>
       <body>
+        <script dangerouslySetInnerHTML={{ __html: PHOTO_WAIT }} />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
     </html>

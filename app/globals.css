@@ -94,3 +94,6 @@ input[type='date'].input { appearance: none; -webkit-appearance: none; display: 
 .nowrap { white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+
+/* lazy photos wait for the main image (see PHOTO_WAIT in app/[locale]/layout.tsx); their boxes keep their size */
+html[data-pw] img[loading='lazy'] { display: none; }
