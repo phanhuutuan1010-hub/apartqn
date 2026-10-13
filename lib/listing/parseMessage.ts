@@ -9,7 +9,7 @@
 import { norm, words } from '@/lib/search/normalize';
 import { parseSearch, type BuildingRef } from '@/lib/search/parse';
 
-export type MsgField = 'building' | 'floor' | 'unit_no' | 'beds' | 'baths' | 'area' | 'furn' | 'rent' | 'deposit' | 'cycle' | 'move_in' | 'pets' | 'view' | 'dir' | 'owner_phone';
+export type MsgField = 'building' | 'floor' | 'floor_band' | 'unit_no' | 'beds' | 'baths' | 'area' | 'furn' | 'rent' | 'deposit' | 'cycle' | 'move_in' | 'pets' | 'view' | 'dir' | 'owner_phone';
 export type MsgValue = { value: string; sure: boolean };
 export type ParsedMessage = Partial<Record<MsgField, MsgValue>>;
 
@@ -107,6 +107,8 @@ export function parseMessage(raw: string, buildings: BuildingRef[] = [], today =
   });
 
   // ── floor / unit: "tầng 18", "t18", "lầu 18", "căn 18.05", "1805"
+  // "tầng cao / trung / thấp" (no number): the public floor band, picked by hand
+  take('(?:tang|lau) (cao|trung|giua|thap)', (m) => { set('floor_band', m[1] === 'cao' ? 'high' : m[1] === 'thap' ? 'low' : 'mid', true); });
   take('(?:tang|lau|floor)\\s*(\\d{1,2})|t(\\d{1,2})', (m) => {
     const v = Number(m[1] ?? m[2]);
     if (v > 80) return false;
@@ -116,6 +118,8 @@ export function parseMessage(raw: string, buildings: BuildingRef[] = [], today =
     set('unit_no', `${m[1]}.${m[2]}`, false);
     set('floor', Number(m[1]), false);
   });
+  // a floor number wins: the band is then computed from it
+  if (out.floor) delete out.floor_band;
 
   // ── bathrooms: "2wc", "2 vệ sinh", "2 toilet", "2 phòng tắm"
   take('(\\d)\\s*(?:wc|vs|ve sinh|nha ve sinh|toilet|phong tam|tam|bath|baths|bathroom|bathrooms)', (m) => set('baths', Number(m[1]), true));
@@ -178,7 +182,7 @@ export function parseMessage(raw: string, buildings: BuildingRef[] = [], today =
 
 /** labels for the preview table */
 export const MSG_LABEL: Record<MsgField, string> = {
-  building: 'Toà nhà', floor: 'Tầng', unit_no: 'Số căn', beds: 'Phòng ngủ', baths: 'Phòng tắm', area: 'Diện tích (m²)',
+  building: 'Toà nhà', floor: 'Tầng', floor_band: 'Mức tầng (công khai)', unit_no: 'Số căn', beds: 'Phòng ngủ', baths: 'Phòng tắm', area: 'Diện tích (m²)',
   furn: 'Nội thất', rent: 'Giá thuê (₫/tháng)', deposit: 'Đặt cọc (tháng)', cycle: 'Kỳ thanh toán', move_in: 'Dọn vào từ',
   pets: 'Thú cưng', view: 'Tầm nhìn', dir: 'Hướng', owner_phone: 'SĐT chủ nhà (nội bộ)',
 };

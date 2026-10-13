@@ -83,4 +83,12 @@ describe('safety', () => {
     expect(r.rent).toBeUndefined();
   });
   it('an implausible amount is ignored', () => expect(v(p('giá 500k')).rent).toBeUndefined());
+  it('"tầng cao / trung / thấp" sets the public band only when no floor number is given', () => {
+    expect(v(p('Altara 2PN tầng cao view biển 13tr')).floor_band).toBe('high');
+    expect(v(p('căn lầu thấp, 1pn, 7tr')).floor_band).toBe('low');
+    expect(v(p('tầng trung 2pn')).floor_band).toBe('mid');
+    const both = v(p('Altara tầng 18, tầng cao, 2PN'));
+    expect(both.floor).toBe('18');
+    expect(both.floor_band).toBeUndefined();
+  });
 });

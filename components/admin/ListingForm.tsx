@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState } from 'react';
 import { ChevronDown, Lock } from 'lucide-react';
 import { saveListing, type ActionResult } from '@/lib/admin/listingActions';
 import { DIRS, FURNS, VIEWS, dirLabel, fmtVnd, furnLabel, parseVnd, viewLabel } from '@/lib/admin/labels';
-import { BAND_LABEL, FLOOR_BANDS, bandOf } from '@/lib/floorBand';
+import { FLOOR_BANDS, bandOf } from '@/lib/floorBand';
 import { effectiveFees, mgmtFormula, type BuildingFees, type OverrideKey, type Overrides } from '@/lib/fees';
 import dynamic from 'next/dynamic';
 import type { PasteBuilding, PasteValues } from './PasteBox';
@@ -49,6 +49,7 @@ type Props = {
 };
 
 const s = (v: unknown) => (v == null ? '' : String(v));
+const BAND_SHORT = { low: 'Thấp', mid: 'Trung', high: 'Cao' } as const;
 /** fields needed to publish that live under "Thêm chi tiết" */
 const DETAIL_REQUIRED = ['baths', 'move_in', 'dir', 'view', 'deposit', 'cycle', 'elec', 'water', 'min_term', 'max_occ'] as const;
 const PASTE_DOM = ['floor', 'unit_no', 'beds', 'baths', 'furn', 'deposit', 'cycle', 'move_in', 'view', 'dir', 'owner_phone'] as const;
@@ -70,6 +71,8 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   const [f, setF] = useState({ building_id: U.building_id, area: s(L.area), net: fmtVnd(L.net as number | null) });
   const [floor, setFloor] = useState(s(U.floor));
   const [demo, setDemo] = useState(!!L.is_demo);
+  // manual pick of the public floor band ('' = automatic)
+  const [bandPick, setBandPick] = useState(L.floor_band_manual || !bandOf(Number(U.floor) || null, buildings.find((b) => b.id === U.building_id)?.total_floors) ? s(L.floor_band) : '');
   const [ov, setOv] = useState<Partial<Record<OverrideKey, string>>>(() => {
     const o: Partial<Record<OverrideKey, string>> = Object.fromEntries(Object.entries(initialOv).map(([k, v]) => [k, fmtVnd(v as number)]));
     // a fee the building does not know yet keeps the listing's own stored value (typed earlier)
@@ -172,6 +175,7 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
   const current = (): PasteValues => {
     const v: PasteValues = { building: building?.slug ?? '', area: f.area, rent: String(parseVnd(el('rent')?.value ?? '') ?? '') };
     for (const k of PASTE_DOM) v[k] = el(k)?.value ?? '';
+    v.floor_band = bandPick;
     v.pets = (el('pets') as HTMLInputElement | null)?.checked ? 'true' : '';
     return v;
   };
@@ -181,6 +185,7 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
     if (v.rent) setDom('rent', fmtVnd(Number(v.rent)));
     if (v.pets) setDom('pets', v.pets);
     if (v.floor != null) setFloor(v.floor);
+    if (v.floor_band) setBandPick(v.floor_band);
     for (const k of PASTE_DOM) if (v[k] != null && k !== 'floor') setDom(k, v[k]!);
     if (Object.keys(v).some((k) => !['building', 'area', 'rent', 'floor', 'unit_no', 'beds', 'furn'].includes(k))) setMore(true);
     setDirty(true);
@@ -196,6 +201,7 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
     setF({ building_id: m.get('building_id') ?? f.building_id, area: m.get('area') ?? f.area, net: m.get('net') ?? f.net });
     setFloor(m.get('floor') ?? floor);
     setDemo(m.has('is_demo'));
+    setBandPick(m.get('floor_band') ?? bandPick);
     setOv(Object.fromEntries([...m].filter(([k]) => k.startsWith('ov_')).map(([k, x]) => [k.slice(3), x])));
     setDraft(null);
     setDirty(true);
@@ -275,14 +281,23 @@ export function ListingForm({ listing: L, unit: U, buildings, staff, isAdmin, ca
             </label>
             <label className={cls('floor')}>Tầng <span className="hint">nội bộ</span><input className="input" name="floor" inputMode="numeric" value={floor} onChange={(e) => setFloor(e.target.value)} />{err('floor')}</label>
             <label className={cls('unit_no')}>Số căn <span className="hint">không bắt buộc · nội bộ</span><input className="input" name="unit_no" defaultValue={U.unit_no ?? ''} maxLength={20} />{err('unit_no')}</label>
-            <label className={cls('floor_band', 'span2')}>Tầng hiện trên website
-              <select className="input" name="floor_band" defaultValue={L.floor_band_manual || !autoBand ? s(L.floor_band) : ''}>
-                <option value="">{autoBand ? `Tự động · ${BAND_LABEL.vi[autoBand]} (tầng ${floor}/${building?.total_floors})` : 'Chưa xác định — chọn tay'}</option>
-                {FLOOR_BANDS.map((k) => <option key={k} value={k}>{BAND_LABEL.vi[k]}</option>)}
+            <div className={cls('floor_band', 'span2')}>
+              <label htmlFor="lf-band">Mức tầng (công khai){' '}
+                {bandPick ? <span className="a-badge blue">Chọn tay</span> : autoBand ? <span className="a-badge ok">Tự động</span> : <span className="a-badge warn">Chọn mức tầng</span>}
+              </label>
+              {/* '' = automatic (from the floor and the building's total floors); a pick is a manual override */}
+              <input type="hidden" name="floor_band" value={bandPick} />
+              <select id="lf-band" className="input" value={bandPick || autoBand || ''} onChange={(e) => { setBandPick(e.target.value); setDirty(true); }}>
+                {!bandPick && !autoBand && <option value="">— Chọn —</option>}
+                {FLOOR_BANDS.map((k) => <option key={k} value={k}>{BAND_SHORT[k]}</option>)}
               </select>
-              <span className="hint">{building?.total_floors ? 'Website chỉ hiện tầng thấp / trung / cao, không hiện số tầng và số căn.' : 'Toà nhà chưa có “Tổng số tầng” (quản trị viên nhập ở trang Toà nhà) — chọn tay.'}</span>
+              <span className="hint">
+                {bandPick && autoBand && <><button type="button" className="a-link" onClick={() => { setBandPick(''); setDirty(true); }}>Về tự động</button> ({BAND_SHORT[autoBand]}, tầng {floor}/{building?.total_floors}) · </>}
+                {!building?.total_floors && building && <><a href={`/admin/toa-nha/${building.id}`} target="_blank" rel="noopener" style={{ color: 'var(--blue-500)' }}>Điền tổng số tầng của toà</a> để tự tính · </>}
+                Website chỉ hiện Tầng thấp / trung / cao.
+              </span>
               {err('floor_band')}
-            </label>
+            </div>
             <label className={cls('beds')}>Phòng ngủ <span className="hint">0 = studio</span><input className="input" name="beds" inputMode="numeric" defaultValue={s(L.beds)} />{err('beds')}</label>
             <label className={cls('area')}>Diện tích thông thủy
               <span className="a-suffix"><input className="input" name="area" inputMode="decimal" value={f.area} onChange={(e) => setF((c) => ({ ...c, area: e.target.value }))} /><span>m²</span></span>{err('area')}

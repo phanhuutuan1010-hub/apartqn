@@ -11,6 +11,7 @@ export type PasteValues = Partial<Record<MsgField, string>>;
 const SHOW: Record<string, (v: string, bs: PasteBuilding[]) => string> = {
   building: (v, bs) => bs.find((b) => b.slug === v)?.name ?? v,
   beds: (v) => (v === '0' ? 'Studio' : v),
+  floor_band: (v) => ({ low: 'Thấp', mid: 'Trung', high: 'Cao' })[v] ?? v,
   furn: (v) => ({ full: 'Đầy đủ', basic: 'Cơ bản', empty: 'Không nội thất' })[v] ?? v,
   rent: (v) => new Intl.NumberFormat('vi-VN').format(Number(v)) + ' ₫',
   cycle: (v) => (v === 'm3' ? '3 tháng/lần' : 'Hằng tháng'),

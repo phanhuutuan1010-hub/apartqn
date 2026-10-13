@@ -19,7 +19,7 @@ const SORTS: Record<string, string> = {
 
 type Row = {
   id: string; code: string | null; status: ListingStatusAll; building_name: string; floor: number; unit_no: string | null;
-  building_slug: string;
+  building_slug: string; floor_band: 'low' | 'mid' | 'high' | null;
   beds: number | null; rent: number | null; assigned_to: string | null; verified_at: string | null;
   has_vi: boolean; has_en: boolean; en_outdated: boolean; en_status: EnStatus;
   photo_count: number; is_demo: boolean; rejection_reason: string | null;
@@ -47,6 +47,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   if (sp.a && me.role === 'admin') q = sp.a === 'none' ? q.is('assigned_to', null) : q.eq('assigned_to', sp.a);
   if (sp.tr === 'en') q = q.in('en_status', ['none', 'stale']);
   if (sp.demo === '1') q = q.eq('is_demo', true);
+  if (sp.band === 'none') q = q.is('floor_band', null);
   if (sp.v === 'due') q = q.in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind));
   const sortCol = SORTS[sp.sort ?? ''] ?? 'updated_at';
   const asc = sp.sort ? sp.dir === 'asc' : false;
@@ -77,6 +78,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           ...(me.role === 'admin' ? [{ kind: 'select' as const, key: 'a', label: 'Phụ trách', options: [{ value: 'none', label: '— Chưa giao' }, ...staffOptions] }] : []),
           { kind: 'select', key: 'v', label: 'Xác nhận', options: [{ value: 'due', label: `Cần xác nhận (> ${remind} ngày)` }] },
           { kind: 'select', key: 'tr', label: 'Dịch', options: [{ value: 'en', label: 'Cần dịch' }] },
+          { kind: 'select', key: 'band', label: 'Mức tầng', options: [{ value: 'none', label: 'Thiếu mức tầng' }] },
           { kind: 'select', key: 'demo', label: 'Demo', options: [{ value: '1', label: 'Chỉ căn demo' }] },
         ]}
       />
@@ -90,7 +92,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           const d = daysSince(r.verified_at);
           const isPublic = r.status === 'available' || r.status === 'reserved';
           return {
-            id: r.id, code: r.code, expected: r.code ? null : nextCode.get(r.building_slug) ?? null, status: r.status, building_name: r.building_name, floor: r.floor, unit_no: r.unit_no,
+            id: r.id, code: r.code, expected: r.code ? null : nextCode.get(r.building_slug) ?? null, status: r.status, building_name: r.building_name, floor: r.floor, unit_no: r.unit_no, floor_band: r.floor_band,
             beds: r.beds, rent: r.rent, assigned_to: r.assigned_to, assignee: r.assigned_to ? dir.get(r.assigned_to)?.name ?? '—' : null,
             verified_days: d, verify_tone: !isPublic || d == null ? 'a-muted' : d > hide ? 'red' : d > remind ? 'warn' : '',
             en_status: r.en_status, is_demo: r.is_demo, rejected: !!r.rejection_reason,
