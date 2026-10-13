@@ -13,13 +13,12 @@
 .msgLabel { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-500); }
 .msgText { font-size: 13px; line-height: 1.45; color: var(--gray-700); }
 
-.bar { display: grid; grid-template-columns: 64px 64px minmax(0, 1fr); align-items: center; gap: 8px; padding: 10px var(--px) calc(10px + env(safe-area-inset-bottom)); background: var(--white); border-top: 1px solid var(--gray-200); box-shadow: 0 -6px 20px rgba(16,24,40,.08); color: var(--ink-900); }
-.icoBtn { height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: var(--r-card); color: var(--blue-500); text-decoration: none; }
+.bar { --ico: clamp(58px, 18.2vw, 72px); display: grid; grid-template-columns: var(--ico) var(--ico) minmax(0, 1fr); align-items: center; gap: clamp(4px, 2vw, 8px); padding: 10px var(--px) calc(10px + env(safe-area-inset-bottom)); background: var(--white); border-top: 1px solid var(--gray-200); box-shadow: 0 -6px 20px rgba(16,24,40,.08); color: var(--ink-900); }
+.icoBtn { min-width: 0; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: var(--r-card); color: var(--blue-500); text-decoration: none; }
 .icoBtn:active { background: var(--blue-50); }
-.icoBtn span { font-size: 13px; font-weight: 600; line-height: 1; color: var(--gray-700); white-space: nowrap; }
-.cta { min-width: 0; height: 60px; padding: 0 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 14px; background: var(--red-500); color: var(--white); text-decoration: none; box-shadow: 0 6px 18px rgba(213,43,30,.28); }
+.icoBtn span { font-size: clamp(10.5px, 3.2vw, 12.5px); font-weight: 600; line-height: 1; color: var(--gray-700); white-space: nowrap; }
+/* red block = the call to action: full price on a small line, the label below; nothing wraps or is cut */
+.cta { min-width: 0; height: 60px; padding: 0 clamp(6px, 2.5vw, 12px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 14px; background: var(--red-500); color: var(--white); text-decoration: none; box-shadow: 0 6px 18px rgba(213,43,30,.28); }
 .cta:active { background: var(--red-700); }
-.forRent { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; line-height: 1.2; opacity: .92; white-space: nowrap; }
-.ctaPrice { display: flex; align-items: baseline; gap: 4px; white-space: nowrap; line-height: 1.2; }
-.ctaPrice b { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; }
-.ctaPrice span { font-size: 14px; font-weight: 600; }
+.ctaPrice { font-size: clamp(10.5px, 3.3vw, 13px); font-weight: 600; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; opacity: .95; }
+.ctaLabel { font-size: clamp(15px, 4.6vw, 18px); font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; white-space: nowrap; }

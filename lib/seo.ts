@@ -7,11 +7,11 @@ type Href = Parameters<typeof getPathname>[0]['href'];
 
 export const absUrl = (locale: Locale, href: Href) => SITE_URL + getPathname({ locale, href });
 
-/** canonical + hreflang alternates (vi/en/ru + x-default → vi) */
+/** canonical + hreflang alternates (vi, en, x-default → the English page) */
 export function alternates(locale: Locale, href: Href): Metadata['alternates'] {
   const languages: Record<string, string> = {};
   LOCALES.forEach((l) => (languages[l] = absUrl(l, href)));
-  languages['x-default'] = absUrl('vi', href);
+  languages['x-default'] = absUrl('en', href);
   return { canonical: absUrl(locale, href), languages };
 }
 

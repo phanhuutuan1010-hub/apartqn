@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { fmtPhone, isVnMobile, telHref, tgHref, waHref, zaloHref } from '@/lib/phone';
 import { trackContact } from '@/lib/trackContact';
 import type { SiteContact } from '@/lib/repo';
+import { IconTelegram, IconWhatsApp } from './ChannelIcons';
 import styles from './QuickContact.module.css';
 
 export const IconPhone = () => (
@@ -140,7 +141,7 @@ function Callback() {
   );
 }
 
-/** Phones: [Gọi] [Zalo · en WhatsApp] [Điền form ↓] pinned to the bottom; hidden while typing (a field is focused / keyboard open). */
+/** Phones: vi [Gọi] [Zalo] · en [Telegram] [WhatsApp], then [Điền form ↓]; pinned to the bottom; hidden while typing (a field is focused / keyboard open). */
 export function ConsignBar({ contact }: { contact: SiteContact }) {
   const t = useTranslations();
   const l = useLocale();
@@ -155,16 +156,18 @@ export function ConsignBar({ contact }: { contact: SiteContact }) {
     vv?.addEventListener('resize', check);
     return () => { document.removeEventListener('focusin', check); document.removeEventListener('focusout', later); vv?.removeEventListener('resize', check); };
   }, []);
-  const { hotline } = contact;
+  const hotline = l === 'vi' ? contact.hotline : undefined;
   const zalo = l === 'vi' ? contact.zalo : undefined;
   const wa = l === 'en' && contact.whatsapp ? waHref(contact.whatsapp) : null;
+  const tg = l === 'en' ? tgHref(contact.telegramPhone, contact.telegramUsername) : null;
   return (
     <>
       <div className={styles.barSpace} aria-hidden />
       <nav className={`${styles.bar} ${hide ? styles.barHidden : ''}`} aria-label={t('qcTitle')}>
         {hotline && <a href={telHref(hotline)} className={`btn btn-blue ${styles.barBtn}`} onClick={() => trackContact('call', l)}><IconPhone /> {t('qcBarCall')}</a>}
         {zalo && <a href={zaloHref(zalo)} target="_blank" rel="noopener noreferrer" className={`btn btn-secondary ${styles.barBtn}`} onClick={() => trackContact('zalo', l)}><IconChat /> Zalo</a>}
-        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className={`btn btn-secondary ${styles.barBtn}`} onClick={() => trackContact('whatsapp', l)}><IconChat /> WhatsApp</a>}
+        {tg && <a href={tg} target="_blank" rel="noopener noreferrer" className={`btn btn-blue ${styles.barBtn}`} onClick={() => trackContact('telegram', l)}><IconTelegram size={18} /> Telegram</a>}
+        {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className={`btn btn-secondary ${styles.barBtn}`} onClick={() => trackContact('whatsapp', l)}><IconWhatsApp size={18} /> WhatsApp</a>}
         <a href="#consign-form" className={`btn btn-secondary ${styles.barBtn}`}>{t('qcBarForm')}</a>
       </nav>
     </>

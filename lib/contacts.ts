@@ -13,8 +13,8 @@ export const CONTACT_ORDER: Record<Locale, [ContactKind, ContactKind]> = {
   en: ['whatsapp', 'telegram'],
 };
 
-/** Messenger used in the mobile contact bar next to Call */
-export const BAR_MESSENGER: Record<Locale, ContactKind> = { vi: 'zalo', en: 'whatsapp' };
+/** Mobile contact bar, left to right: vi Call + Zalo · en Telegram + WhatsApp (no Call) */
+export const BAR_BUTTONS: Record<Locale, ContactKind[]> = { vi: ['call', 'zalo'], en: ['telegram', 'whatsapp'] };
 
 export const contactLinks = (c: SiteContact, callLabel: string, message: string): Partial<Record<ContactKind, Contact>> => {
   const m = encodeURIComponent(message);

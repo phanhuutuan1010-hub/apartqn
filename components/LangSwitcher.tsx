@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { LOCALES, type Locale } from '@/i18n/routing';
+import { rememberLocale } from '@/lib/localeDetect';
 import styles from './LangSwitcher.module.css';
 
 /** `VI | EN` toggle. Switching keeps the current page (and its query). */
@@ -17,6 +18,8 @@ export function LangSwitcher() {
   const [, startTransition] = useTransition();
 
   const choose = (l: Locale) => {
+    // remembered for a year: wins over the browser language on later visits to "/"
+    rememberLocale(l);
     if (l === locale) return;
     // Read the live query (Results keeps filters in the URL via history.replaceState)
     const query = Object.fromEntries(new URLSearchParams(window.location.search));

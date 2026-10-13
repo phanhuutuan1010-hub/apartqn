@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { createServerClient } from '@supabase/ssr';
 import { routing } from './i18n/routing';
+import { homeLocale, LOCALE_COOKIE, LOCALE_COOKIE_AGE } from './lib/localeDetect';
 
 const intl = createMiddleware(routing);
 
@@ -110,6 +111,26 @@ async function legacyRedirect(req: NextRequest, path = req.nextUrl.pathname) {
   return NextResponse.redirect(to, 301);
 }
 
+/**
+ * Home page only: a visitor without a stored language gets Vietnamese when the browser prefers it, otherwise /en.
+ * The choice (or the language switcher's) is remembered for a year and wins on later visits. Other pages never redirect.
+ */
+function home(req: NextRequest) {
+  const pick = homeLocale({ cookie: req.cookies.get(LOCALE_COOKIE)?.value, acceptLanguage: req.headers.get('accept-language'), userAgent: req.headers.get('user-agent') });
+  if (!pick) return intl(req);
+  let res: NextResponse;
+  if (pick.locale === 'en') {
+    const to = req.nextUrl.clone();
+    to.pathname = '/en';
+    res = NextResponse.redirect(to, 307);
+    res.headers.set('Cache-Control', 'private, no-store');
+  } else {
+    res = intl(req);
+  }
+  if (pick.remember) res.cookies.set(LOCALE_COOKIE, pick.locale, { maxAge: LOCALE_COOKIE_AGE, path: '/', sameSite: 'lax' });
+  return res;
+}
+
 export default async function proxy(req: NextRequest) {
   if (req.nextUrl.pathname === '/admin' || req.nextUrl.pathname.startsWith('/admin/')) return admin(req);
   const en = ruPath(req.nextUrl.pathname);
@@ -121,6 +142,7 @@ export default async function proxy(req: NextRequest) {
     to.pathname = en;
     return NextResponse.redirect(to, 301);
   }
+  if (req.nextUrl.pathname === '/') return home(req);
   return (await legacyRedirect(req)) ?? intl(req);
 }
 

@@ -4,8 +4,12 @@ export const routing = defineRouting({
   locales: ['vi', 'en'],
   defaultLocale: 'vi',
   localePrefix: 'as-needed',
-  // `/` is always Vietnamese; visitors switch language explicitly.
+  // next-intl never redirects: the home page picks the language once in proxy.ts (lib/localeDetect.ts)
   localeDetection: false,
+  // the language cookie is written only by the home page detection and the language switcher
+  localeCookie: false,
+  // hreflang comes from the page metadata (lib/seo.ts, x-default → English), not from a Link header
+  alternateLinks: false,
   pathnames: {
     '/': '/',
     '/can-ho': { vi: '/can-ho', en: '/apartments' },
