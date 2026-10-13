@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: PageProps<'/[locale]'>): Prom
     title: { absolute: title },
     description: t('heroSub'),
     alternates: alternates(locale, '/'),
-    openGraph: { title, description: t('heroSub'), locale: OG_LOCALE[locale], type: 'website', siteName: 'ApartQN', images: ['/images/hero.webp'] },
+    openGraph: { title, description: t('heroSub'), locale: OG_LOCALE[locale], type: 'website', siteName: 'ApartQN', images: ['/images/hero-quy-nhon.webp'] },
   };
 }
 
@@ -51,7 +51,7 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
             <p className={styles.sub}>{t('heroSub')}</p>
           </div>
           <div className={styles.heroImg}>
-            <Image src="/images/hero.webp" alt={t('heroTitle').replace(/ /g, ' ')} fill priority fetchPriority="high" sizes="(min-width:1024px) 480px, 100vw" />
+            <Image src="/images/hero-quy-nhon.webp" alt={t('heroTitle').replace(/ /g, ' ')} fill priority fetchPriority="high" sizes="(min-width:1024px) 480px, 100vw" />
           </div>
           <div className={styles.search}>
             <SmartSearch listings={listings} />
