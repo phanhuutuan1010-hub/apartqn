@@ -78,7 +78,7 @@ Prints a one-time link (24 h) to set the password. Run it again to get a new lin
 - more than `verify_hide_days` (21) → status `hidden` (removed from the site) + notification
 - Mondays → backup reminder to admins
 
-Manual run: `curl -H "Authorization: Bearer $CRON_SECRET" https://<domain>/api/cron/daily`
+Manual run: `curl -H "Authorization: Bearer $CRON_SECRET" https://apartqn.com/api/cron/daily`
 
 ### Descriptions & translations
 

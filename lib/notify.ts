@@ -1,4 +1,5 @@
 import 'server-only';
+import { SITE_URL } from '@/data/site';
 import { Resend } from 'resend';
 
 /** Telegram bot message (HTML). Returns false when the bot is not configured or the send fails. */
@@ -43,4 +44,4 @@ export const htmlRows = (title: string, rows: [string, string][]) =>
   rows.map(([k, v]) => `<tr><td style="border:1px solid #E3E6EB;background:#F7F8FA;font-weight:600">${esc(k)}</td><td style="border:1px solid #E3E6EB">${/^https?:\/\//.test(v) ? `<a href="${esc(v)}">${esc(v)}</a>` : esc(v)}</td></tr>`).join('') +
   '</table>';
 
-export const adminUrl = (path: string) => `${(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '')}${path}`;
+export const adminUrl = (path: string) => `${SITE_URL}${path}`;

@@ -1,4 +1,5 @@
 import 'server-only';
+import { SITE_URL } from '@/data/site';
 import { Resend } from 'resend';
 
 /** Send a staff email through Resend when configured. Returns false when email is not set up. */
@@ -13,7 +14,7 @@ export async function sendStaffMail(to: string, subject: string, html: string): 
   return true;
 }
 
-export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+export const siteUrl = () => SITE_URL;
 
 /** Our own confirm URL (server-side verifyOtp), so links work without editing Supabase email templates. */
 export const authLink = (tokenHash: string, type: 'invite' | 'recovery') =>

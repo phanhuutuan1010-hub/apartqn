@@ -17,9 +17,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: [{ key: 'Content-Security-Policy', value: 'frame-src https://www.google.com https://maps.google.com' }] }];
   },
-  // admin pages merged in the quick-ops cleanup
   async redirects() {
     return [
+      // the first production host → the real domain, same path and query (301). Preview deployments have other hosts and
+      // are untouched; /api stays reachable there (Vercel cron, webhooks).
+      { source: '/:path((?!api/).*)', has: [{ type: 'host', value: 'apartqn.vercel.app' }], destination: 'https://apartqn.com/:path', statusCode: 301 },
+      // admin pages merged in the quick-ops cleanup
       { source: '/admin/duyet-tin', destination: '/admin', permanent: true },
       { source: '/admin/cho-xu-ly', destination: '/admin/khach-hang?type=consign', permanent: true },
     ];
