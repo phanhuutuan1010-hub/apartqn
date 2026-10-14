@@ -815,6 +815,20 @@ describe('EN translation status (migration 21)', () => {
   });
 });
 
+describe('contact intents — "WhatsApp click" (migration 33)', () => {
+  afterAll(async () => { await root(`delete from public.contact_intents`); });
+  it('anyone may log through the rpc (public listings only); only staff read; no direct writes', async () => {
+    expect((await as('anon', (q) => q(`select public.log_contact_intent($1, 'whatsapp', 'facebook', 'X_link_vi-en', '/en/apartments/x', 'en') as ok`, [code1]))).rows[0].ok).toBe(true);
+    expect((await as('anon', (q) => q(`select public.log_contact_intent('ZZZ-999', 'whatsapp', '', '', '', 'en') as ok`))).rows[0].ok).toBe(false);
+    expect((await as('anon', (q) => q(`select public.log_contact_intent($1, 'sms', '', '', '', 'en') as ok`, [code1]))).rows[0].ok).toBe(false);
+    expect(await as('anon', (q) => denied(q(`select * from public.contact_intents`)))).toMatch(/permission denied/);
+    expect(await as(id(U.s1), (q) => denied(q(`insert into public.contact_intents (code, channel) values ($1, 'whatsapp')`, [code1])))).toMatch(/permission denied/);
+    await root(`select public.log_contact_intent($1, 'whatsapp', '', '', '/en/apartments/x', 'en')`, [code1]);
+    const seen = await as(id(U.s1), (q) => q(`select code, channel, utm_source from public.contact_intents`));
+    expect(seen.rows).toEqual([{ code: code1, channel: 'whatsapp', utm_source: null }]);
+  });
+});
+
 describe('photo bulk actions (migration 24)', () => {
   const ins = async (owner: 'listing_id' | 'building_id', oid: string, name: string, extra = '') =>
     (await root(`insert into public.photos (${owner}, bucket, path, thumb_path, master_path, sort${extra ? ', ' + extra.split('=')[0] : ''})

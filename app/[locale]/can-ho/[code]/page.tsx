@@ -195,7 +195,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
 
           <aside className={styles.aside}>
             <div className={styles.asideBox}>
-              <ContactBox x={x} contact={contact} />
+              <ContactBox x={x} contact={contact} building={b.name} />
               <div className={styles.or}><span />{t('orRequest')}<span /></div>
               <ViewingRequestForm code={x.code} />
             </div>
@@ -217,7 +217,7 @@ export default async function ListingPage({ params }: { params: Promise<Params> 
         </div>
       )}
       <Footer />
-      <EnBarAuto kind="listing" listing={x} />
+      <EnBarAuto kind="listing" listing={x} building={b.name} />
     </>
   );
 }

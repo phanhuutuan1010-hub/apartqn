@@ -27,6 +27,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   // Vietnamese on the site before gets the Vietnamese page. Link previews follow the redirect → English card.
   const vi = req.cookies.get(LOCALE_COOKIE)?.value === 'vi';
   const to = new URL(vi ? `/can-ho/${slug}` : `/en/apartments/${slug}`, origin);
+  // the link inside a "Book a viewing" WhatsApp message (?s=wa): opens the listing, is not a post click
+  const chat = q.get('s') === 'wa';
+  if (chat) {
+    to.searchParams.set('utm_source', 'whatsapp');
+    to.searchParams.set('utm_medium', 'chat');
+    const r = NextResponse.redirect(to, 302);
+    r.headers.set('Cache-Control', 'no-store');
+    r.headers.set('X-Robots-Tag', 'noindex');
+    return r;
+  }
   Object.entries(utmOf(s, v, l, code)).forEach(([k, x]) => to.searchParams.set(k, x));
   const res = NextResponse.redirect(to, 302);
   res.headers.set('Cache-Control', 'no-store');

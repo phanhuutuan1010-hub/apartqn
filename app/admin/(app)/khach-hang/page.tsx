@@ -21,6 +21,7 @@ type Row = {
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const me = await requireStaff();
   const sp = await searchParams;
+  if (sp.type === 'wa') return <WaClicks />;
   const status = (LEAD_STATUSES as string[]).includes(sp.status ?? '') ? (sp.status as LeadStatus) : 'new';
   const type = (LEAD_TYPES as string[]).includes(sp.type ?? '') ? (sp.type as LeadType) : null;
   const page = Math.max(1, Number(sp.page) || 1);
@@ -67,6 +68,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         {LEAD_TYPES.map((t) => (
           <Link key={t} href={href({ type: t })} className={type === t ? 'on' : undefined} aria-current={type === t ? 'true' : undefined}>{LEAD_TYPE[t].label}</Link>
         ))}
+        <Link href="/admin/khach-hang?type=wa">WhatsApp click</Link>
       </div>
       <div className="a-tabs a-tabs-scroll" role="tablist">
         {LEAD_STATUSES.map((s, i) => (
@@ -111,6 +113,56 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       </ul>); return isAdmin ? <LeadBulk backupDays={backupDays}>{list}</LeadBulk> : list; })()}
       {!rows.length && <div className="a-card a-empty">Không có khách ở mục “{LEAD_STATUS[status].label}”{type ? ` · ${LEAD_TYPE[type].label}` : ''}.</div>}
       <Pager page={page} pageSize={PAGE} total={count ?? 0} sp={{ ...sp, status }} basePath="/admin/khach-hang" />
+    </div>
+  );
+}
+
+/**
+ * "WhatsApp click": visitors who tapped "Book a viewing" on an English listing page (WhatsApp opened with the request
+ * typed in). Not leads — no name or number until they actually send the message — so they are listed apart and never
+ * counted with the leads above.
+ */
+async function WaClicks() {
+  const sb = await supabaseServer();
+  const [{ data }, { data: listings }] = await Promise.all([
+    sb.from('contact_intents').select('id, code, utm_source, utm_content, page, locale, created_at').eq('channel', 'whatsapp').order('created_at', { ascending: false }).limit(200),
+    sb.from('admin_listings').select('id, code').not('code', 'is', null),
+  ]);
+  const idOf = new Map((listings ?? []).map((l) => [l.code as string, l.id as string]));
+  const rows = data ?? [];
+  const when = (s: string) => new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return (
+    <div className="a-page">
+      <div className="a-head">
+        <div>
+          <h1 className="a-h1">Khách</h1>
+          <div className="a-sub">WhatsApp click — khách bấm “Book a viewing” trên trang căn tiếng Anh. Chưa phải lead: chưa có tên hay số điện thoại cho tới khi họ gửi tin nhắn.</div>
+        </div>
+      </div>
+      <div className="a-seg" role="group" aria-label="Loại">
+        <Link href="/admin/khach-hang">Tất cả</Link>
+        {LEAD_TYPES.map((t) => <Link key={t} href={`/admin/khach-hang?type=${t}`}>{LEAD_TYPE[t].label}</Link>)}
+        <Link href="/admin/khach-hang?type=wa" className="on" aria-current="true">WhatsApp click <span className="a-count">{rows.length}</span></Link>
+      </div>
+      {rows.length === 0 ? <div className="a-empty">Chưa có lượt bấm nào.</div> : (
+        <div className="a-table-wrap">
+          <table className="a-table">
+            <thead><tr><th>Lúc</th><th>Căn</th><th>Nguồn</th><th>Trang</th><th>Ngôn ngữ</th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td>{when(r.created_at)}</td>
+                  <td>{idOf.get(r.code) ? <Link href={`/admin/can-ho/${idOf.get(r.code)}`} style={{ fontWeight: 700 }}>{r.code}</Link> : <b>{r.code}</b>}</td>
+                  <td>{r.utm_source ? <>{r.utm_source}{r.utm_content && <span className="a-small a-muted"> · {r.utm_content}</span>}</> : 'website'}</td>
+                  <td className="a-small a-muted">{r.page ?? '—'}</td>
+                  <td>{(r.locale ?? '—').toUpperCase()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="a-small a-muted" style={{ marginTop: 12 }}>200 lượt gần nhất · tự xoá sau 180 ngày · không lưu thông tin cá nhân.</p>
     </div>
   );
 }

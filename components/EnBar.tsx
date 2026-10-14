@@ -7,7 +7,8 @@ import type { SiteContact } from '@/lib/repo';
 import { BAR_BUTTONS, contactLinks } from '@/lib/contacts';
 import { EMPTY, type Filters } from '@/lib/filters';
 import { money } from '@/lib/format';
-import { IconTelegram, IconWhatsApp } from './ChannelIcons';
+import { IconRequest, IconTelegram, IconWhatsApp } from './ChannelIcons';
+import { WaBookLink } from './WaBookLink';
 import { SearchRequestForm } from './SearchRequestForm';
 import bar from './ContactBox.module.css';
 import styles from './EnBar.module.css';
@@ -22,6 +23,11 @@ export type EnBarProps = {
   from?: boolean;
   /** viewing → #viewing · units → #units · browse → /en/apartments · help → the "find it for me" form */
   cta: 'viewing' | 'units' | 'browse' | 'help';
+  /**
+   * Listing pages: the red block opens this WhatsApp chat ("Book a viewing", message already typed) and the left side
+   * becomes Telegram + "Request" (the viewing form) — no second WhatsApp button.
+   */
+  book?: { href: string; code: string };
   /** ids of the page's own form / target section: the bar steps aside while one is on screen */
   hideIds?: string[];
   /** results page: what the visitor searched for, sent with the "find it for me" request */
@@ -33,7 +39,7 @@ export type EnBarProps = {
  * English pages, phones (< 768 px): Telegram · WhatsApp · red action block, pinned to the bottom.
  * Hidden while the keyboard is open (a field is focused) and while the page's own form / target section is in view.
  */
-export function EnBar({ contact, message, price, from, cta, hideIds, query = '', criteria = EMPTY }: EnBarProps) {
+export function EnBar({ contact, message, price, from, cta, book, hideIds, query = '', criteria = EMPTY }: EnBarProps) {
   const t = useTranslations();
   const [hide, setHide] = useState(false);
   const [open, setOpen] = useState(false);
@@ -78,7 +84,8 @@ export function EnBar({ contact, message, price, from, cta, hideIds, query = '',
   }, [open]);
 
   const all = contactLinks(contact, '', message);
-  const btns = BAR_BUTTONS.en.flatMap((k) => all[k] ?? []);
+  const btns = (book ? (['telegram'] as const) : BAR_BUTTONS.en).flatMap((k) => all[k] ?? []);
+  const cols = btns.length + (book ? 1 : 0);
   const action = price == null ? 'help' : cta;
   const label = t(action === 'viewing' ? 'vrShort' : action === 'units' ? 'ebUnits' : action === 'browse' ? 'ebBrowse' : 'ebHelp');
   const inner = (
@@ -92,14 +99,22 @@ export function EnBar({ contact, message, price, from, cta, hideIds, query = '',
     <>
       <div className={styles.space} aria-hidden />
       <nav className={`${styles.wrap} ${hide ? styles.hidden : ''}`} aria-label={t('ebAria')} data-enbar>
-        <div className={bar.bar} style={{ gridTemplateColumns: `${btns.map(() => 'var(--ico)').join(' ')} minmax(0, 1fr)` }}>
+        <div className={bar.bar} style={{ gridTemplateColumns: `${Array.from({ length: cols }, () => 'var(--ico)').join(' ')} minmax(0, 1fr)` }}>
           {btns.map((c) => (
             <a key={c.k} href={c.href} target="_blank" rel="noopener noreferrer" className={bar.icoBtn} tabIndex={hide ? -1 : undefined}>
               {c.k === 'telegram' ? <IconTelegram size={26} /> : <IconWhatsApp size={26} />}
               <span>{c.label}</span>
             </a>
           ))}
-          {action === 'help'
+          {book && (
+            <a href="#viewing" className={bar.icoBtn} tabIndex={hide ? -1 : undefined}>
+              <IconRequest size={26} />
+              <span>{t('ebRequest')}</span>
+            </a>
+          )}
+          {book
+            ? <WaBookLink href={book.href} code={book.code} className={bar.cta} tabIndex={hide ? -1 : undefined}>{inner}</WaBookLink>
+            : action === 'help'
             ? <button type="button" className={`${bar.cta} ${styles.btn}`} onClick={() => setOpen(true)} aria-haspopup="dialog" tabIndex={hide ? -1 : undefined}>{inner}</button>
             : action === 'browse'
               ? <Link href="/can-ho" className={bar.cta} tabIndex={hide ? -1 : undefined}>{inner}</Link>

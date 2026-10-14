@@ -9,6 +9,9 @@
 .line b { font-weight: 700; color: var(--ink-900); white-space: nowrap; }
 .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .btns a { height: 48px; font-size: 15px; padding: 0 8px; }
+.book { display: flex; flex-direction: column; gap: 8px; }
+.book a { height: 48px; font-size: 15px; padding: 0 8px; }
+.msgText { overflow-wrap: anywhere; }
 .msg { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--gray-50); }
 .msgLabel { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-500); }
 .msgText { font-size: 13px; line-height: 1.45; color: var(--gray-700); }

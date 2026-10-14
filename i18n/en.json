@@ -299,5 +299,6 @@
   "ebUnits": "See available units",
   "ebBrowse": "Browse apartments",
   "ebHelp": "Help me find",
-  "ebAria": "Contact ApartQN"
+  "ebAria": "Contact ApartQN",
+  "ebRequest": "Request"
 }

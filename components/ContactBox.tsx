@@ -6,13 +6,22 @@ import { BAR_BUTTONS, contactLinks, contacts, type ContactKind } from '@/lib/con
 import { F, money, total } from '@/lib/format';
 import { StatusBadge } from './Badges';
 import { IconTelegram, IconWhatsApp } from './ChannelIcons';
+import { WaBookLink } from './WaBookLink';
+import { SITE_URL } from '@/data/site';
+import { waHref } from '@/lib/phone';
+import { bookingHref, bookingLink, bookingMessage } from '@/lib/waBooking';
 import styles from './ContactBox.module.css';
 
-/** lg aside: status + code, price, est. monthly, move-in, 2 locale buttons, prefilled message preview. */
-export function ContactBox({ x, contact }: { x: Listing; contact: SiteContact }) {
+/**
+ * lg aside: status + code, price, est. monthly, move-in, contact buttons, prefilled message preview.
+ * vi: Zalo + Call. en: red "Book a viewing" (WhatsApp chat with the request typed in) + Telegram.
+ */
+export function ContactBox({ x, contact, building }: { x: Listing; contact: SiteContact; building: string }) {
   const t = useTranslations();
   const l = useLocale();
   const cs = contacts(contact, l, t('call'), { code: x.code });
+  const bookMsg = bookingMessage({ code: x.code, building, beds: x.beds, rent: x.rent, link: bookingLink(SITE_URL, x.code) });
+  const book = l === 'en' ? bookingHref(contact.whatsapp ? waHref(contact.whatsapp) : null, bookMsg) : null;
   return (
     <div className={styles.box}>
       <div className={styles.top}>
@@ -24,14 +33,23 @@ export function ContactBox({ x, contact }: { x: Listing; contact: SiteContact })
         <div className={styles.line}>{t('estMonthly')}: <b>{money(total(x), l)}</b></div>
         <div className={styles.line}>{F.moveIn(x.moveIn, l)}</div>
       </div>
-      <div className={styles.btns}>
-        {cs.map((c, i) => (
-          <a key={c.k} href={c.href} {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className={`btn ${i === 0 ? 'btn-blue' : 'btn-secondary'}`}>{c.label}</a>
-        ))}
-      </div>
+      {book ? (
+        <div className={styles.book}>
+          <WaBookLink href={book} code={x.code} className="btn btn-primary"><IconWhatsApp size={20} /> {t('vrShort')}</WaBookLink>
+          {cs.filter((c) => c.k !== 'whatsapp').map((c) => (
+            <a key={c.k} href={c.href} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">{c.label}</a>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.btns}>
+          {cs.map((c, i) => (
+            <a key={c.k} href={c.href} {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})} className={`btn ${i === 0 ? 'btn-blue' : 'btn-secondary'}`}>{c.label}</a>
+          ))}
+        </div>
+      )}
       <div className={styles.msg}>
         <span className={styles.msgLabel}>{t('prefilled')}</span>
-        <span className={styles.msgText}>“{F.msg(x.code, l)}”</span>
+        <span className={styles.msgText}>“{book ? bookMsg.split('\n')[0] : F.msg(x.code, l)}”</span>
       </div>
     </div>
   );
