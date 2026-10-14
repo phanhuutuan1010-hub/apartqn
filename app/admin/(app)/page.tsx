@@ -75,6 +75,9 @@ export default async function TodayPage() {
   const backupDays = daysSince(settings?.last_backup_at);
   const backupLate = backupDays == null || backupDays > warnBackup;
   const bName = new Map((buildings ?? []).map((b) => [b.id, b.name]));
+  const { count: notifyFailed } = isAdmin
+    ? await sb.from('notifications_log').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', daysAgoIso(7))
+    : { count: 0 };
   const nothing = !pending.length && !due.length && !leads.length && !mkpTodo.length;
 
   return (
@@ -86,6 +89,12 @@ export default async function TodayPage() {
         </div>
         <Link href="/admin/can-ho/moi" className="a-btn a-btn-primary"><Plus size={16} aria-hidden /> Thêm căn</Link>
       </div>
+
+      {(notifyFailed ?? 0) > 0 && (
+        <Link href="/admin/cai-dat" className="a-alert error" style={{ display: 'block', marginBottom: 12, textDecoration: 'none' }}>
+          <b>Thông báo lỗi: {notifyFailed}</b> — có thông báo khách mới không gửi được trong 7 ngày qua. Mở Cài đặt → Kiểm tra Telegram →
+        </Link>
+      )}
 
       {nothing && <div className="a-card a-empty">Không có việc gì đang chờ. 🎉</div>}
 

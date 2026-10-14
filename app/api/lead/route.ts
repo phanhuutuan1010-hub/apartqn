@@ -3,7 +3,8 @@ import vi from '@/i18n/vi.json';
 import { leadSchema, type Lead } from '@/lib/leadSchema';
 import { clientIp, rateLimit } from '@/lib/rateLimit';
 import { supabaseSecret } from '@/lib/supabase/secret';
-import { adminUrl, htmlRows, leadEmail, telegram, tgRows } from '@/lib/notify';
+import { adminUrl } from '@/lib/notify';
+import { deliverLead } from '@/lib/leadNotify';
 import { fmtPhone, isVnMobile } from '@/lib/phone';
 import { utmFromCookie, type Utm } from '@/lib/attribution';
 
@@ -19,14 +20,6 @@ type Staff = { id: string; full_name: string; email: string; telegram_chat_id: s
 async function admins(sb: Sb): Promise<Staff[]> {
   const { data } = await sb.from('profiles').select('id, full_name, email, telegram_chat_id, role').eq('role', 'admin').eq('active', true).order('created_at');
   return (data ?? []) as Staff[];
-}
-
-/** Telegram: assignee → else admins with a chat id → else the TELEGRAM_CHAT_ID group. */
-async function notifyTelegram(targets: (string | null | undefined)[], html: string) {
-  const ids = [...new Set(targets.filter(Boolean) as string[])];
-  if (!ids.length && process.env.TELEGRAM_CHAT_ID) ids.push(process.env.TELEGRAM_CHAT_ID);
-  const res = await Promise.all(ids.map((id) => telegram(id, html)));
-  return res.some(Boolean);
 }
 
 async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>, attr: Partial<Utm>) {
@@ -60,10 +53,7 @@ async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>, a
     ['Trang', lead.page || '—'],
   ];
   const subject = `[ApartQN] Đặt lịch xem ${code}`;
-  const [tg, mail] = await Promise.all([
-    notifyTelegram(assignee?.telegram_chat_id ? [assignee.telegram_chat_id] : adminList.map((a) => a.telegram_chat_id), tgRows(subject, rows)),
-    leadEmail(subject, htmlRows(subject, rows)),
-  ]);
+  const { tg, mail } = await deliverLead(sb, { leadId: row?.id ?? null, targets: assignee?.telegram_chat_id ? [assignee.telegram_chat_id] : adminList.map((a) => a.telegram_chat_id), subject, rows });
   return { saved: !error, tg, mail };
 }
 
@@ -81,10 +71,7 @@ async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, 
     ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
   ];
   const subject = '[ApartQN] Chủ nhà nhờ gọi lại';
-  const [tg, mail] = await Promise.all([
-    notifyTelegram((await admins(sb)).map((a) => a.telegram_chat_id), tgRows(subject, rows)),
-    leadEmail(subject, htmlRows(subject, rows)),
-  ]);
+  const { tg, mail } = await deliverLead(sb, { leadId: row?.id ?? null, targets: (await admins(sb)).map((a) => a.telegram_chat_id), subject, rows });
   return { saved: !error, tg, mail };
 }
 
@@ -122,10 +109,7 @@ async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, a
     ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
   ];
   const subject = `[ApartQN] Ký gửi căn hộ · ${bName}`;
-  const [tg, mail] = await Promise.all([
-    notifyTelegram((await admins(sb)).map((a) => a.telegram_chat_id), tgRows(subject, rows)),
-    leadEmail(subject, htmlRows(subject, rows)),
-  ]);
+  const { tg, mail } = await deliverLead(sb, { leadId: row?.id ?? null, targets: (await admins(sb)).map((a) => a.telegram_chat_id), subject, rows });
   return { saved: !error, tg, mail };
 }
 
@@ -171,10 +155,7 @@ async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_r
     ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
   ];
   const subject = '[ApartQN] Nhờ tìm căn giúp';
-  const [tg, mail] = await Promise.all([
-    notifyTelegram(adminList.map((a) => a.telegram_chat_id), tgRows(subject, rows)),
-    leadEmail(subject, htmlRows(subject, rows)),
-  ]);
+  const { tg, mail } = await deliverLead(sb, { leadId: row?.id ?? null, targets: adminList.map((a) => a.telegram_chat_id), subject, rows });
   return { saved: !error, tg, mail };
 }
 

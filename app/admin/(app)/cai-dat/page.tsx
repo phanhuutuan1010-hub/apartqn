@@ -1,3 +1,4 @@
+import { TelegramCheck } from '@/components/admin/TelegramCheck';
 import type { Metadata } from 'next';
 import { DatabaseBackup } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin/session';
@@ -42,6 +43,8 @@ export default async function SettingsPage() {
         telegram_phone: s?.telegram_phone ?? null, telegram_username: s?.telegram_username ?? null, contact_person_name: s?.contact_person_name ?? null,
         contact_person_title: s?.contact_person_title ?? null, photoUrl: s?.contact_person_photo ? publicPhotoUrl(SUPABASE_URL, s.contact_person_photo) : null,
       }} />
+
+      <TelegramCheck />
 
       <GlossaryForm rows={(glossary ?? []) as { vi: string; en: string }[]} />
 

@@ -860,6 +860,17 @@ describe('Facebook Marketplace tracking (migration 34)', () => {
   });
 });
 
+describe('notifications log (migration 35)', () => {
+  afterAll(async () => { await root(`delete from public.notifications_log`); });
+  it('server writes; admins read; sales and visitors see nothing and cannot write', async () => {
+    await root(`insert into public.notifications_log (channel, status, error) values ('telegram', 'failed', 'no recipient'), ('email', 'skipped', null)`);
+    expect((await as(id(U.admin), (q) => q(`select channel, status from public.notifications_log order by id`))).rows).toEqual([{ channel: 'telegram', status: 'failed' }, { channel: 'email', status: 'skipped' }]);
+    expect((await as(id(U.s1), (q) => q(`select * from public.notifications_log`))).rows).toEqual([]);
+    expect(await as(id(U.admin), (q) => denied(q(`insert into public.notifications_log (channel, status) values ('telegram', 'sent')`)))).toMatch(/permission denied/);
+    expect(await as('anon', (q) => denied(q(`select * from public.notifications_log`)))).toMatch(/permission denied/);
+  });
+});
+
 describe('contact intents — "WhatsApp click" (migration 33)', () => {
   afterAll(async () => { await root(`delete from public.contact_intents`); });
   it('anyone may log through the rpc (public listings only); only staff read; no direct writes', async () => {

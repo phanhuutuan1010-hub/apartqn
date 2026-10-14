@@ -1,3 +1,4 @@
+import { myConnectUrl } from '@/lib/admin/telegramActions';
 import type { Metadata } from 'next';
 import { requireStaff } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
@@ -17,7 +18,7 @@ export default async function MyAccountPage() {
           <div className="a-sub">Đổi mật khẩu: đăng xuất → “Quên mật khẩu”.</div>
         </div>
       </div>
-      <MyProfileForm me={data ?? { full_name: me.full_name, phone: null, telegram_chat_id: null, email: me.email }} botName={process.env.TELEGRAM_BOT_USERNAME} />
+      <MyProfileForm me={data ?? { full_name: me.full_name, phone: null, telegram_chat_id: null, email: me.email }} botName={process.env.TELEGRAM_BOT_USERNAME} connectUrl={await myConnectUrl()} />
     </div>
   );
 }

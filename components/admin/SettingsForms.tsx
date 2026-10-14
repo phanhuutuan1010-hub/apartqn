@@ -72,7 +72,7 @@ export function ContactForm({ v }: { v: ContactSettings }) {
   );
 }
 
-export function MyProfileForm({ me, botName }: { me: { full_name: string; phone: string | null; telegram_chat_id: string | null; email: string }; botName?: string }) {
+export function MyProfileForm({ me, botName, connectUrl }: { me: { full_name: string; phone: string | null; telegram_chat_id: string | null; email: string }; botName?: string; connectUrl?: string | null }) {
   const [state, action, pending] = useActionState<Res, FormData>(saveMyProfile, {});
   const [test, setTest] = useState<Res>({});
   const [busy, start] = useTransition();
@@ -87,6 +87,12 @@ export function MyProfileForm({ me, botName }: { me: { full_name: string; phone:
           <input className="input a-mono" name="telegram_chat_id" inputMode="numeric" defaultValue={me.telegram_chat_id ?? ''} maxLength={32} placeholder="vd. 123456789" />
         </label>
       </div>
+      {connectUrl && (
+        <p className="a-small" style={{ margin: '12px 0 0' }}>
+          {me.telegram_chat_id ? <span className="a-badge ok">Telegram đã kết nối</span> : <span className="a-badge warn">Telegram chưa kết nối</span>}{' '}
+          <a href={connectUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--blue-500)', fontWeight: 600 }}>{me.telegram_chat_id ? 'Kết nối lại' : 'Kết nối Telegram'}</a> — mở Telegram, bấm <b>Start</b> là xong (không cần gõ Chat ID). Hoặc làm thủ công:
+        </p>
+      )}
       <ol className="a-small a-muted" style={{ margin: '12px 0 0', paddingLeft: 18, lineHeight: 1.7 }}>
         <li>Mở Telegram, tìm bot {botName ? <b>@{botName}</b> : 'của ApartQN'} và bấm <b>Start</b>.</li>
         <li>Nhắn cho <b>@userinfobot</b> để lấy <b>Id</b> của bạn, dán vào ô trên rồi bấm Lưu.</li>
