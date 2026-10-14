@@ -2,21 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Download, Share2, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { getPostData } from '@/lib/admin/postActions';
-import { buildPost, hooksFor, type PostChannel, type PostData, type PostHook, type PostMode, type PostPair } from '@/lib/listing/post';
+import { canShareFiles as shareable, downloadZip, toJpeg } from '@/lib/admin/photoFiles';
 
-/** public (watermarked) WebP → JPEG File: what Facebook / Zalo accept everywhere */
-async function toJpeg(url: string, name: string): Promise<File> {
-  const blob = await (await fetch(url)).blob();
-  const bmp = await createImageBitmap(blob);
-  const c = document.createElement('canvas');
-  c.width = bmp.width;
-  c.height = bmp.height;
-  c.getContext('2d')!.drawImage(bmp, 0, 0);
-  bmp.close();
-  const jpg = await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('encode'))), 'image/jpeg', 0.9));
-  return new File([jpg], name, { type: 'image/jpeg' });
-}
+// the Marketplace kit loads when its tab is opened
+const MarketplaceTab = dynamic(() => import('./MarketplaceTab'), { ssr: false, loading: () => <p className="a-muted">Đang tải…</p> });
+import { buildPost, hooksFor, type PostChannel, type PostData, type PostHook, type PostMode, type PostPair } from '@/lib/listing/post';
 
 const MODES: [PostMode, string][] = [['img', 'Bài kèm ảnh'], ['link', 'Bài chỉ có link'], ['comment', 'Link ở bình luận']];
 const HOOK_LABEL: Record<PostHook, string> = { price: 'giá trước', feature: 'điểm nổi bật trước', move: 'ngày dọn vào trước' };
@@ -35,6 +27,7 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
   const [hookI, setHookI] = useState(0);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<'post' | 'mkp'>('post');
 
   useEffect(() => {
     ref.current?.showModal();
@@ -51,7 +44,7 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
   const withPhotos = channel === 'facebook' && mode === 'img';
   const images = withPhotos ? src?.images ?? [] : [];
   const base = (d?.code ?? 'can-ho').toLowerCase();
-  const canShareFiles = typeof navigator !== 'undefined' && typeof navigator.canShare === 'function' && navigator.canShare({ files: [new File([], 'x.jpg', { type: 'image/jpeg' })] });
+  const canShareFiles = shareable();
 
   const copy = async (what: string, done: string) => {
     try {
@@ -80,14 +73,8 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
     setBusy(true);
     setStatus('Đang nén ảnh…');
     try {
-      const [{ zipSync }, f] = await Promise.all([import('fflate'), files()]);
-      const entries = Object.fromEntries(await Promise.all(f.map(async (x) => [x.name, new Uint8Array(await x.arrayBuffer())] as const)));
-      const out = zipSync(entries, { level: 0 });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([out], { type: 'application/zip' }));
-      a.download = `${base}-anh.zip`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+      const f = await files();
+      await downloadZip(f, `${base}-anh.zip`);
       setStatus(`Đã tải ${f.length} ảnh.`);
     } catch (e) {
       setStatus('Không tải được ảnh: ' + (e as Error).message);
@@ -110,7 +97,14 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
       {!src && <p className="a-muted">Đang tải…</p>}
       {src?.error && <div className="a-alert error">{src.error}</div>}
       {d && !d.published && <div className="a-alert warn">Đăng căn để có link — bài đăng dẫn người xem về trang căn hộ trên website, nên chỉ tạo được khi căn đã đăng.</div>}
-      {d && post && (
+      {d?.published && (
+        <div className="a-seg" role="tablist" aria-label="Loại nội dung" style={{ marginBottom: 12 }}>
+          <button type="button" role="tab" aria-selected={tab === 'post'} className={tab === 'post' ? 'on' : undefined} onClick={() => setTab('post')}>Bài đăng</button>
+          <button type="button" role="tab" aria-selected={tab === 'mkp'} className={tab === 'mkp' ? 'on' : undefined} onClick={() => setTab('mkp')}>Marketplace</button>
+        </div>
+      )}
+      {d?.published && tab === 'mkp' && <MarketplaceTab id={id} />}
+      {d && post && tab === 'post' && (
         <>
           <div className="a-post-opts">
             {seg('Kênh', channel, [['facebook', 'Facebook'], ['zalo', 'Zalo (2 dòng)']] as const, setChannel)}

@@ -8,7 +8,7 @@ type Res = { ok?: string; error?: string };
 const Msg = ({ s }: { s: Res }) =>
   s.error ? <div className="a-alert error" style={{ marginTop: 12 }}>{s.error}</div> : s.ok ? <div className="a-alert ok" style={{ marginTop: 12 }}>{s.ok}</div> : null;
 
-export function ThresholdsForm({ v }: { v: { verify_remind_days: number; verify_hide_days: number; backup_warn_days: number } }) {
+export function ThresholdsForm({ v }: { v: { verify_remind_days: number; verify_hide_days: number; backup_warn_days: number; marketplace_renew_days: number } }) {
   const [state, action, pending] = useActionState<Res, FormData>(saveThresholds, {});
   return (
     <form action={action} className="a-card">
@@ -18,6 +18,7 @@ export function ThresholdsForm({ v }: { v: { verify_remind_days: number; verify_
         <label className="a-field">Nhắc xác nhận “còn trống” sau<span className="a-suffix"><input className="input" name="verify_remind_days" inputMode="numeric" defaultValue={v.verify_remind_days} /><span>ngày</span></span></label>
         <label className="a-field">Tự ẩn tin sau<span className="a-suffix"><input className="input" name="verify_hide_days" inputMode="numeric" defaultValue={v.verify_hide_days} /><span>ngày</span></span></label>
         <label className="a-field">Cảnh báo sao lưu sau<span className="a-suffix"><input className="input" name="backup_warn_days" inputMode="numeric" defaultValue={v.backup_warn_days} /><span>ngày</span></span></label>
+        <label className="a-field">Nhắc làm mới tin Marketplace sau<span className="a-suffix"><input className="input" name="marketplace_renew_days" inputMode="numeric" defaultValue={v.marketplace_renew_days} /><span>ngày</span></span></label>
       </div>
       <Msg s={state} />
       <button className="a-btn a-btn-blue" style={{ marginTop: 14 }} disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>

@@ -1,3 +1,4 @@
+import { MarketplaceDone } from '@/components/admin/MarketplaceDone';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
@@ -30,9 +31,15 @@ export default async function TodayPage() {
   const warnBackup = settings?.backup_warn_days ?? 7;
   const head = { count: 'exact' as const, head: true };
   // posts: the 3 listings whose short links were clicked most in the last 7 days
-  const { data: postClicks } = await sb.from('post_clicks').select('code').gte('created_at', daysAgoIso(7)).limit(5000);
-  const byCode = new Map<string, number>();
-  for (const r of postClicks ?? []) byCode.set(r.code, (byCode.get(r.code) ?? 0) + 1);
+  const [{ data: postClicks }, { data: mkpRows }] = await Promise.all([
+    sb.from('post_clicks').select('code, source').gte('created_at', daysAgoIso(7)).limit(5000),
+    // Marketplace posts to take down (listing rented / hidden / deleted) or to renew
+    sb.rpc('marketplace_reminders'),
+  ]);
+  const mkpTodo = (mkpRows ?? []) as { id: string; code: string | null; kind: 'remove' | 'renew'; url: string | null; days: number }[];
+  const byCode = new Map<string, number>(), mkpByCode = new Map<string, number>();
+  for (const r of postClicks ?? []) { const m = r.source === 'mkp' ? mkpByCode : byCode; m.set(r.code, (m.get(r.code) ?? 0) + 1); }
+  const topMkp = [...mkpByCode].sort((x, y) => y[1] - x[1]).slice(0, 3);
   const topPosts = [...byCode].sort((x, y) => y[1] - x[1]).slice(0, 3);
 
   const [pendingRes, dueRes, dueCount, leadsRes, leadCount, trEn, all, missRes, dir, { data: buildings }, clicksRes] = await Promise.all([
@@ -68,7 +75,7 @@ export default async function TodayPage() {
   const backupDays = daysSince(settings?.last_backup_at);
   const backupLate = backupDays == null || backupDays > warnBackup;
   const bName = new Map((buildings ?? []).map((b) => [b.id, b.name]));
-  const nothing = !pending.length && !due.length && !leads.length;
+  const nothing = !pending.length && !due.length && !leads.length && !mkpTodo.length;
 
   return (
     <div className="a-page">
@@ -108,6 +115,32 @@ export default async function TodayPage() {
             );
           })}
         </section>
+      )}
+
+      {mkpTodo.length > 0 && (
+        <section className={styles.block} aria-labelledby="t-mkp">
+          <h2 id="t-mkp" className={styles.h2}>Marketplace <span className="a-count">{mkpTodo.length}</span></h2>
+          <ul className="a-rows">
+            {mkpTodo.map((r) => (
+              <li key={r.id} className={styles.dueRow}>
+                <Link href={`/admin/can-ho/${r.id}`} className={styles.dueText}>
+                  <b>{r.kind === 'remove' ? 'Gỡ/đánh dấu đã cho thuê trên Marketplace' : 'Làm mới tin Marketplace'}: {r.code ?? '—'}</b>
+                  <span className="a-small a-muted">{r.kind === 'remove' ? 'Căn không còn cho thuê trên website' : `${r.days} ngày chưa làm mới`}</span>
+                </Link>
+                <span style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  {r.url && <a className="a-btn a-btn-ghost a-btn-sm" href={r.url} target="_blank" rel="noopener noreferrer">Mở tin</a>}
+                  <MarketplaceDone id={r.id} action={r.kind === 'remove' ? 'removed' : 'renewed'} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {topMkp.length > 0 && (
+        <p className="a-small" style={{ margin: '0 0 14px' }}>
+          <b>Marketplace (7 ngày):</b> {topMkp.map(([code, n], i) => <span key={code}>{i > 0 && ' · '}{code} <b>{n}</b> lượt bấm</span>)}
+        </p>
       )}
 
       {topPosts.length > 0 && (

@@ -11,6 +11,7 @@ const Thresholds = z.object({
   verify_remind_days: z.coerce.number().int().min(1).max(365),
   verify_hide_days: z.coerce.number().int().min(2).max(365),
   backup_warn_days: z.coerce.number().int().min(1).max(365),
+  marketplace_renew_days: z.coerce.number().int().min(1).max(90).default(7),
 }).refine((v) => v.verify_hide_days > v.verify_remind_days, 'Số ngày tự ẩn phải lớn hơn số ngày nhắc.');
 
 export async function saveThresholds(_: Res, fd: FormData): Promise<Res> {

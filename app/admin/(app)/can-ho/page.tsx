@@ -42,6 +42,9 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   (lowRows ?? []).forEach((p) => lowN.set(p.listing_id, (lowN.get(p.listing_id) ?? 0) + 1));
   const lowIds = [...lowN.keys()];
 
+  // listings marked as posted on Facebook Marketplace
+  const mkpIds = sp.mkp ? ((await sb.from('listings').select('id').eq('marketplace_posted', true)).data ?? []).map((r) => r.id as string) : [];
+
   const page = Math.max(1, Number(sp.page) || 1);
   let q = sb.from('admin_listings').select('*', { count: 'exact' });
   if (sp.q) {
@@ -54,6 +57,8 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
   if (sp.tr === 'en') q = q.in('en_status', ['none', 'stale']);
   if (sp.demo === '1') q = q.eq('is_demo', true);
   if (sp.band === 'none') q = q.is('floor_band', null);
+  if (sp.mkp === 'yes') q = q.in('id', mkpIds.length ? mkpIds : ['00000000-0000-0000-0000-000000000000']);
+  if (sp.mkp === 'no') { q = q.in('status', ['available', 'reserved']); if (mkpIds.length) q = q.not('id', 'in', `(${mkpIds.join(',')})`); }
   if (sp.ph === 'low') q = q.in('id', lowIds.length ? lowIds : ['00000000-0000-0000-0000-000000000000']);
   if (sp.v === 'due') q = q.in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind));
   const sortCol = SORTS[sp.sort ?? ''] ?? 'updated_at';
@@ -86,6 +91,7 @@ export default async function ListingsPage({ searchParams }: { searchParams: Pro
           { kind: 'select', key: 'v', label: 'Xác nhận', options: [{ value: 'due', label: `Cần xác nhận (> ${remind} ngày)` }] },
           { kind: 'select', key: 'tr', label: 'Dịch', options: [{ value: 'en', label: 'Cần dịch' }] },
           { kind: 'select', key: 'ph', label: 'Ảnh', options: [{ value: 'low', label: `Ảnh cần tải lại (${lowIds.length})` }] },
+          { kind: 'select', key: 'mkp', label: 'Marketplace', options: [{ value: 'yes', label: 'Đã đăng' }, { value: 'no', label: 'Chưa đăng (đang cho thuê)' }] },
           { kind: 'select', key: 'band', label: 'Mức tầng', options: [{ value: 'none', label: 'Thiếu mức tầng' }] },
           { kind: 'select', key: 'demo', label: 'Demo', options: [{ value: '1', label: 'Chỉ căn demo' }] },
         ]}

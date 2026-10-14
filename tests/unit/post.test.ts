@@ -80,6 +80,7 @@ describe('short link + attribution', () => {
   it('first-touch cookie → utm fields; anything malformed is ignored', () => {
     expect(utmFromCookie('a=1; aqn_ft=fb.img.vi-en.ALT-001; b=2')).toEqual({ utm_source: 'facebook', utm_medium: 'social', utm_campaign: 'post', utm_content: 'ALT-001_img_vi-en' });
     expect(utmFromCookie('aqn_ft=zalo.link.vi-en.TMS-012').utm_source).toBe('zalo');
+    expect(utmFromCookie('aqn_ft=mkp.link.vi-en.ALT-003').utm_source).toBe('marketplace');
     expect(utmFromCookie('aqn_ft=evil.img.vi-en.ALT-001')).toEqual({});
     expect(utmFromCookie(null)).toEqual({});
   });

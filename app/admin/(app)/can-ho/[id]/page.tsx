@@ -54,7 +54,7 @@ export default async function EditListingPage({ params, searchParams }: { params
   const status = listing.status as ListingStatusAll;
   // draft / pending: the code the building would give next (preview only)
   // posts: clicks on this listing's short link and leads that came from it, last 30 days
-  let postStats: { n: number; fb: number; zalo: number; leads: number; wa: number } | null = null;
+  let postStats: { n: number; fb: number; zalo: number; mkp: number; leads: number; wa: number } | null = null;
   if (listing.code) {
     const since = daysAgoIso(30);
     const [{ data: clicks }, { count: leadN }, { count: waN }] = await Promise.all([
@@ -63,7 +63,7 @@ export default async function EditListingPage({ params, searchParams }: { params
       sb.from('contact_intents').select('id', { count: 'exact', head: true }).eq('code', listing.code).eq('channel', 'whatsapp').gte('created_at', since),
     ]);
     const c = clicks ?? [];
-    postStats = { n: c.length, fb: c.filter((x) => x.source === 'fb').length, zalo: c.filter((x) => x.source === 'zalo').length, leads: leadN ?? 0, wa: waN ?? 0 };
+    postStats = { n: c.filter((x) => x.source !== 'mkp').length, mkp: c.filter((x) => x.source === 'mkp').length, fb: c.filter((x) => x.source === 'fb').length, zalo: c.filter((x) => x.source === 'zalo').length, leads: leadN ?? 0, wa: waN ?? 0 };
   }
   const expected = listing.code ? null : ((await sb.rpc('peek_next_listing_code', { p_building: unit.building_id })).data as string | null);
   const building = (buildings ?? []).find((b) => b.id === unit.building_id);
@@ -86,7 +86,7 @@ export default async function EditListingPage({ params, searchParams }: { params
             {' · '}Sửa lần cuối {editor ? <>bởi <b>{editor}</b> </> : ''}lúc {fmtDateTime(listing.updated_at)}
             {isPublic && vd != null && <> · Xác nhận còn trống {vd === 0 ? 'hôm nay' : `${vd} ngày trước`}</>}
           </div>
-          {postStats && <div className="a-sub">Từ bài đăng: <b>{postStats.n}</b> lượt bấm (FB {postStats.fb} · Zalo {postStats.zalo}) · <b>{postStats.leads}</b> lead · Bấm WhatsApp “Book a viewing”: <b>{postStats.wa}</b> (30 ngày)</div>}
+          {postStats && <div className="a-sub">Từ bài đăng: <b>{postStats.n}</b> lượt bấm (FB {postStats.fb} · Zalo {postStats.zalo}) · Marketplace: <b>{postStats.mkp}</b> lượt bấm · <b>{postStats.leads}</b> lead · Bấm WhatsApp “Book a viewing”: <b>{postStats.wa}</b> (30 ngày)</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {isPublic && listing.code && (

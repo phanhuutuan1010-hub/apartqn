@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 const BOT = /facebookexternalhit|facebot|facebookcatalog|zalo|twitterbot|telegrambot|whatsapp|slackbot|discordbot|linkedinbot|skypeuripreview|pinterest|bot\b|crawler|spider|preview|curl|wget|python-requests|headless|lighthouse/i;
 
 /**
- * Short link in posts: /c/{code}?s=fb|zalo&v=img|link|comment&l=vi-en|ru-en → 302 to the English listing page
+ * Short link in posts: /c/{code}?s=fb|zalo|mkp (mkp = Facebook Marketplace: Messenger replies, the brand card's QR)&v=img|link|comment&l=vi-en|ru-en → 302 to the English listing page
  * (the Vietnamese one only for a visitor whose NEXT_LOCALE cookie is vi) with utm_* parameters. Each human click is counted anonymously
  * (code, source, post form, language pair — nothing about the visitor).
  */
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   const { code: raw } = await params;
   const q = req.nextUrl.searchParams;
   const pick = <T extends string>(k: string, ok: readonly T[]): T => (ok.includes(q.get(k) as T) ? (q.get(k) as T) : ok[0]);
-  const s = pick('s', ['fb', 'zalo'] as const), v = pick('v', ['link', 'img', 'comment'] as const), l = pick('l', ['vi-en', 'ru-en'] as const);
+  const s = pick('s', ['fb', 'zalo', 'mkp'] as const), v = pick('v', ['link', 'img', 'comment'] as const), l = pick('l', ['vi-en', 'ru-en'] as const);
   const origin = req.nextUrl.origin || SITE_URL;
   if (!/^[a-z]{3}-\d{3,6}$/i.test(raw)) return NextResponse.redirect(new URL('/', origin), 302);
   const slug = raw.toLowerCase(), code = raw.toUpperCase();

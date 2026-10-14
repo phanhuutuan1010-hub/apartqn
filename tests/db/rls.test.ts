@@ -815,6 +815,51 @@ describe('EN translation status (migration 21)', () => {
   });
 });
 
+describe('Facebook Marketplace tracking (migration 34)', () => {
+  afterAll(async () => { await root(`update public.listings set marketplace_posted = false, marketplace_url = null, marketplace_posted_at = null, marketplace_renewed_at = null`); });
+  it('posted / renewed / removed through one rpc: own listings for sales, any for admins; reminders follow', async () => {
+    await as(id(U.s1), async (q) => {
+      expect(await denied(q(`select public.set_marketplace($1, 'posted', null)`, [l2]))).toMatch(/not allowed/);
+      expect(await denied(q(`select public.set_marketplace($1, 'posted', 'http://x')`, [l1]))).toMatch(/bad url/);
+      expect(await denied(q(`select public.set_marketplace($1, 'sold', null)`, [l1]))).toMatch(/bad action/);
+      await q(`select public.set_marketplace($1, 'posted', 'https://www.facebook.com/marketplace/item/1')`, [l1]);
+      const r = (await q(`select marketplace_posted, marketplace_url, marketplace_posted_at is not null as at from public.listings where id = $1`, [l1])).rows[0];
+      expect(r).toEqual({ marketplace_posted: true, marketplace_url: 'https://www.facebook.com/marketplace/item/1', at: true });
+      // fresh post, still available → nothing to do
+      expect((await q(`select * from public.marketplace_reminders()`)).rows).toEqual([]);
+    });
+    expect(await as('anon', (q) => denied(q(`select public.set_marketplace($1, 'removed', null)`, [l1])))).toMatch(/permission denied/);
+
+    // posted 9 days ago → renew (default 7 days); "Đã làm mới" clears it
+    await root(`select public.set_marketplace($1, 'posted', 'https://www.facebook.com/marketplace/item/1')`, [l1]);
+    await root(`update public.listings set marketplace_posted_at = now() - interval '9 days' where id = $1`, [l1]);
+    await as(id(U.s1), async (q) => {
+      expect((await q(`select id, kind, days from public.marketplace_reminders()`)).rows).toEqual([{ id: l1, kind: 'renew', days: 9 }]);
+      await q(`select public.set_marketplace($1, 'renewed', null)`, [l1]);
+      expect((await q(`select * from public.marketplace_reminders()`)).rows).toEqual([]);
+    });
+    // another sales person never sees it; an admin does
+    expect((await as(id(U.s2), (q) => q(`select * from public.marketplace_reminders()`))).rows).toEqual([]);
+    expect((await as(id(U.admin), (q) => q(`select id, kind from public.marketplace_reminders()`))).rows).toEqual([{ id: l1, kind: 'renew' }]);
+
+    // in the trash while still posted → "remove", visible to its sales person although the row itself is hidden from them
+    await root(`update public.listings set deleted_at = now() where id = $1`, [l1]);
+    try {
+      await as(id(U.s1), async (q) => {
+        expect((await q(`select id from public.listings where id = $1`, [l1])).rows).toEqual([]);
+        expect((await q(`select id, kind, url from public.marketplace_reminders()`)).rows).toEqual([{ id: l1, kind: 'remove', url: 'https://www.facebook.com/marketplace/item/1' }]);
+        await q(`select public.set_marketplace($1, 'removed', null)`, [l1]);
+        expect((await q(`select * from public.marketplace_reminders()`)).rows).toEqual([]);
+      });
+    } finally {
+      await root(`update public.listings set deleted_at = null where id = $1`, [l1]);
+    }
+  });
+  it('Marketplace clicks are a source of their own', async () => {
+    await as('anon', (q) => q(`select public.log_post_click($1, 'mkp', 'link', 'vi-en')`, [code1]));
+  });
+});
+
 describe('contact intents — "WhatsApp click" (migration 33)', () => {
   afterAll(async () => { await root(`delete from public.contact_intents`); });
   it('anyone may log through the rpc (public listings only); only staff read; no direct writes', async () => {

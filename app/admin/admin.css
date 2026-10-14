@@ -230,6 +230,14 @@ details.a-menu > div > .danger { color: var(--error); }
 .a-post-opts { display: flex; flex-wrap: wrap; gap: 8px; }
 .a-post-text { width: 100%; height: auto; min-height: 140px; margin-top: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.5; white-space: pre-wrap; resize: vertical; }
 .a-post-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.a-mkp { display: flex; flex-direction: column; gap: 8px; }
+.a-mkp-h { margin: 10px 0 0; font-size: 14px; font-weight: 700; }
+.a-mkp-row { display: grid; grid-template-columns: minmax(96px, 150px) minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.a-mkp-label { font-size: 13px; color: var(--gray-500); }
+.a-mkp-value { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.a-mkp-text { grid-column: 1 / 3; grid-row: 2; height: auto; padding: 8px 10px; font-size: 13px; line-height: 1.45; resize: vertical; }
+.a-mkp-row:has(.a-mkp-text) { align-items: end; }
+.a-mkp-row:has(.a-mkp-text) .a-btn { grid-row: 2; align-self: start; }
 /* listing form: paste box + folded details + save bar above the phone tab bar */
 .a-paste textarea { min-height: 76px; }
 .a-paste-preview { margin-top: 12px; overflow-x: auto; }

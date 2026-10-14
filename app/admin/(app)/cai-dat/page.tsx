@@ -45,7 +45,7 @@ export default async function SettingsPage() {
 
       <GlossaryForm rows={(glossary ?? []) as { vi: string; en: string }[]} />
 
-      <ThresholdsForm v={{ verify_remind_days: s?.verify_remind_days ?? 14, verify_hide_days: s?.verify_hide_days ?? 21, backup_warn_days: s?.backup_warn_days ?? 7 }} />
+      <ThresholdsForm v={{ verify_remind_days: s?.verify_remind_days ?? 14, verify_hide_days: s?.verify_hide_days ?? 21, backup_warn_days: s?.backup_warn_days ?? 7, marketplace_renew_days: s?.marketplace_renew_days ?? 7 }} />
     </div>
   );
 }
