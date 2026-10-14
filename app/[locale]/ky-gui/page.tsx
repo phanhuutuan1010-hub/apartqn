@@ -84,7 +84,7 @@ export default async function ConsignPage({ params }: PageProps<'/[locale]/ky-gu
           </div>
         </section>
       </main>
-      <Footer demo={false} />
+      <Footer />
       {reach && <ConsignBar contact={contact} />}
     </>
   );

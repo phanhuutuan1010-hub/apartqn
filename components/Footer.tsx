@@ -1,14 +1,13 @@
 import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { LOCALES } from '@/i18n/routing';
-import { DEMO, SITE } from '@/data/site';
+import { SITE } from '@/data/site';
 import { getContact } from '@/lib/repo';
 import { fmtPhone, telHref } from '@/lib/phone';
 import { Logo } from './Logo';
 import styles from './Footer.module.css';
 
-/** `demo={false}`: no DỮ LIỆU DEMO tag (the consign page talks to real owners). */
-export async function Footer({ demo = DEMO }: { demo?: boolean } = {}) {
+export async function Footer() {
   const [t, locale, { hotline }] = await Promise.all([getTranslations(), getLocale(), getContact()]);
   const nav = [
     { label: t('navApts'), href: { pathname: '/can-ho' as const } },
@@ -51,7 +50,6 @@ export async function Footer({ demo = DEMO }: { demo?: boolean } = {}) {
         </div>
         <div className={styles.bottom}>
           <span>© 2026 ApartQN</span>
-          {demo && <span className={styles.demo}>{t('demo')}</span>}
         </div>
       </div>
     </footer>

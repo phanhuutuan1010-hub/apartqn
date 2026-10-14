@@ -16,4 +16,3 @@
 .lang:hover { background: rgba(255,255,255,.08); }
 .langOn { background: var(--blue-500); }
 .bottom { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 20px; border-top: 1px solid #1A3A78; font-size: 13px; color: var(--blue-200); }
-.demo { font-family: var(--mono); letter-spacing: .06em; }
