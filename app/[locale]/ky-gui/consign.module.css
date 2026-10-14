@@ -22,7 +22,7 @@
 .stepD { font-size: 14px; line-height: 1.55; color: var(--gray-700); text-wrap: pretty; }
 .form { min-width: 0; }
 .area { padding-top: clamp(40px, 6vw, 80px); padding-bottom: clamp(40px, 6vw, 80px); }
-.areaSub { margin: 8px 0 24px; font-size: 16px; line-height: 1.5; color: var(--gray-700); max-width: 60ch; }
+.areaSub { margin: 8px 0 24px; font-size: 16px; line-height: 1.5; color: var(--gray-700); max-width: 60ch; text-wrap: balance; }
 .blds { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .bld { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-height: 44px; padding: 14px 16px; border: 1px solid var(--gray-200); border-radius: var(--r-card); text-decoration: none; color: var(--ink-900); }
 .bld:hover { border-color: var(--blue-500); background: #F5F8FE; }

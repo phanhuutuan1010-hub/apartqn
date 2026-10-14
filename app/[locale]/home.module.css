@@ -37,5 +37,5 @@
 
 .cta { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: clamp(24px, 4vw, 48px); border-radius: var(--r-sheet); background: var(--blue-50); }
 .ctaTitle { color: var(--ink-heading); text-wrap: balance; }
-.ctaSub { margin: 0; font-size: 16px; line-height: 1.6; color: var(--gray-700); max-width: 52ch; }
+.ctaSub { margin: 0; font-size: 16px; line-height: 1.6; color: var(--gray-700); max-width: 68ch; text-wrap: balance; }
 .ctaBtn { margin-top: 6px; padding: 0 24px; white-space: normal; text-align: center; }

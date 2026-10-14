@@ -50,7 +50,9 @@ button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--blue-200); outline-offset: 2px; }
 
 /* Headings: line-height ≥ 1.15 + padding-top .08em so stacked Vietnamese diacritics never clip */
-h1, h2, h3 { margin: 0; padding-top: .08em; line-height: 1.2; overflow-wrap: break-word; }
+h1, h2, h3 { margin: 0; padding-top: .08em; line-height: 1.2; overflow-wrap: break-word; text-wrap: balance; }
+/* body copy: no one-word last line */
+p { text-wrap: pretty; }
 
 .container { max-width: calc(1200px + 2 * var(--px)); margin: 0 auto; padding-left: var(--px); padding-right: var(--px); width: 100%; }
 

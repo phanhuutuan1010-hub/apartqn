@@ -1,7 +1,7 @@
 .card { position: relative; display: flex; flex-direction: column; gap: 12px; padding: 20px; background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--r-panel); color: var(--ink-900); }
 @media (min-width: 768px) { .card { padding: 24px; } }
 .title { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.3; }
-.text { margin: 0; font-size: 15px; line-height: 1.55; color: var(--gray-700); text-wrap: pretty; }
+.text { margin: 0; font-size: 15px; line-height: 1.55; color: var(--gray-700); text-wrap: balance; }
 .btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn { flex: 1 1 auto; min-height: 48px; font-size: 15px; }
 .btn:focus-visible, .cbSum:focus-visible, .barBtn:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 2px; }

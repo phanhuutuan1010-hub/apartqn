@@ -13,7 +13,8 @@ import styles from './consign.module.css';
 export async function generateMetadata({ params }: PageProps<'/[locale]/ky-gui'>): Promise<Metadata> {
   const { locale } = (await params) as { locale: Locale };
   const t = await getTranslations({ locale });
-  const title = `${t('cgTitle')} | ApartQN`;
+  // the heading carries word joiners (no break inside "long-term"): not wanted in the <title>
+  const title = `${t('cgTitle').replace(/⁠/g, '')} | ApartQN`;
   return {
     title: { absolute: title },
     description: t('cgSub'),
