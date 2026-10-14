@@ -7,11 +7,11 @@ import sharp from 'sharp';
 import { WM_MARK } from './watermarkLogo';
 
 export const WATERMARK = {
-  version: 3,
+  version: 4,
   /** what the mark says (outlines in lib/watermarkLogo.ts — change both together) */
   text: 'apartqn.com',
   /** logo width as a share of the image width, never below `minWidth` px */
-  widthRatio: 0.2,
+  widthRatio: 0.35,
   minWidth: 120,
   /** vertical centre of the logo (0 = top, 1 = bottom): lower third */
   centerY: 0.7,

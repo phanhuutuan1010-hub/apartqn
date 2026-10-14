@@ -41,7 +41,7 @@ describe('watermark render', () => {
     expect([v.width, v.height]).toEqual([1920, 2560]);
     expect((await sharp(v.data).metadata()).exif?.toString('latin1') ?? '').not.toContain('GPS');
   });
-  it('1600: logo ~20% wide in the lower third, © metadata', async () => {
+  it('1600: mark in the lower third, © metadata', async () => {
     const out = await renderVariant(await photo(), 1600, true);
     expect([out.width, out.height]).toEqual([1600, 1067]);
     const m = await sharp(out.data).metadata();
