@@ -6,7 +6,7 @@ const mil = (v: number) => String(Math.round((v / 1e6) * 10) / 10);
 export function parsedToQuery(p: Parsed): Record<string, string> {
   const q: Record<string, string> = {};
   if (p.building) q.b = p.building;
-  if (p.beds != null) q.beds = String(Math.min(p.beds, 3)); // results filter: 0 studio · 1 · 2 · 3 = 3+
+  if (p.beds != null) q.beds = p.bedsOrStudio ? '01' : String(Math.min(p.beds, 3)); // results filter: 0 studio · 1 · 2 · 3 = 3+ · 01 = studio or 1
   if (p.furniture) q.furn = p.furniture;
   if (p.priceMin != null) q.pmin = mil(p.priceMin);
   if (p.priceMax != null) q.pmax = mil(p.priceMax);

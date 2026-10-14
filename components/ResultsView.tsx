@@ -93,7 +93,7 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
   }, [typed, matched.length, f, l]);
 
   const drawerN = (['beds', 'furn', 'fl', 'pets', 'car', 'date'] as const).filter((k) => f[k]).length;
-  const bedsLabel = (v: string) => t('sBeds') + ': ' + (v === '0' ? t('studio') : v === '3' ? '3+' : v);
+  const bedsLabel = (v: string) => t('sBeds') + ': ' + (v === '0' ? t('studio') : v === '3' ? '3+' : v === '01' ? `${t('studio')} / 1` : v);
   const pills: { label: string; clear: Partial<Filters> }[] = [];
   if (f.b && bById.get(f.b)) pills.push({ label: bById.get(f.b)!.name, clear: { b: '' } });
   if (f.q) pills.push({ label: `“${f.q}”`, clear: { q: '' } });

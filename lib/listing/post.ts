@@ -24,6 +24,11 @@ export type PostData = {
   ownPhotos: boolean;
   /** the listing is on the website (it has a page to link to) */
   published: boolean;
+  /** months; RU/EN posts only (optional for older callers) */
+  minTerm?: number | null;
+  /** deposit in months */
+  deposit?: number | null;
+  pets?: boolean;
 };
 export type PostChannel = 'facebook' | 'zalo';
 export type PostPair = 'vi-en' | 'ru-en';
@@ -52,6 +57,24 @@ export const RU = {
   costsOnly: 'Подробные ежемесячные расходы — на странице',
   rentLabel: 'Аренда',
   tags: '#АрендаКвартиры #Куинён',
+  /** RU/EN post (Russian audience): min. term, the stored features in Russian priority order, hashtags */
+  term: (n: number) => `от ${n} ${n % 10 === 1 && n % 100 !== 11 ? 'месяца' : 'месяцев'}`,
+  fullFurn: 'Полностью меблирована',
+  washer: 'Стиральная машина',
+  kitchen: 'Оборудованная кухня',
+  pets: 'Можно с животными',
+  deposit: (n: number) => `Депозит ${n} мес.`,
+  photosN: (n: number) => `${n} фото`,
+  ruTags: '#Куинён #Куиньон #арендаквартиры #долгосрочнаяаренда #ApartQN',
+} as const;
+
+/** English mirror of the RU/EN post */
+const EN_RU = {
+  beds: (n: number) => `${n} bedroom${n === 1 ? '' : 's'}`,
+  term: (n: number) => `min. ${n} month${n === 1 ? '' : 's'}`,
+  fullFurn: 'Fully furnished', washer: 'Washing machine', kitchen: 'Equipped kitchen', pets: 'Pets allowed',
+  deposit: (n: number) => `Deposit ${n} month${n === 1 ? '' : 's'}`,
+  photosN: (n: number) => `${n} photos`,
 } as const;
 
 const T = {
@@ -116,6 +139,35 @@ function block(d: PostData, l: PostLang, hook: PostHook, today: string): string[
   return [l1, l2, l3].filter(Boolean);
 }
 
+/**
+ * RU/EN post block (Russian audience), at most 4 lines, built only from stored fields:
+ *   L1 feature (sea / river / lagoon view) · bedrooms ("2 спальни", never "N-комнатная") · building, city
+ *   L2 rent · move-in · minimum term
+ *   L3 up to 3 features in this order: full furniture, washing machine, equipped kitchen, pets, deposit · photo count
+ *   L4 link
+ * Washing machine / kitchen come from the furniture level, exactly as the listing page lists them (UNIT_AM).
+ */
+function blockRuEn(d: PostData, l: 'ru' | 'en', today: string, link: string | null): string[] {
+  const ru = l === 'ru', t = T[l];
+  const view = d.view && d.view !== 'city' ? t.view[d.view] : null;
+  const beds = d.beds == null ? null : d.beds === 0 ? t.studio : ru ? RU.beds(d.beds) : EN_RU.beds(d.beds);
+  const place = [d.building, /quy\s*nh[oơ]n/i.test(d.building) ? null : t.city].filter(Boolean).join(', ');
+  const l1 = [view, beds, place].filter(Boolean).join(' · ');
+  const move = !d.moveIn ? null : d.moveIn <= today ? t.now : ru ? `${RU.fromDate} ${dateShort(d.moveIn, 'ru')}` : `${t.fromDate} ${dateShort(d.moveIn, 'en')}`;
+  const term = d.minTerm ? (ru ? RU.term(d.minTerm) : EN_RU.term(d.minTerm)) : null;
+  const l2 = [d.rent ? `${money(d.rent, l)}${t.perMonth}` : null, move, term].filter(Boolean).join(' · ');
+  const W = ru ? RU : EN_RU;
+  const feats = [
+    d.furn === 'full' && W.fullFurn,
+    d.furn === 'full' && W.washer,
+    (d.furn === 'full' || d.furn === 'basic') && W.kitchen,
+    d.pets && W.pets,
+    d.deposit ? W.deposit(d.deposit) : null,
+  ].filter((x): x is string => !!x).slice(0, 3);
+  const l3 = [...feats, d.photoCount > 0 ? W.photosN(d.photoCount) : null].filter(Boolean).join(' · ');
+  return [l1 && `${view ? '🌊' : '🏠'} ${l1}`, l2 && `💰 ${l2}`, l3 && `✨ ${l3}`, link && `👉 ${link}`].filter((x): x is string => !!x);
+}
+
 export type Post = {
   /** the post body */
   text: string;
@@ -136,8 +188,13 @@ export function buildPost(d: PostData, o: { channel: PostChannel; pair?: PostPai
   }
   const pair = o.pair ?? 'vi-en', mode = o.mode ?? 'img';
   const link = shortLink(o.origin, code, 'facebook', mode, pair);
-  const langs: PostLang[] = pair === 'ru-en' ? ['ru', 'en'] : ['vi', 'en'];
-  const tags = pair === 'ru-en' ? `#ApartQN #QuyNhon ${RU.tags}` : '#ApartQN #QuyNhon #ChoThueCanHo #QuyNhonApartment';
+  if (pair === 'ru-en') {
+    // Russian audience: RU block first, EN mirror second, 4 lines each, RU hashtags
+    const blocks = (['ru', 'en'] as const).map((l) => blockRuEn(d, l, today, mode === 'comment' ? null : link).join('\n'));
+    return { text: [...blocks, RU.ruTags].join('\n\n'), link, ...(mode === 'comment' ? { comment: `👉 ${link}` } : {}) };
+  }
+  const langs: PostLang[] = ['vi', 'en'];
+  const tags = '#ApartQN #QuyNhon #ChoThueCanHo #QuyNhonApartment';
   const blocks = langs.map((l) => [...block(d, l, hook, today), ...(mode === 'comment' ? [] : [`👉 ${link}`])].join('\n'));
   return { text: [...blocks, tags].join('\n\n'), link, ...(mode === 'comment' ? { comment: `👉 ${link}` } : {}) };
 }

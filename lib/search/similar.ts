@@ -20,7 +20,7 @@ export function similarListings(all: Listing[], f: Filters, max = 6): Listing[] 
   const out: Listing[] = [];
   const add = (xs: Listing[]) => xs.forEach((x) => out.length < max && !out.includes(x) && out.push(x));
   if (f.b) add(avail.filter((x) => x.buildingId === f.b));
-  if (f.beds) add(avail.filter((x) => (f.beds === '3' ? x.beds >= 3 : String(x.beds) === f.beds)));
+  if (f.beds) add(avail.filter((x) => (f.beds === '3' ? x.beds >= 3 : f.beds === '01' ? x.beds <= 1 : String(x.beds) === f.beds)));
   const [lo, hi] = range(f);
   if (lo != null || hi != null) add(avail.filter((x) => x.rent >= (lo ?? 0) * 0.8 && x.rent <= (hi ?? Infinity) * 1.2));
   return out;

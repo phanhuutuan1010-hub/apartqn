@@ -13,6 +13,8 @@ export type Parsed = {
   /** building slug */
   building?: string;
   beds?: number;
+  /** "однушка" / "1-комнатная": a studio or one bedroom (Russians count the living room) */
+  bedsOrStudio?: true;
   furniture?: Furnishing;
   /** VND */
   priceMin?: number;
@@ -59,7 +61,9 @@ const NUM_WORDS: Record<string, number> = {
   одна: 1, один: 1, две: 2, два: 2, три: 3, четыре: 4,
 };
 
-const BED_UNIT = 'pn|p\\.n|phong ngu|phongngu|phong|br|bd|bdr|bed|beds|bedroom|bedrooms|bedrom|bedrm|bedroms|-?\\s*(?:х\\s*)?комн\\p{L}*|к|спальн\\p{L}*';
+const BED_UNIT = 'pn|p\\.n|phong ngu|phongngu|phong|br|bd|bdr|bed|beds|bedroom|bedrooms|bedrom|bedrm|bedroms|спальн\\p{L}*|спален';
+/** Russian room count: rooms INCLUDING the living room ("2-комн" = 1 bedroom) */
+const ROOM_UNIT = '-?\\s*(?:х\\s*)?комн\\p{L}*|к';
 
 const FURN: [Furnishing, string][] = [
   ['empty', 'khong noi that|ko noi that|k noi that|nha trong|can trong|nt trong|trong tron|unfurnished|un-furnished|no furniture|without furniture|empty|без мебели|пуст\\p{L}*'],
@@ -202,14 +206,24 @@ export function parseSearch(raw: string, buildings: BuildingRef[] = []): Parsed 
   take('studio|studios|студи\\p{L}*', () => {
     p.beds ??= 0;
   });
+  // Russian rooms first: "1-комн" / "однушка" = studio or 1 bedroom, "N-комн" = N − 1 bedrooms
+  const rooms = (n: number) => {
+    if (p.beds != null) return;
+    if (n <= 1) { p.beds = 1; p.bedsOrStudio = true; } else p.beds = n - 1;
+  };
+  take(`(\\d{1,2}|одна|один|две|два|три|четыре)\\s*(?:-\\s*)?(?:${ROOM_UNIT})(?![\\p{L}])`, (m) => {
+    const n = NUM_WORDS[m[1]] ?? Number(m[1]);
+    if (n > 10) return false;
+    rooms(n);
+  });
+  take('(одн|двух|трех|четырех)\\s*комнатн\\p{L}*|(одн|дв|тр)(?:у|е)шк\\p{L}*', (m) => {
+    const k = m[1] ?? m[2];
+    rooms(k.startsWith('одн') ? 1 : k.startsWith('дв') ? 2 : k.startsWith('тр') ? 3 : 4);
+  });
   take(`(\\d{1,2}|mot|hai|ba|bon|one|two|three|four|одна|один|две|два|три|четыре)\\s*(?:-\\s*)?(?:${BED_UNIT})`, (m) => {
     const n = NUM_WORDS[m[1]] ?? Number(m[1]);
     if (n > 10) return false;
     p.beds ??= n;
-  });
-  take('(одн|двух|трех|четырех)\\s*комнатн\\p{L}*|(одн|дв|тр)(?:у|е)шк\\p{L}*', (m) => {
-    const k = m[1] ?? m[2];
-    p.beds ??= k.startsWith('одн') ? 1 : k.startsWith('дв') ? 2 : k.startsWith('тр') ? 3 : 4;
   });
 
   take(`${NUM}\\s*${UNIT}${VND}`, (m) => {

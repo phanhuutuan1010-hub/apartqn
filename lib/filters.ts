@@ -6,7 +6,7 @@ export const RENT: [number, number][] = [[0, 8e6], [8e6, 12e6], [12e6, 18e6], [1
 
 export type Filters = {
   b: string;
-  beds: string; // '' | '0' (studio) | '1' | '2' | '3' (3+)
+  beds: string; // '' | '0' (studio) | '1' | '2' | '3' (3+) | '01' (studio or 1: Russian "однушка")
   rent: string; // '' | 'r0'..'r3'
   furn: string; // '' | full | basic | empty
   pets: boolean;
@@ -40,7 +40,7 @@ export const match = (x: Listing, f: Filters, textOk?: (x: Listing) => boolean) 
   (!f.pets || x.pets) &&
   (!f.car || x.carParking === true) &&
   (!f.furn || x.furn === f.furn) &&
-  (!f.beds || (f.beds === '3' ? x.beds >= 3 : String(x.beds) === f.beds)) &&
+  (!f.beds || (f.beds === '3' ? x.beds >= 3 : f.beds === '01' ? x.beds <= 1 : String(x.beds) === f.beds)) &&
   (!f.rent || (x.rent >= RENT[+f.rent.slice(1)][0] && x.rent < RENT[+f.rent.slice(1)][1])) &&
   // a move-in date in the past means "free now": it fits any date asked for
   (!f.date || x.moveIn <= f.date || x.moveIn <= vnToday());
@@ -71,7 +71,7 @@ export const parseQuery = (q: URLSearchParams | Record<string, string | string[]
     else (f[k] as string) = v;
   });
   if (!/^r[0-3]$/.test(f.rent)) f.rent = '';
-  if (!/^[0-3]$/.test(f.beds)) f.beds = '';
+  if (!/^([0-3]|01)$/.test(f.beds)) f.beds = '';
   if (!['full', 'basic', 'empty'].includes(f.furn)) f.furn = '';
   if (!/^\d{4}-\d{2}-\d{2}$/.test(f.date)) f.date = '';
   if (!/^\d{1,4}(\.\d)?$/.test(f.pmin)) f.pmin = '';

@@ -46,15 +46,34 @@ describe('Tạo bài đăng v2', () => {
     expect(buildPost({ ...L, view: null, furn: null, floorBand: null }, { ...o, channel: 'facebook', hook: 'feature' }).text).toMatch(/^🏠/);
   });
 
-  it('RU/EN: Russian block from templates, city in Russian, link lands on the English page pair', () => {
-    const p = buildPost(L, { ...o, channel: 'facebook', pair: 'ru-en', mode: 'link', hook: 'price' });
+  it('RU/EN: Russian block first (4 lines, stored data only), English mirror, Russian hashtags', () => {
+    const p = buildPost({ ...L, minTerm: 6, deposit: 2, pets: false }, { ...o, channel: 'facebook', pair: 'ru-en', mode: 'link', hook: 'price' });
     const [ru, en, tags] = lines(p.text);
-    expect(ru[0]).toBe('🏠 2 спальни · Altara Residences, Куинён — всего 13 500 000 VND/мес.');
-    expect(ru[1]).toBe('Заезд сразу · Высокий этаж');
-    expect(ru[2]).toBe('📸 9 реальных фото + подробные ежемесячные расходы');
-    expect(ru[3]).toBe('👉 https://apartqn.com/ALT-001?s=fb&v=link&l=ru-en');
-    expect(en[0]).toContain('Quy Nhon');
-    expect(tags[0]).toBe('#ApartQN #QuyNhon #АрендаКвартиры #Куинён');
+    expect(ru).toEqual([
+      '🌊 Вид на море · 2 спальни · Altara Residences, Куинён',
+      '💰 13 500 000 VND/мес. · Заезд сразу · от 6 месяцев',
+      '✨ Полностью меблирована · Стиральная машина · Оборудованная кухня · 9 фото',
+      '👉 https://apartqn.com/ALT-001?s=fb&v=link&l=ru-en',
+    ]);
+    expect(en).toEqual([
+      '🌊 Sea view · 2 bedrooms · Altara Residences, Quy Nhon',
+      '💰 13,500,000 VND/month · Available now · min. 6 months',
+      '✨ Fully furnished · Washing machine · Equipped kitchen · 9 photos',
+      '👉 https://apartqn.com/ALT-001?s=fb&v=link&l=ru-en',
+    ]);
+    expect(tags).toEqual(['#Куинён #Куиньон #арендаквартиры #долгосрочнаяаренда #ApartQN']);
+    expect(p.text).not.toMatch(/комнатн/);
+  });
+
+  it('RU/EN: only what is stored — no view, basic furniture, pets, deposit, move-in date, 1 month', () => {
+    const p = buildPost({ ...L, view: 'city', furn: 'basic', pets: true, deposit: 1, minTerm: 1, moveIn: '2026-11-05', photoCount: 0, beds: 1 },
+      { ...o, channel: 'facebook', pair: 'ru-en', mode: 'comment' });
+    const [ru, en] = lines(p.text);
+    expect(ru).toEqual(['🏠 1 спальня · Altara Residences, Куинён', '💰 13 500 000 VND/мес. · Заезд с 05.11 · от 1 месяца', '✨ Оборудованная кухня · Можно с животными · Депозит 1 мес.']);
+    expect(en[2]).toBe('✨ Equipped kitchen · Pets allowed · Deposit 1 month');
+    expect(p.comment).toBe('👉 https://apartqn.com/ALT-001?s=fb&v=comment&l=ru-en');
+    expect(lines(buildPost({ ...L, furn: 'empty', view: null, minTerm: null, beds: 0 }, { ...o, channel: 'facebook', pair: 'ru-en' }).text)[0].slice(0, 2))
+      .toEqual(['🏠 Студия · Altara Residences, Куинён', '💰 13 500 000 VND/мес. · Заезд сразу']);
   });
 
   it('Zalo: Vietnamese only, 2 lines (hook with the city + short link)', () => {

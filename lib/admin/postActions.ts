@@ -23,7 +23,7 @@ export async function getPostData(id: string): Promise<{ data?: PostData; images
   if (!z.string().uuid().safeParse(id).success) return { error: 'Căn không hợp lệ.' };
   const sb = await supabaseServer();
   const [{ data: l }, { data: photos }] = await Promise.all([
-    sb.from('listings').select('code, status, beds, furn, view, rent, move_in, floor_band, floor_band_manual, units(floor, buildings(name, total_floors, is_visible))').eq('id', id).maybeSingle(),
+    sb.from('listings').select('code, status, beds, furn, view, rent, move_in, min_term, deposit, pets, floor_band, floor_band_manual, units(floor, buildings(name, total_floors, is_visible))').eq('id', id).maybeSingle(),
     sb.from('photos').select('path, source, is_cover, sort').eq('listing_id', id).eq('visibility', 'public').order('is_cover', { ascending: false }).order('sort'),
   ]);
   if (!l) return { error: 'Không thấy căn (hoặc bạn không phụ trách căn này).' };
@@ -34,7 +34,7 @@ export async function getPostData(id: string): Promise<{ data?: PostData; images
     data: {
       code: l.code, building: unit?.buildings.name ?? '', beds: num(l.beds), furn: l.furn, view: l.view,
       floorBand: effectiveBand({ floor: unit?.floor, total: unit?.buildings.total_floors, band: l.floor_band, manual: l.floor_band_manual }),
-      rent: num(l.rent), moveIn: l.move_in, photoCount: pub.length, ownPhotos: pub.length > 0 && pub.every((p) => p.source === 'own'),
+      rent: num(l.rent), moveIn: l.move_in, minTerm: num(l.min_term), deposit: num(l.deposit), pets: !!l.pets, photoCount: pub.length, ownPhotos: pub.length > 0 && pub.every((p) => p.source === 'own'),
       // a post needs a page to send people to
       published: !!l.code && PUBLIC.includes(l.status) && unit?.buildings.is_visible !== false,
     },

@@ -41,7 +41,7 @@ export function criteriaScore(x: IndexListing, p: Parsed, b: IndexBuilding | und
     if (ok()) n++;
   };
   check(p.building != null, () => x.building_slug === p.building);
-  check(p.beds != null, () => (p.beds! >= 3 ? x.beds >= 3 : x.beds === p.beds));
+  check(p.beds != null, () => (p.bedsOrStudio ? x.beds <= 1 : p.beds! >= 3 ? x.beds >= 3 : x.beds === p.beds));
   check(p.furniture != null, () => x.furniture === p.furniture);
   check(p.priceMin != null || p.priceMax != null, () => x.rent >= (p.priceMin ?? 0) && x.rent <= (p.priceMax ?? Infinity));
   check(!!p.pets, () => x.pets);

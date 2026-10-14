@@ -63,11 +63,28 @@ describe('parseSearch · en', () => {
 });
 
 describe('parseSearch · ru', () => {
-  it('двушка с мебелью до 12 млн', () => is('двушка с мебелью до 12 млн', { beds: 2, furniture: 'full', priceMax: 12 * M }));
-  it('2-комн. без мебели, вид на море', () => is('2-комн. без мебели вид на море', { beds: 2, furniture: 'empty', view: 'sea' }));
-  it('range от … до …, pets', () => is('двухкомнатная квартира от 10 до 15 млн можно с животными', { beds: 2, priceMin: 10 * M, priceMax: 15 * M, pets: true }));
-  it('Cyrillic alias + parking', () => is('Алтара 1-комнатная с парковкой', { building: 'altara', beds: 1, parking: true }));
-  it('однушка частично меблированная', () => is('однушка частично меблированная', { beds: 1, furniture: 'basic' }));
+  it('Russians count rooms with the living room: N-комн = N − 1 bedrooms; спальни are bedrooms', () => {
+    expect(p('однушка')).toMatchObject({ beds: 1, bedsOrStudio: true });
+    expect(p('1-комн')).toMatchObject({ beds: 1, bedsOrStudio: true });
+    expect(p('1-комнатная')).toMatchObject({ beds: 1, bedsOrStudio: true });
+    expect(p('двушка')).toEqual({ text: '', beds: 1 });
+    expect(p('2-комн')).toEqual({ text: '', beds: 1 });
+    expect(p('трёшка')).toEqual({ text: '', beds: 2 });
+    expect(p('трешка')).toEqual({ text: '', beds: 2 });
+    expect(p('3-комн')).toEqual({ text: '', beds: 2 });
+    expect(p('3х комнатная')).toEqual({ text: '', beds: 2 });
+    expect(p('4-комнатная')).toEqual({ text: '', beds: 3 });
+    expect(p('2к')).toEqual({ text: '', beds: 1 });
+    expect(p('1 спальня')).toEqual({ text: '', beds: 1 });
+    expect(p('2 спальни')).toEqual({ text: '', beds: 2 });
+    expect(p('3 спальни')).toEqual({ text: '', beds: 3 });
+    expect(p('5 спален')).toEqual({ text: '', beds: 5 });
+  });
+  it('двушка с мебелью до 12 млн', () => is('двушка с мебелью до 12 млн', { beds: 1, furniture: 'full', priceMax: 12 * M }));
+  it('2-комн. без мебели, вид на море', () => is('2-комн. без мебели вид на море', { beds: 1, furniture: 'empty', view: 'sea' }));
+  it('range от … до …, pets', () => is('двухкомнатная квартира от 10 до 15 млн можно с животными', { beds: 1, priceMin: 10 * M, priceMax: 15 * M, pets: true }));
+  it('Cyrillic alias + parking', () => is('Алтара 1-комнатная с парковкой', { building: 'altara', beds: 1, bedsOrStudio: true, parking: true }));
+  it('однушка частично меблированная', () => is('однушка частично меблированная', { beds: 1, bedsOrStudio: true, furniture: 'basic' }));
   it('typo: меблированая; city name', () => is('Куинён 3 спальни меблированая', { beds: 3, furniture: 'full' }));
   it('Cyrillic without an alias is transliterated', () => is('хагл', { building: 'hagl' }));
 });
@@ -114,5 +131,5 @@ describe('QA queries (results / header search)', () => {
   it('altara 2pn', () => is('altara 2pn', { building: 'altara', beds: 2 }));
   it('phu tai (no diacritics)', () => is('phu tai', { building: 'phutai' }));
   it('flc full nt duoi 12tr', () => is('flc full nt duoi 12tr', { building: 'flc', furniture: 'full', priceMax: 12 * M }));
-  it('двушка до 15 млн', () => is('двушка до 15 млн', { beds: 2, priceMax: 15 * M }));
+  it('двушка до 15 млн', () => is('двушка до 15 млн', { beds: 1, priceMax: 15 * M }));
 });
