@@ -64,6 +64,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ code: stri
             <div style={{ display: 'flex', fontSize: 84, fontWeight: 800, lineHeight: 1.1 }}>{x.code}</div>
             <div style={{ display: 'flex', fontSize: 30, fontWeight: 500, marginTop: 14, opacity: 0.92 }}>Quét mã để xem căn</div>
             <div style={{ display: 'flex', fontSize: 26, fontWeight: 500, opacity: 0.8 }}>Scan to open the listing</div>
+            <div style={{ display: 'flex', fontSize: 30, fontWeight: 800, marginTop: 18 }}>apartqn.com/{x.code}</div>
           </div>
         </div>
       </div>

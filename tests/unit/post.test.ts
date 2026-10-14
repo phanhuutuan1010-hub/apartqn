@@ -17,7 +17,7 @@ describe('Tạo bài đăng v2', () => {
       '🏠 2 phòng ngủ · Altara Residences, Quy Nhơn — chỉ 13.500.000 đ/tháng',
       'Dọn vào ngay · Tầng cao',
       '📸 9 ảnh thực tế + chi phí hằng tháng chi tiết',
-      '👉 https://apartqn.com/c/alt-001?s=fb&v=img&l=vi-en',
+      '👉 https://apartqn.com/ALT-001?s=fb&v=img&l=vi-en',
     ]);
     expect(en[0]).toBe('🏠 2-bedroom · Altara Residences, Quy Nhon — only 13,500,000 VND/month');
     expect(en[1]).toBe('Available now · High floor');
@@ -30,7 +30,7 @@ describe('Tạo bài đăng v2', () => {
   it('link in the first comment: no link in the post, a separate comment line', () => {
     const p = buildPost(L, { ...o, channel: 'facebook', pair: 'vi-en', mode: 'comment', hook: 'price' });
     expect(p.text).not.toContain('/c/alt-001');
-    expect(p.comment).toBe('👉 https://apartqn.com/c/alt-001?s=fb&v=comment&l=vi-en');
+    expect(p.comment).toBe('👉 https://apartqn.com/ALT-001?s=fb&v=comment&l=vi-en');
     expect(lines(p.text)[0]).toHaveLength(3);
   });
 
@@ -52,14 +52,14 @@ describe('Tạo bài đăng v2', () => {
     expect(ru[0]).toBe('🏠 2 спальни · Altara Residences, Куинён — всего 13 500 000 VND/мес.');
     expect(ru[1]).toBe('Заезд сразу · Высокий этаж');
     expect(ru[2]).toBe('📸 9 реальных фото + подробные ежемесячные расходы');
-    expect(ru[3]).toBe('👉 https://apartqn.com/c/alt-001?s=fb&v=link&l=ru-en');
+    expect(ru[3]).toBe('👉 https://apartqn.com/ALT-001?s=fb&v=link&l=ru-en');
     expect(en[0]).toContain('Quy Nhon');
     expect(tags[0]).toBe('#ApartQN #QuyNhon #АрендаКвартиры #Куинён');
   });
 
   it('Zalo: Vietnamese only, 2 lines (hook with the city + short link)', () => {
     const p = buildPost(L, { ...o, channel: 'zalo', hook: 'price' });
-    expect(p.text.split('\n')).toEqual(['🏠 2 phòng ngủ · Altara Residences, Quy Nhơn — chỉ 13.500.000 đ/tháng', '👉 https://apartqn.com/c/alt-001?s=zalo&v=link&l=vi-en']);
+    expect(p.text.split('\n')).toEqual(['🏠 2 phòng ngủ · Altara Residences, Quy Nhơn — chỉ 13.500.000 đ/tháng', '👉 https://apartqn.com/ALT-001?s=zalo&v=link&l=vi-en']);
   });
 
   it('the city is not repeated when the building name already has it; empty fields are skipped', () => {
@@ -75,7 +75,7 @@ describe('Tạo bài đăng v2', () => {
 
 describe('short link + attribution', () => {
   it('link carries source, post form and language pair', () => {
-    expect(shortLink('https://x.vn/', 'ALT-001', 'facebook', 'comment', 'ru-en')).toBe('https://x.vn/c/alt-001?s=fb&v=comment&l=ru-en');
+    expect(shortLink('https://x.vn/', 'ALT-001', 'facebook', 'comment', 'ru-en')).toBe('https://x.vn/ALT-001?s=fb&v=comment&l=ru-en');
   });
   it('first-touch cookie → utm fields; anything malformed is ignored', () => {
     expect(utmFromCookie('a=1; aqn_ft=fb.img.vi-en.ALT-001; b=2')).toEqual({ utm_source: 'facebook', utm_medium: 'social', utm_campaign: 'post', utm_content: 'ALT-001_img_vi-en' });

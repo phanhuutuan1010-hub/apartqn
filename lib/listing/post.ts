@@ -91,7 +91,7 @@ export const hooksFor = (d: PostData): PostHook[] =>
   HOOKS.filter((h) => (h === 'price' ? !!d.rent : h === 'feature' ? !!featureOf(d, 'vi') : !!d.moveIn));
 
 export const shortLink = (origin: string, code: string, channel: PostChannel, mode: PostMode, pair: PostPair) =>
-  `${origin.replace(/\/$/, '')}/c/${code.toLowerCase()}?s=${channel === 'facebook' ? 'fb' : 'zalo'}&v=${channel === 'zalo' ? 'link' : mode}&l=${pair}`;
+  `${origin.replace(/\/$/, '')}/${code.toUpperCase()}?s=${channel === 'facebook' ? 'fb' : 'zalo'}&v=${channel === 'zalo' ? 'link' : mode}&l=${pair}`;
 
 /** One language block: hook · rent + move-in · teaser (the link line is added by the caller). */
 function block(d: PostData, l: PostLang, hook: PostHook, today: string): string[] {

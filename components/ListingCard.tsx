@@ -1,8 +1,9 @@
 import { useLocale, useTranslations } from 'next-intl';
-import { Link } from '@/i18n/navigation';
 import type { Building } from '@/lib/types';
 import type { Listing } from '@/lib/types';
-import { codeSlug, F, M2, money, total } from '@/lib/format';
+import { F, M2, money, total } from '@/lib/format';
+import NextLink from 'next/link';
+import { listingPath } from '@/lib/listingUrl';
 import { StatusBadge, VerifiedBadge } from './Badges';
 import { CardPhotos } from './CardPhotos';
 import { ratioOf } from '@/lib/types';
@@ -52,10 +53,10 @@ export function ListingCard({ x, building, slider = false, priority = false, siz
           <span className={styles.code}>{x.code}</span>
         </div>
         <div className={styles.est}>{t('estMonthly')}: <b>{money(total(x), l)}</b></div>
-        <Link href={{ pathname: '/can-ho/[code]', params: { code: codeSlug(x.code) } }} className={styles.link}>
+        <NextLink href={listingPath(x.code, l)} className={styles.link}>
           <span className="visually-hidden">{title} · </span>
           {[F.beds(x.beds, l), `${x.area} ${M2}`, x.floorBand && F.floorBand(x.floorBand, l)].filter(Boolean).join(' · ')}
-        </Link>
+        </NextLink>
         {building && <div className={styles.bname}>{building.name}</div>}
         <div className={styles.move}>{F.moveIn(x.moveIn, l)}</div>
       </div>

@@ -1,4 +1,6 @@
 'use client';
+import { useRouter as useNextRouter } from 'next/navigation';
+import { listingPath } from '@/lib/listingUrl';
 
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
@@ -47,6 +49,7 @@ export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: {
   const t = useTranslations();
   const l = useLocale() as Locale;
   const router = useRouter();
+  const nextRouter = useNextRouter();
   const [value, setValue] = useState(initial);
   const [open, setOpen] = useState(false);
   const [sheet, setSheet] = useState(false);
@@ -80,7 +83,15 @@ export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: {
     else router.push(href);
   };
   const toResults = (q: Record<string, string>) => go({ pathname: '/can-ho', query: q });
-  const toListing = (slug: string) => go({ pathname: '/can-ho/[code]', params: { code: slug } });
+  // listings live at /{CODE} · /en/{CODE}, outside the localized pathnames
+  const toListing = (slug: string) => {
+    setOpen(false);
+    setActive(-1);
+    setSheet(false);
+    const href = listingPath(slug, l);
+    if (ownsEntry()) nextRouter.replace(href);
+    else nextRouter.push(href);
+  };
 
   const submit = async (raw = value) => {
     const q = raw.trim();

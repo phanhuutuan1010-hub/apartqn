@@ -38,8 +38,8 @@ describe('Facebook Marketplace kit', () => {
     expect(mkpDescription({ ...d, descVi: 'Gọi 0905 123 456 để xem nhà.' }, 'vi', today)).not.toContain('0905');
   });
   it('Messenger reply carries the counted short link', () => {
-    expect(mkpLink('https://apartqn.com/', 'ALT-003')).toBe('https://apartqn.com/c/alt-003?s=mkp');
-    expect(mkpReply('ALT-003', 'https://apartqn.com', 'vi')).toBe('Chào bạn! Căn ALT-003 còn trống. Xem đủ ảnh, chi phí hằng tháng và đặt lịch xem tại: https://apartqn.com/c/alt-003?s=mkp');
-    expect(mkpReply('ALT-003', 'https://apartqn.com', 'en')).toContain('https://apartqn.com/c/alt-003?s=mkp');
+    expect(mkpLink('https://apartqn.com/', 'ALT-003')).toBe('https://apartqn.com/ALT-003?s=mkp');
+    expect(mkpReply('ALT-003', 'https://apartqn.com', 'vi')).toBe('Chào bạn! Căn ALT-003 còn trống. Xem đủ ảnh, chi phí hằng tháng và đặt lịch xem tại: https://apartqn.com/ALT-003?s=mkp');
+    expect(mkpReply('ALT-003', 'https://apartqn.com', 'en')).toContain('https://apartqn.com/ALT-003?s=mkp');
   });
 });

@@ -30,7 +30,7 @@ export function visitorLocale(o: { cookie?: string | null; acceptLanguage?: stri
 
 /** first path segment: Vietnamese → English (i18n/routing.ts pathnames) */
 const EN_SEGMENT: Record<string, string> = { 'can-ho': 'apartments', 'toa-nha': 'buildings', 'ky-gui': 'list-your-apartment' };
-/** The English URL of a Vietnamese path: /can-ho/alt-001 → /en/apartments/alt-001. A page with no English twin → /en. */
+/** The English URL of a Vietnamese path: /can-ho → /en/apartments, /toa-nha/x → /en/buildings/x. A page with no English twin → /en. */
 export function enPath(pathname: string): string {
   const parts = pathname.split('/').filter(Boolean);
   if (!parts.length) return '/en';

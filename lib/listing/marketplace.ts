@@ -80,7 +80,7 @@ export function mkpDescription(d: MkpData, l: 'vi' | 'en', today: string): strin
 }
 
 /** Short link for Messenger replies and the brand card's QR: counted as a Marketplace click. */
-export const mkpLink = (origin: string, code: string) => `${origin.replace(/\/$/, '')}/c/${code.toLowerCase()}?s=mkp`;
+export const mkpLink = (origin: string, code: string) => `${origin.replace(/\/$/, '')}/${code.toUpperCase()}?s=mkp`;
 
 /** Reply to a Marketplace message (Messenger allows links) */
 export const mkpReply = (code: string, origin: string, l: 'vi' | 'en') =>

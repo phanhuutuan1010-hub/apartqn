@@ -2,7 +2,7 @@
 import { money } from './format';
 
 /** Short link carried in the message: opens the listing (never counted as a post click). */
-export const bookingLink = (origin: string, code: string) => `${origin.replace(/\/$/, '')}/c/${code.toLowerCase()}?s=wa`;
+export const bookingLink = (origin: string, code: string) => `${origin.replace(/\/$/, '')}/${code.toUpperCase()}?s=wa`;
 
 export function bookingMessage(o: { code: string; building: string; beds: number; rent: number; link: string }): string {
   const beds = o.beds === 0 ? 'Studio' : `${o.beds}BR`;

@@ -1,8 +1,10 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { createServerClient } from '@supabase/ssr';
 import { routing } from './i18n/routing';
 import { enPath, visitorLocale, LOCALE_COOKIE, LOCALE_COOKIE_AGE } from './lib/localeDetect';
+import { listingEntry, oldListingPath, type Click } from './lib/listingEntry';
+import { FT_COOKIE } from './lib/attribution';
 
 const intl = createMiddleware(routing);
 
@@ -107,7 +109,7 @@ async function legacyRedirect(req: NextRequest, path = req.nextUrl.pathname) {
   const code = legacyCache.get(old);
   if (!code) return null; // unknown / no longer public → normal 404
   const to = req.nextUrl.clone();
-  to.pathname = `${m[1] ?? ''}/${m[2]}/${code.toLowerCase()}`;
+  to.pathname = `${m[1] ?? ''}/${code.toUpperCase()}`;
   return NextResponse.redirect(to, 301);
 }
 
@@ -134,7 +136,43 @@ function localized(req: NextRequest) {
   return res;
 }
 
-export default async function proxy(req: NextRequest) {
+/** one anonymous post click (code, source, post form, language pair), recorded after the response is on its way */
+function logClick(c: Click) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) return Promise.resolve();
+  return fetch(`${url.replace(/\/$/, '')}/rest/v1/rpc/log_post_click`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+    body: JSON.stringify({ p_code: c.code, p_source: c.source, p_variant: c.variant, p_pair: c.pair }),
+    signal: AbortSignal.timeout(4000),
+  }).then(() => undefined, () => undefined);
+}
+
+/** apartqn.com/{CODE} and /en/{CODE}: language, attribution and the rewrite to the listing page (lib/listingEntry.ts) */
+function listing(req: NextRequest, event: NextFetchEvent) {
+  const d = listingEntry({
+    pathname: req.nextUrl.pathname, search: req.nextUrl.searchParams, host: req.headers.get('x-forwarded-host') ?? req.nextUrl.host,
+    cookie: req.cookies.get(LOCALE_COOKIE)?.value, referer: req.headers.get('referer'), userAgent: req.headers.get('user-agent'),
+    rsc: req.headers.has('rsc') || req.headers.has('next-router-prefetch') || req.headers.get('purpose') === 'prefetch',
+    hasFirstTouch: req.cookies.has(FT_COOKIE),
+  });
+  if (!d) return null;
+  if (d.click) event.waitUntil(logClick(d.click));
+  let res: NextResponse;
+  if (d.kind === 'redirect') {
+    res = NextResponse.redirect(new URL(d.location, req.url), d.status);
+    if (d.status === 307) res.headers.set('Cache-Control', 'private, no-store');
+  } else {
+    // the locale header next-intl's own middleware would set (read by getLocale / NextIntlClientProvider)
+    const h = new Headers(req.headers);
+    h.set('X-NEXT-INTL-LOCALE', d.target.startsWith('/en/') ? 'en' : 'vi');
+    res = NextResponse.rewrite(new URL(d.target, req.url), { request: { headers: h } });
+  }
+  if (d.firstTouch) res.cookies.set(FT_COOKIE, d.firstTouch, { maxAge: 30 * 86400, path: '/', sameSite: 'lax', httpOnly: true, secure: req.nextUrl.protocol === 'https:' });
+  return res;
+}
+
+export default async function proxy(req: NextRequest, event: NextFetchEvent) {
   if (req.nextUrl.pathname === '/admin' || req.nextUrl.pathname.startsWith('/admin/')) return admin(req);
   const en = ruPath(req.nextUrl.pathname);
   if (en) {
@@ -145,7 +183,16 @@ export default async function proxy(req: NextRequest) {
     to.pathname = en;
     return NextResponse.redirect(to, 301);
   }
-  return (await legacyRedirect(req)) ?? localized(req);
+  const legacy = await legacyRedirect(req);
+  if (legacy) return legacy;
+  // old listing URLs → /{CODE}
+  const moved = oldListingPath(req.nextUrl.pathname);
+  if (moved) {
+    const to = req.nextUrl.clone();
+    to.pathname = moved;
+    return NextResponse.redirect(to, 301);
+  }
+  return listing(req, event) ?? localized(req);
 }
 
 export const config = {

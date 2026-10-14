@@ -47,7 +47,7 @@ type Row = { id: string; listing_id: string | null; building_id: string | null; 
   master_path: string | null; watermark: boolean; wm_version: number | null; listings: { code: string | null } | null; buildings: { slug: string } | null };
 
 /** Public page that shows this photo (for revalidation + the cleanup check). */
-const pageOf = (r: Row) => (r.listings?.code ? `/can-ho/${r.listings.code.toLowerCase()}` : r.buildings ? `/toa-nha/${r.buildings.slug}` : '');
+const pageOf = (r: Row) => (r.listings?.code ? `/${r.listings.code.toUpperCase()}` : r.buildings ? `/toa-nha/${r.buildings.slug}` : '');
 
 async function revalidate(pages: string[]) {
   const secret = process.env.CRON_SECRET;

@@ -16,7 +16,7 @@ export function revalidatePublicMany(refs: { code?: string | null; building?: st
     paths.add(`/${l}`);
     paths.add(`/${l}/can-ho`);
     for (const r of refs) {
-      if (r.code) paths.add(`/${l}/can-ho/${r.code.toLowerCase()}`);
+      if (r.code) paths.add(`/${l}/can-ho/${r.code.toUpperCase()}`);
       if (r.code) paths.add(`/og/listing/${r.code.toLowerCase()}${l === 'en' ? '.en' : ''}`);
       if (r.code) paths.add(`/og/marketplace/${r.code.toLowerCase()}`);
       if (r.building) paths.add(`/${l}/toa-nha/${r.building}`);
@@ -32,7 +32,7 @@ export function revalidatePublic({ code, building }: { code?: string | null; bui
   for (const l of LOCALES) {
     revalidatePath(`/${l}`);
     revalidatePath(`/${l}/can-ho`);
-    if (code) revalidatePath(`/${l}/can-ho/${code.toLowerCase()}`);
+    if (code) revalidatePath(`/${l}/can-ho/${code.toUpperCase()}`);
     if (code) revalidatePath(`/og/listing/${code.toLowerCase()}${l === 'en' ? '.en' : ''}`); // social card
     if (code) revalidatePath(`/og/marketplace/${code.toLowerCase()}`); // Marketplace brand card (photo count)
     if (building) revalidatePath(`/${l}/toa-nha/${building}`);

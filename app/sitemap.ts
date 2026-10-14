@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { LOCALES } from '@/i18n/routing';
 import { getBuildings, getListings } from '@/lib/repo';
-import { codeSlug } from '@/lib/format';
+import { listingUrl } from '@/lib/listingUrl';
 import { absUrl } from '@/lib/seo';
 
 type Href = Parameters<typeof absUrl>[1];
@@ -22,7 +22,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entry('/', latest, 1),
     entry('/can-ho', latest, 0.9),
     entry('/ky-gui', latest, 0.5),
-    ...listings.map((x) => entry({ pathname: '/can-ho/[code]', params: { code: codeSlug(x.code) } }, x.updated, x.status === 'rented' ? 0.3 : 0.8)),
+    ...listings.map((x): MetadataRoute.Sitemap[number] => ({
+      url: listingUrl(x.code, 'vi'), lastModified: x.updated, priority: x.status === 'rented' ? 0.3 : 0.8,
+      alternates: { languages: { vi: listingUrl(x.code, 'vi'), en: listingUrl(x.code, 'en') } },
+    })),
     ...buildings.map((b) => {
       const ls = listings.filter((x) => x.buildingId === b.id);
       return entry({ pathname: '/toa-nha/[id]', params: { id: b.id } }, ls.reduce((m, x) => (x.updated > m ? x.updated : m), latest), 0.7);

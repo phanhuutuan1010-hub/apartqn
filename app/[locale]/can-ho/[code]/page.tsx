@@ -6,7 +6,8 @@ import type { Locale } from '@/i18n/routing';
 import { getBuilding, getBuildings, getContact, getListing, getListings, staticParams } from '@/lib/repo';
 import { codeSlug, dFull, F, M2, mil, money, total, UNIT_AM } from '@/lib/format';
 import { listingDescription } from '@/lib/summary';
-import { alternates, OG_LOCALE } from '@/lib/seo';
+import { listingAlternates, OG_LOCALE } from '@/lib/seo';
+import { listingUrl } from '@/lib/listingUrl';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DemoBadge, StatusBadge, VerifiedBadge } from '@/components/Badges';
@@ -26,7 +27,7 @@ type Params = { locale: Locale; code: string };
 
 export async function generateStaticParams() {
   const ls = await staticParams(getListings);
-  return ls.map((x) => ({ code: codeSlug(x.code) }));
+  return ls.map((x) => ({ code: x.code.toUpperCase() }));
 }
 // New codes/buildings render on demand; admin changes call revalidatePath (hourly fallback).
 export const dynamicParams = true;
@@ -47,8 +48,8 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return {
     title: { absolute: title },
     description,
-    alternates: alternates(locale, { pathname: '/can-ho/[code]', params: { code: codeSlug(x.code) } }),
-    openGraph: { title, description, locale: OG_LOCALE[locale], type: 'website', siteName: 'ApartQN', images: [{ url: image, width: 1200, height: 630 }] },
+    alternates: listingAlternates(locale, x.code),
+    openGraph: { title, description, url: listingUrl(x.code, locale), locale: OG_LOCALE[locale], type: 'website', siteName: 'ApartQN', images: [{ url: image, width: 1200, height: 630 }] },
     twitter: { card: 'summary_large_image', title, description, images: [image] },
   };
 }

@@ -13,7 +13,7 @@ export const routing = defineRouting({
   pathnames: {
     '/': '/',
     '/can-ho': { vi: '/can-ho', en: '/apartments' },
-    '/can-ho/[code]': { vi: '/can-ho/[code]', en: '/apartments/[code]' },
+    // listings: /{CODE} · /en/{CODE} — not localized pathnames (proxy.ts rewrites them to app/[locale]/can-ho/[code])
     '/toa-nha/[id]': { vi: '/toa-nha/[id]', en: '/buildings/[id]' },
     '/ky-gui': { vi: '/ky-gui', en: '/list-your-apartment' },
   },
