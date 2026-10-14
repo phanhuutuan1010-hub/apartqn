@@ -27,6 +27,19 @@ type Props = { listings: Listing[]; buildings: Building[]; /** English pages onl
 function QuerySync({ onQuery }: { onQuery: (q: string) => void }) {
   const q = useSearchParams().toString();
   useEffect(() => onQuery(q), [q, onQuery]);
+  // a filtered / searched list is not a page of its own: noindex, follow (the canonical is the plain list)
+  useEffect(() => {
+    const tracking = /^(utm_|fbclid|gclid)/;
+    const filtered = [...new URLSearchParams(q).keys()].some((k) => !tracking.test(k));
+    let m = document.querySelector<HTMLMetaElement>('meta[name="robots"][data-results]');
+    if (filtered && !m) {
+      m = document.createElement('meta');
+      m.name = 'robots';
+      m.content = 'noindex, follow';
+      m.dataset.results = '';
+      document.head.appendChild(m);
+    } else if (!filtered && m) m.remove();
+  }, [q]);
   return null;
 }
 

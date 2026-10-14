@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { getBuildings, getListings } from '@/lib/repo';
@@ -5,6 +6,8 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ListingCard } from '@/components/ListingCard';
 import { EnBarAuto } from '@/components/EnBarAuto';
+
+export const metadata: Metadata = { robots: { index: false, follow: true } };
 
 /**
  * A listing code that is no longer public (rented out and removed, hidden, deleted). 404 → not indexed, not in the sitemap.

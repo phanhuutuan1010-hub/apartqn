@@ -39,6 +39,8 @@ async function admin(req: NextRequest) {
     },
   });
   const done = (r: NextResponse) => {
+    // never indexed, signed in or not (login, password reset, redirects)
+    r.headers.set('X-Robots-Tag', 'noindex, nofollow');
     if (PERF) {
       timing.push(`proxy;dur=${(performance.now() - t0).toFixed(1)}`);
       r.headers.set('Server-Timing', timing.join(', '));

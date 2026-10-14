@@ -23,10 +23,14 @@ export function revalidatePublicMany(refs: { code?: string | null; building?: st
     }
   }
   paths.forEach((p) => revalidatePath(p));
-  revalidatePath('/sitemap.xml');
+  revalidateSitemaps();
   revalidateTag(SEARCH_INDEX_TAG, { expire: 0 });
   revalidatePath('/search-index.json');
 }
+
+/** the sitemap index and its three children */
+export const SITEMAPS = ['/sitemap.xml', '/sitemap-pages.xml', '/sitemap-buildings.xml', '/sitemap-listings.xml'];
+export const revalidateSitemaps = () => SITEMAPS.forEach((p) => revalidatePath(p));
 
 export function revalidatePublic({ code, building }: { code?: string | null; building?: string | null }) {
   for (const l of LOCALES) {
@@ -37,7 +41,7 @@ export function revalidatePublic({ code, building }: { code?: string | null; bui
     if (code) revalidatePath(`/og/marketplace/${code.toLowerCase()}`); // Marketplace brand card (photo count)
     if (building) revalidatePath(`/${l}/toa-nha/${building}`);
   }
-  revalidatePath('/sitemap.xml');
+  revalidateSitemaps();
   // expire now (no stale window): the next visitor's search box gets the change
   revalidateTag(SEARCH_INDEX_TAG, { expire: 0 });
   revalidatePath('/search-index.json');

@@ -47,6 +47,8 @@ export async function generateMetadata({ params }: LayoutProps<'/[locale]'>): Pr
     applicationName: 'ApartQN',
     appleWebApp: { capable: true, title: 'ApartQN', statusBarStyle: 'default' },
     formatDetection: { telephone: false },
+    // Search Console: <meta name="google-site-verification"> only when GOOGLE_SITE_VERIFICATION is set
+    ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
   };
 }
 
