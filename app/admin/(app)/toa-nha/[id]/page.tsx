@@ -87,7 +87,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
             <summary className="a-btn a-btn-ghost a-btn-sm" aria-label="Thao tác với toà nhà"><MoreHorizontal size={16} aria-hidden /></summary>
             <div role="menu">
               <Link role="menuitem" href={`/admin/toa-nha/moi?from=${id}`}><Copy size={14} aria-hidden /> Nhân bản toà nhà</Link>
-              <a role="menuitem" href={`/toa-nha/${b.slug}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
+              <a role="menuitem" href={`/en/buildings/${b.slug}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
               <BuildingDelete id={id} name={b.name} slug={b.slug} />
             </div>
           </details>

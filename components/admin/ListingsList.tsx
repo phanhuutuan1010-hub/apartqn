@@ -238,7 +238,7 @@ export function ListingsList({ rows, header, role, canPublish, staff, trashed, b
                     <button type="button" role="menuitem" disabled={!(r.code && ['available', 'reserved', 'rented'].includes(r.status))} title="Đăng căn để có link" onClick={() => setPostFor(r.id)}>Tạo bài đăng</button>
                     <Link role="menuitem" href={`/admin/can-ho/moi?from=${r.id}`}>Nhân bản</Link>
                     {r.code && (r.status === 'available' || r.status === 'reserved' || r.status === 'rented') && (
-                      <a role="menuitem" href={`/can-ho/${r.code.toLowerCase()}`} target="_blank" rel="noopener">Xem trên website</a>
+                      <a role="menuitem" href={`/en/apartments/${r.code.toLowerCase()}`} target="_blank" rel="noopener">Xem trên website</a>
                     )}
                     {/* sales: only a listing that was never published */}
                     {(isAdmin || !r.code) && <button type="button" role="menuitem" className="danger" onClick={() => setDel(r)}>Xoá tin</button>}

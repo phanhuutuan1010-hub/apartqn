@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { createServerClient } from '@supabase/ssr';
 import { routing } from './i18n/routing';
-import { homeLocale, LOCALE_COOKIE, LOCALE_COOKIE_AGE } from './lib/localeDetect';
+import { enPath, visitorLocale, LOCALE_COOKIE, LOCALE_COOKIE_AGE } from './lib/localeDetect';
 
 const intl = createMiddleware(routing);
 
@@ -112,16 +112,19 @@ async function legacyRedirect(req: NextRequest, path = req.nextUrl.pathname) {
 }
 
 /**
- * Home page only: a visitor without a stored language gets Vietnamese when the browser prefers it, otherwise /en.
- * The choice (or the language switcher's) is remembered for a year and wins on later visits. Other pages never redirect.
+ * Vietnamese URLs (everything public outside /en): a visitor without a stored language gets Vietnamese when the browser
+ * prefers it, otherwise a 307 to the same page in English (query kept; no English twin → /en). The choice — or the
+ * language switcher's — is remembered for a year and always wins. Crawlers and link previews are never redirected.
  */
-function home(req: NextRequest) {
-  const pick = homeLocale({ cookie: req.cookies.get(LOCALE_COOKIE)?.value, acceptLanguage: req.headers.get('accept-language'), userAgent: req.headers.get('user-agent') });
+function localized(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  if (path === '/en' || path.startsWith('/en/')) return intl(req);
+  const pick = visitorLocale({ cookie: req.cookies.get(LOCALE_COOKIE)?.value, acceptLanguage: req.headers.get('accept-language'), userAgent: req.headers.get('user-agent') });
   if (!pick) return intl(req);
   let res: NextResponse;
   if (pick.locale === 'en') {
     const to = req.nextUrl.clone();
-    to.pathname = '/en';
+    to.pathname = enPath(path);
     res = NextResponse.redirect(to, 307);
     res.headers.set('Cache-Control', 'private, no-store');
   } else {
@@ -142,8 +145,7 @@ export default async function proxy(req: NextRequest) {
     to.pathname = en;
     return NextResponse.redirect(to, 301);
   }
-  if (req.nextUrl.pathname === '/') return home(req);
-  return (await legacyRedirect(req)) ?? intl(req);
+  return (await legacyRedirect(req)) ?? localized(req);
 }
 
 export const config = {

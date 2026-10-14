@@ -89,7 +89,7 @@ export default async function EditListingPage({ params, searchParams }: { params
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {isPublic && listing.code && (
-            <a className="a-btn a-btn-ghost a-btn-sm" href={`/can-ho/${listing.code.toLowerCase()}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
+            <a className="a-btn a-btn-ghost a-btn-sm" href={`/en/apartments/${listing.code.toLowerCase()}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
           )}
           <PostButton id={id} disabled={!(isPublic && listing.code) && status !== 'rented'} />
           <ListingRowActions id={id} status={status} role={me.role} canPublish={me.can_publish} />

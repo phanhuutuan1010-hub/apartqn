@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { SITE_URL } from '@/data/site';
 import { FT_COOKIE, utmOf } from '@/lib/attribution';
+import { LOCALE_COOKIE } from '@/lib/localeDetect';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,8 +10,8 @@ export const dynamic = 'force-dynamic';
 const BOT = /facebookexternalhit|facebot|facebookcatalog|zalo|twitterbot|telegrambot|whatsapp|slackbot|discordbot|linkedinbot|skypeuripreview|pinterest|bot\b|crawler|spider|preview|curl|wget|python-requests|headless|lighthouse/i;
 
 /**
- * Short link in posts: /c/{code}?s=fb|zalo&v=img|link|comment&l=vi-en|ru-en → 302 to the listing page
- * (vi-en → Vietnamese page, ru-en → English page) with utm_* parameters. Each human click is counted anonymously
+ * Short link in posts: /c/{code}?s=fb|zalo&v=img|link|comment&l=vi-en|ru-en → 302 to the English listing page
+ * (the Vietnamese one only for a visitor whose NEXT_LOCALE cookie is vi) with utm_* parameters. Each human click is counted anonymously
  * (code, source, post form, language pair — nothing about the visitor).
  */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ code: string }> }) {
@@ -22,7 +23,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ code
   if (!/^[a-z]{3}-\d{3,6}$/i.test(raw)) return NextResponse.redirect(new URL('/', origin), 302);
   const slug = raw.toLowerCase(), code = raw.toUpperCase();
 
-  const to = new URL(l === 'ru-en' ? `/en/apartments/${slug}` : `/can-ho/${slug}`, origin);
+  // shared links open in English (whatever the post's language pair or the browser says); only a visitor who chose
+  // Vietnamese on the site before gets the Vietnamese page. Link previews follow the redirect → English card.
+  const vi = req.cookies.get(LOCALE_COOKIE)?.value === 'vi';
+  const to = new URL(vi ? `/can-ho/${slug}` : `/en/apartments/${slug}`, origin);
   Object.entries(utmOf(s, v, l, code)).forEach(([k, x]) => to.searchParams.set(k, x));
   const res = NextResponse.redirect(to, 302);
   res.headers.set('Cache-Control', 'no-store');
