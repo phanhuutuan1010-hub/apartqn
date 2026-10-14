@@ -13,14 +13,12 @@ type Props = {
   listings: Listing[];
   /** sidebar: called on every change (applies instantly). sheet: called on Apply. */
   onApply: (f: Filters) => void;
-  /** the results page's text filter (f.q), so the count matches the list */
-  textOk?: (x: Listing) => boolean;
   onClose?: () => void;
   titleId?: string;
 };
 
 /** Bedrooms · rent · furniture chips, pets + car toggles, move-in date. Sheet = local draft; sidebar = instant. */
-export function FilterPanel({ variant, value, listings, textOk, onApply, onClose, titleId }: Props) {
+export function FilterPanel({ variant, value, listings, onApply, onClose, titleId }: Props) {
   const t = useTranslations();
   const l = useLocale();
   const side = variant === 'sidebar';
@@ -49,7 +47,7 @@ export function FilterPanel({ variant, value, listings, textOk, onApply, onClose
     </button>
   );
 
-  const n = listings.filter((x) => match(x, st, textOk)).length;
+  const n = listings.filter((x) => match(x, st)).length;
   const reset = () => upd({ beds: '', rent: '', furn: '', pets: false, car: false, date: '', pmin: '', pmax: '', vw: '', fl: '' });
 
   return (

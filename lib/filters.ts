@@ -18,24 +18,24 @@ export type Filters = {
   pmax: string; // rent ≤, VND millions
   vw: string; // '' | sea | city | river | lagoon
   fl: string; // '' | low | mid | high (floor band)
-  q: string; // leftover words → building name / alias / street / ward (see lib/search/suggest.ts textMatches)
+  q: string; // leftover words → building name / alias / street / ward (see lib/search/suggest.ts textMatches) — ranking only, never a filter
+  near: string; // '' | 'sea' — "gần biển": sea-view listings first, nothing excluded
 };
 
 export type Sort = 'new' | 'low' | 'high' | 'move';
 
-export const EMPTY: Filters = { b: '', beds: '', rent: '', furn: '', pets: false, car: false, date: '', rented: false, pmin: '', pmax: '', vw: '', fl: '', q: '' };
+export const EMPTY: Filters = { b: '', beds: '', rent: '', furn: '', pets: false, car: false, date: '', rented: false, pmin: '', pmax: '', vw: '', fl: '', q: '', near: '' };
 export const SORTS: Sort[] = ['new', 'low', 'high', 'move'];
 
 export const hasCarData = (all: Listing[]) => all.some((x) => typeof x.carParking === 'boolean');
 
-/** `textOk` checks f.q (needs building data — built by the caller). */
-export const match = (x: Listing, f: Filters, textOk?: (x: Listing) => boolean) =>
+/** Hard criteria only. Free text (f.q) and "near the sea" (f.near) never exclude a listing: they only rank (see apply). */
+export const match = (x: Listing, f: Filters) =>
   (f.rented || x.status !== 'rented') &&
   (!f.pmin || x.rent >= Number(f.pmin) * 1e6) &&
   (!f.pmax || x.rent <= Number(f.pmax) * 1e6) &&
   (!f.vw || x.view === f.vw) &&
   (!f.fl || x.floorBand === f.fl) &&
-  (!f.q || !textOk || textOk(x)) &&
   (!f.b || x.buildingId === f.b) &&
   (!f.pets || x.pets) &&
   (!f.car || x.carParking === true) &&
@@ -53,9 +53,14 @@ const CMP: Record<Sort, (a: Listing, b: Listing) => number> = {
   move: (a, b) => { const t = vnToday(), x = a.moveIn < t ? t : a.moveIn, y = b.moveIn < t ? t : b.moveIn; return x.localeCompare(y); },
 };
 
-/** Filter + sort. Rented listings always sort last. */
+/** how well a listing fits the soft wishes: free-text match (building, street, ward) counts most, then sea view for "near the sea" */
+const boost = (x: Listing, f: Filters, textOk?: (x: Listing) => boolean) =>
+  (f.q && textOk?.(x) ? 2 : 0) + (f.near === 'sea' && x.view === 'sea' ? 1 : 0);
+
+/** Filter + sort. Rented listings always sort last; then what fits the free text / "near the sea" best; then the chosen order. */
 export const apply = (all: Listing[], f: Filters, sort: Sort, textOk?: (x: Listing) => boolean) =>
-  all.filter((x) => match(x, f, textOk)).sort((a, b) => Number(a.status === 'rented') - Number(b.status === 'rented') || CMP[sort](a, b));
+  all.filter((x) => match(x, f)).sort((a, b) =>
+    Number(a.status === 'rented') - Number(b.status === 'rented') || boost(b, f, textOk) - boost(a, f, textOk) || CMP[sort](a, b));
 
 /** URL query → state: ?b=&beds=&rent=r0..r3&furn=&pets=1&car=1&date=YYYY-MM-DD&rented=1&sort= (an old ?view=map is ignored) */
 export const parseQuery = (q: URLSearchParams | Record<string, string | string[] | undefined>) => {
@@ -78,6 +83,7 @@ export const parseQuery = (q: URLSearchParams | Record<string, string | string[]
   if (!/^\d{1,4}(\.\d)?$/.test(f.pmax)) f.pmax = '';
   if (!['sea', 'city', 'river', 'lagoon'].includes(f.vw)) f.vw = '';
   if (!['low', 'mid', 'high'].includes(f.fl)) f.fl = '';
+  if (f.near !== 'sea') f.near = '';
   f.q = f.q.trim().replace(/\s+/g, ' ').slice(0, 80);
   const s = get('sort') as Sort;
   const sort: Sort = SORTS.includes(s) ? s : 'new';

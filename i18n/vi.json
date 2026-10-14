@@ -300,5 +300,7 @@
   "ebBrowse": "Xem căn hộ",
   "ebHelp": "Nhờ tìm giúp",
   "ebAria": "Liên hệ ApartQN",
-  "ebRequest": "Gửi yêu cầu"
+  "ebRequest": "Gửi yêu cầu",
+  "nearSea": "Gần biển",
+  "qIgnored": "Không có căn khớp “{q}” — đang hiện các căn theo các điều kiện còn lại."
 }

@@ -81,6 +81,8 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
     return (x: Listing) => ok.get(x.buildingId) ?? false;
   }, [buildings, f.q]);
   const matched = useMemo(() => apply(listings, f, sort, textOk), [listings, f, sort, textOk]);
+  // free text that fits nothing is set aside (it never empties the list): say so
+  const qIgnored = !!f.q && matched.length > 0 && !matched.some(textOk);
   const similar = useMemo(() => (matched.length ? [] : similarListings(listings, f)), [matched.length, listings, f]);
 
   // a typed search with no match → anonymous demand log (once per query per session)
@@ -97,6 +99,7 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
   const pills: { label: string; clear: Partial<Filters> }[] = [];
   if (f.b && bById.get(f.b)) pills.push({ label: bById.get(f.b)!.name, clear: { b: '' } });
   if (f.q) pills.push({ label: `“${f.q}”`, clear: { q: '' } });
+  if (f.near) pills.push({ label: t('nearSea'), clear: { near: '' } });
   if (f.rent) pills.push({ label: t(`rent${f.rent.slice(1)}` as 'rent0'), clear: { rent: '' } });
   if (f.pmin && f.pmax) pills.push({ label: `${mil(+f.pmin * 1e6, l).replace(/ (đ|VND)$/, '')} – ${mil(+f.pmax * 1e6, l)}`, clear: { pmin: '', pmax: '' } });
   else if (f.pmax) pills.push({ label: '≤ ' + mil(+f.pmax * 1e6, l), clear: { pmax: '' } });
@@ -149,6 +152,7 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
               </button>
             ))}
             {pills.length > 0 && <button type="button" className={styles.clear} onClick={clearAll}>{t('clearAll')}</button>}
+            {qIgnored && <span className={styles.qNote} role="status">{t('qIgnored', { q: f.q })}</span>}
             <button type="button" role="checkbox" aria-checked={f.rented} className={styles.rented} onClick={() => setF({ rented: !f.rented })}>
               <span className={`${styles.box} ${f.rented ? styles.boxOn : ''}`} aria-hidden>{f.rented ? '✓' : ''}</span>
               {t('showRented')}
@@ -159,7 +163,7 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
 
       <div className={`container ${styles.body}`}>
         <aside className={styles.side}>
-          <FilterPanel variant="sidebar" value={f} listings={listings} textOk={textOk} onApply={(nf) => setF(nf)} />
+          <FilterPanel variant="sidebar" value={f} listings={listings} onApply={(nf) => setF(nf)} />
         </aside>
         <div className={styles.content}>
           {matched.length === 0 ? (
@@ -202,7 +206,6 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
         <FilterSheet
           value={f}
           listings={listings}
-          textOk={textOk}
           onClose={() => setSheet(false)}
           onApply={(nf) => { setSheet(false); setF(nf); }}
         />

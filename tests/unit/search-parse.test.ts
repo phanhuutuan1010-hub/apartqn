@@ -133,3 +133,19 @@ describe('QA queries (results / header search)', () => {
   it('flc full nt duoi 12tr', () => is('flc full nt duoi 12tr', { building: 'flc', furniture: 'full', priceMax: 12 * M }));
   it('двушка до 15 млн', () => is('двушка до 15 млн', { beds: 1, priceMax: 15 * M }));
 });
+
+describe('sea: strict view vs. soft "near the sea"', () => {
+  it('"view biển" / "sea view" / "вид на море" → strict sea-view filter', () => {
+    for (const q of ['view biển', 'căn hộ view biển', 'sea view', 'ocean view apartment', 'вид на море', 'квартира с видом на море']) {
+      expect(p(q), q).toMatchObject({ view: 'sea' });
+      expect(p(q).nearSea, q).toBeUndefined();
+    }
+  });
+  it('"gần biển" / "near the sea" / "у моря" → soft preference only, no view filter, no leftover words', () => {
+    for (const q of ['gần biển', 'căn hộ sát biển', 'near the sea', 'close to the beach', 'у моря', 'рядом с морем', 'недалеко от моря']) {
+      expect(p(q), q).toEqual({ text: '', nearSea: true });
+    }
+    expect(p('однушка у моря')).toEqual({ text: '', beds: 1, bedsOrStudio: true, nearSea: true });
+    expect(p('2pn gần biển dưới 12tr')).toEqual({ text: '', beds: 2, nearSea: true, priceMax: 12 * M });
+  });
+});

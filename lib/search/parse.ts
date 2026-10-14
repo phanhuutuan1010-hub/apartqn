@@ -22,7 +22,10 @@ export type Parsed = {
   priceMax?: number;
   pets?: true;
   parking?: true;
+  /** strict: "view biển", "sea view", "вид на море" — only listings with that view */
   view?: ViewKind;
+  /** soft: "gần biển", "near the sea", "у моря" — sea-view listings first, nothing excluded (no distance data) */
+  nearSea?: true;
   /** "tầng cao", "high floor" */
   floorBand?: 'low' | 'mid' | 'high';
   /** "ALT-001" (per-building code) */
@@ -78,6 +81,8 @@ const BANDS: ['low' | 'mid' | 'high', string][] = [
   ['mid', '(?:tang|lau) (?:trung|giua)|mid(?:dle)?[\\s-]?floors?'],
   ['low', '(?:tang|lau) thap|low(?:er)?[\\s-]?floors?'],
 ];
+/** near the sea / beach — a preference, never a filter */
+const NEAR_SEA = '(?:gan|sat|ke|cach) bien|near (?:the )?(?:sea|beach|ocean)|close to (?:the )?(?:sea|beach)|by the (?:sea|beach)|walking distance to (?:the )?beach|beachfront|у моря|рядом с морем|возле моря|около моря|близко к морю|недалеко от моря|у пляжа|рядом с пляжем';
 const VIEW_W = '(?:view|veiw|viu|vew|huong|nhin ra|nhin)';
 const VIEWS: [ViewKind, string][] = [
   ['sea', `${VIEW_W} (?:ra )?bien|sea[\\s-]?view|ocean view|view (?:sea|ocean)|(?:с )?вид(?:ом)? на море|морск\\p{L}* вид|вид на океан`],
@@ -232,6 +237,7 @@ export function parseSearch(raw: string, buildings: BuildingRef[] = []): Parsed 
     p.priceMax = v;
   });
 
+  take(NEAR_SEA, () => { p.nearSea = true; });
   for (const [kind, src] of VIEWS) take(src, () => { p.view ??= kind; });
   for (const [kind, src] of BANDS) take(src, () => { p.floorBand ??= kind; });
   for (const [kind, src] of FURN) take(src, () => { p.furniture ??= kind; });
@@ -262,4 +268,4 @@ export function parseSearch(raw: string, buildings: BuildingRef[] = []): Parsed 
 
 /** Does the query have anything besides free text? */
 export const hasCriteria = (p: Parsed) =>
-  p.building != null || p.beds != null || p.furniture != null || p.priceMin != null || p.priceMax != null || !!p.pets || !!p.parking || p.view != null || p.floorBand != null;
+  p.building != null || p.beds != null || p.furniture != null || p.priceMin != null || p.priceMax != null || !!p.pets || !!p.parking || p.view != null || !!p.nearSea || p.floorBand != null;

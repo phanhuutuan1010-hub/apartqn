@@ -300,5 +300,7 @@
   "ebBrowse": "Browse apartments",
   "ebHelp": "Help me find",
   "ebAria": "Contact ApartQN",
-  "ebRequest": "Request"
+  "ebRequest": "Request",
+  "nearSea": "Near the sea",
+  "qIgnored": "Nothing matches “{q}” — showing apartments that fit your other criteria."
 }
