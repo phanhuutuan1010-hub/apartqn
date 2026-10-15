@@ -5,7 +5,7 @@ import qrcode from 'qrcode-generator';
 import { getListing } from '@/lib/repo';
 import { LOGO } from '@/lib/watermarkLogo';
 import { CANONICAL_URL } from '@/data/site';
-import { mkpLink } from '@/lib/listing/marketplace';
+import { MKP_RU, mkpLink } from '@/lib/listing/marketplace';
 
 export const runtime = 'nodejs';
 // one card per listing, cached; listing changes revalidate it (lib/revalidate.ts), 1 h fallback
@@ -14,7 +14,8 @@ export const revalidate = 3600;
 
 const S = 1080;
 const font = (w: number) => readFile(join(process.cwd(), `app/fonts/og/NotoSans-${w}.ttf`));
-const fonts = Promise.all([font(500), font(800)]);
+// + a tiny Cyrillic subset (only the glyphs of the Russian line: "Все фото и расходы: apartqn.com/{CODE}") for this image
+const fonts = Promise.all([font(500), font(800), readFile(join(process.cwd(), 'app/fonts/og/NotoSans-500-cyr.ttf'))]);
 
 /** QR as one SVG path (drawn on the server; the library never reaches the browser) */
 function qrPath(text: string) {
@@ -29,7 +30,7 @@ function qrPath(text: string) {
 
 /**
  * Brand card for a Facebook Marketplace post, 1080×1080 PNG: /og/marketplace/alt-003 — the LAST photo of the post.
- * Logo, "see all {n} photos + monthly costs at apartqn.com" (vi + en), the listing code, a QR to the listing's short
+ * Logo, "see all {n} photos + monthly costs at apartqn.com" (vi + en + ru), the listing code, a QR to the listing's short
  * link (counted as a Marketplace click). Text names the site; the only link is inside the QR.
  */
 export async function GET(_: Request, { params }: { params: Promise<{ code: string }> }) {
@@ -39,7 +40,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ code: stri
   if (!x) return new Response('Not found', { status: 404 });
   const n = x.photos.length;
   const { n: size, d } = qrPath(mkpLink(CANONICAL_URL, x.code));
-  const [f500, f800] = await fonts;
+  const [f500, f800, cyr] = await fonts;
   const [bx, by, bw, bh] = LOGO.box;
   const Q = 340;
 
@@ -53,6 +54,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ code: stri
           </div>
           <div style={{ display: 'flex', fontSize: 34, fontWeight: 500, lineHeight: 1.3, marginTop: 18, opacity: 0.92, textAlign: 'center', maxWidth: 900 }}>
             {n > 1 ? `All ${n} photos + monthly costs at apartqn.com` : 'Photos + monthly costs at apartqn.com'}
+          </div>
+          <div style={{ display: 'flex', fontFamily: 'Noto Sans Cyr', fontSize: 34, fontWeight: 500, lineHeight: 1.3, marginTop: 8, opacity: 0.92, textAlign: 'center', maxWidth: 900 }}>
+            {`${MKP_RU.card} apartqn.com/${x.code}`}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 44 }}>
@@ -69,6 +73,6 @@ export async function GET(_: Request, { params }: { params: Promise<{ code: stri
         </div>
       </div>
     ),
-    { width: S, height: S, fonts: [{ name: 'Noto Sans', data: f500, weight: 500, style: 'normal' }, { name: 'Noto Sans', data: f800, weight: 800, style: 'normal' }] },
+    { width: S, height: S, fonts: [{ name: 'Noto Sans', data: f500, weight: 500, style: 'normal' }, { name: 'Noto Sans', data: f800, weight: 800, style: 'normal' }, { name: 'Noto Sans Cyr', data: cyr, weight: 500, style: 'normal' }] },
   );
 }

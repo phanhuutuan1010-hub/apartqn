@@ -2,14 +2,19 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { Copy, Download, ExternalLink, Share2 } from 'lucide-react';
-import { getMarketplaceKit, setMarketplace, type MarketplaceKit } from '@/lib/admin/postActions';
+import { getMarketplaceKit, setMarketplace, setMarketplaceLang, type MarketplaceKit } from '@/lib/admin/postActions';
+import type { MkpLang } from '@/lib/listing/marketplace';
 import { canShareFiles, downloadZip, toJpeg } from '@/lib/admin/photoFiles';
+
+const LANG_LABEL: Record<MkpLang, string> = { vi: 'VI', ru: 'RU', en: 'EN' };
+const LANG_NAME: Record<MkpLang, string> = { vi: 'Tiếng Việt', ru: 'Русский', en: 'English' };
 
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' }) : null);
 
 /**
  * "Marketplace" tab of Tạo bài đăng — a kit for posting BY HAND on Facebook Marketplace: every form field with its own
- * Copy button, title, description (VI + EN, no link, no phone), the photo set (cover … brand card last), the Messenger
+ * Copy button, title + description in the listing's main language ("Ngôn ngữ chính" VI · RU · EN, saved per listing; three
+ * short blocks, main language first; no link, no phone), the photo set (cover … brand card last), the Messenger
  * reply with the counted link, and the posted / renewed / removed marks that drive the reminders on Hôm nay.
  */
 export default function MarketplaceTab({ id }: { id: string }) {
@@ -17,6 +22,8 @@ export default function MarketplaceTab({ id }: { id: string }) {
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState('');
+  // chosen here (saved in the background); null = the kit's language (stored, or suggested)
+  const [pick, setPick] = useState<MkpLang | null>(null);
   const [, start] = useTransition();
   const load = () => getMarketplaceKit(id).then(setSrc);
   useEffect(() => {
@@ -29,6 +36,12 @@ export default function MarketplaceTab({ id }: { id: string }) {
   if (!src) return <p className="a-muted">Đang tải…</p>;
   if (src.error || !k) return <div className="a-alert warn">{src.error}</div>;
   const base = k.code.toLowerCase();
+  const lang = pick ?? k.lang, suggested = !pick && k.suggested;
+  const tx = k.text[lang];
+  const choose = (l: MkpLang) => {
+    setPick(l);
+    start(async () => { const r = await setMarketplaceLang(id, l); setStatus(r.error ?? `Đã lưu ngôn ngữ chính: ${LANG_NAME[l]}.`); });
+  };
 
   const copy = async (what: string, done = 'Đã sao chép.') => {
     try { await navigator.clipboard.writeText(what); setStatus(done); } catch { setStatus('Trình duyệt chặn sao chép — bôi đen nội dung rồi sao chép thủ công.'); }
@@ -65,10 +78,17 @@ export default function MarketplaceTab({ id }: { id: string }) {
       {k.fields.map((f) => row(f.label, f.value))}
 
       <h3 className="a-mkp-h">2 · Tiêu đề và mô tả</h3>
-      {row(`Tiêu đề (${k.title.length}/100)`, k.title)}
-      {row("Mô tả — tiếng Việt", k.vi, 7)}
-      {row("Mô tả — English", k.en, 7)}
-      <div><button type="button" className="a-btn a-btn-outline a-btn-sm" onClick={() => copy(`${k.vi}\n\n${k.en}`, 'Đã sao chép mô tả VI + EN.')}><Copy size={14} aria-hidden /> Chép cả hai (VI + EN)</button></div>
+      <div className="a-mkp-lang">
+        <span className="a-mkp-label">Ngôn ngữ chính</span>
+        <div className="a-seg" role="radiogroup" aria-label="Ngôn ngữ chính" style={{ margin: 0 }}>
+          {(['vi', 'ru', 'en'] as const).map((l) => (
+            <button key={l} type="button" role="radio" aria-checked={lang === l} className={lang === l ? 'on' : undefined} onClick={() => choose(l)} title={LANG_NAME[l]}>{LANG_LABEL[l]}</button>
+          ))}
+        </div>
+        {suggested && <span className="a-badge blue" title="Căn view biển + nội thất đầy đủ → RU; còn lại → VI. Bấm chọn để lưu.">Gợi ý</span>}
+      </div>
+      {row(`Tiêu đề (${tx.title.length}/100)`, tx.title)}
+      {row(`Mô tả (${LANG_LABEL[lang]} trước, 3 ngôn ngữ)`, tx.description, 12)}
 
       <h3 className="a-mkp-h">3 · Bộ ảnh ({k.images.length} ảnh + thẻ ApartQN)</h3>
       <div className="a-post-actions">
@@ -79,8 +99,9 @@ export default function MarketplaceTab({ id }: { id: string }) {
       <p className="a-small a-muted" style={{ margin: 0 }}>Ảnh bìa đứng đầu, sau đó theo thứ tự gallery (tối đa 19 ảnh công khai), ảnh cuối là thẻ ApartQN có mã căn và QR.</p>
 
       <h3 className="a-mkp-h">4 · Trả lời tin nhắn (Messenger)</h3>
-      {row("Tiếng Việt", k.replyVi, 3)}
-      {row("English", k.replyEn, 3)}
+      {row("Tiếng Việt", k.reply.vi, 3)}
+      {row("English", k.reply.en, 3)}
+      {row("Русский", k.reply.ru, 3)}
 
       <h3 className="a-mkp-h">5 · Theo dõi</h3>
       {k.posted ? (

@@ -860,6 +860,20 @@ describe('Facebook Marketplace tracking (migration 34)', () => {
   });
 });
 
+describe('Marketplace main language (migration 36)', () => {
+  it('own listings for sales, any for admins; only vi / ru / en; null = suggestion', async () => {
+    await as(id(U.s1), async (q) => {
+      expect((await q(`select marketplace_lang from public.listings where id = $1`, [l1])).rows[0].marketplace_lang).toBeNull();
+      expect(await denied(q(`select public.set_marketplace_lang($1, 'ru')`, [l2]))).toMatch(/not allowed/);
+      expect(await denied(q(`select public.set_marketplace_lang($1, 'fr')`, [l1]))).toMatch(/bad lang/);
+      await q(`select public.set_marketplace_lang($1, 'ru')`, [l1]);
+      expect((await q(`select marketplace_lang from public.listings where id = $1`, [l1])).rows[0].marketplace_lang).toBe('ru');
+    });
+    await as(id(U.admin), (q) => q(`select public.set_marketplace_lang($1, 'en')`, [l2]));
+    expect(await as('anon', (q) => denied(q(`select public.set_marketplace_lang($1, 'vi')`, [l1])))).toMatch(/permission denied/);
+  });
+});
+
 describe('notifications log (migration 35)', () => {
   afterAll(async () => { await root(`delete from public.notifications_log`); });
   it('server writes; admins read; sales and visitors see nothing and cannot write', async () => {
