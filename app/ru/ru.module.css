@@ -3,9 +3,13 @@
 .topIn { display: flex; align-items: center; min-height: 56px; }
 .topIn a { text-decoration: none; display: inline-flex; min-height: 44px; align-items: center; }
 
-.hero { background: var(--blue-50); padding: clamp(28px, 7vw, 64px) 0 clamp(28px, 6vw, 56px); }
-.h1 { margin: 0; font-size: clamp(28px, 7.4vw, 48px); line-height: 1.12; font-weight: 800; letter-spacing: -0.02em; color: var(--ink-heading); text-wrap: balance; }
-.lead { margin: 14px 0 0; max-width: 640px; font-size: clamp(16px, 4.2vw, 19px); line-height: 1.55; color: var(--gray-700); }
+.hero { position: relative; isolation: isolate; overflow: hidden; background: var(--ink-heading); color: var(--white); padding: clamp(56px, 16vw, 120px) 0 clamp(32px, 7vw, 64px); min-height: min(78vh, 620px); display: flex; align-items: flex-end; }
+.heroImg { object-fit: cover; object-position: center; z-index: -2; }
+/* dark overlay, strongest at the bottom where the text sits */
+.hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(10,16,32,.35) 0%, rgba(10,16,32,.55) 45%, rgba(10,16,32,.82) 100%); }
+.heroIn { width: 100%; }
+.h1 { margin: 0; max-width: 760px; font-size: clamp(28px, 7.4vw, 48px); line-height: 1.12; font-weight: 800; letter-spacing: -0.02em; color: var(--white); text-wrap: balance; text-shadow: 0 1px 12px rgba(0,0,0,.25); }
+.lead { margin: 14px 0 0; max-width: 640px; font-size: clamp(16px, 4.2vw, 19px); line-height: 1.55; color: rgba(255,255,255,.92); }
 .ctaRow { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; max-width: 640px; }
 .chatBtn { width: 100%; gap: 10px; min-height: 52px; height: auto; padding: 10px 16px; white-space: normal; text-align: center; }
 @media (min-width: 560px) { .ctaRow { flex-direction: row; } .chatBtn { width: auto; flex: 1 1 0; } }
@@ -13,6 +17,7 @@
 .body { display: flex; flex-direction: column; gap: clamp(32px, 6vw, 48px); padding-top: clamp(32px, 6vw, 48px); padding-bottom: clamp(32px, 6vw, 56px); }
 .sec { min-width: 0; }
 .h2 { margin: 0 0 12px; font-size: clamp(22px, 5.4vw, 30px); line-height: 1.2; font-weight: 800; letter-spacing: -0.01em; color: var(--ink-heading); }
+.pTop { margin: 0 0 10px; max-width: 720px; font-size: 16px; line-height: 1.6; color: var(--gray-700); }
 .p { margin: 10px 0 0; max-width: 720px; font-size: 16px; line-height: 1.6; color: var(--gray-700); }
 .list { margin: 0; padding-left: 20px; max-width: 720px; display: flex; flex-direction: column; gap: 6px; font-size: 16px; line-height: 1.55; color: var(--ink-900); }
 .price { color: var(--red-500); font-weight: 800; white-space: nowrap; }

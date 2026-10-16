@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { getContact, getListings, getPricesFrom } from '@/lib/repo';
 import { contactLinks } from '@/lib/contacts';
@@ -13,10 +14,10 @@ import s from './ru.module.css';
 
 export const revalidate = 300;
 
-const TITLE = 'Аренда квартир в Куиньоне от 6 месяцев | ApartQN';
-const DESC = 'Переезд из Нячанга в Куиньон: меблированные квартиры в центре Куиньона, аренда от 6 месяцев. Студии, 1 и 2 спальни. Пишите в Telegram или WhatsApp.';
+const TITLE = 'Переезд из Нячанга в Куиньон — аренда квартир от 6 месяцев | ApartQN';
+const DESC = 'Куиньон — спокойный город у моря. Меблированные квартиры в центре, аренда от 6 месяцев. Как добраться из Нячанга, где работать онлайн, первые дни в городе.';
 /** typed into Telegram / WhatsApp when the chat opens */
-const MESSAGE = 'Здравствуйте! Интересует аренда квартиры в Куиньоне от 6 месяцев.';
+const MESSAGE = 'Здравствуйте! Пишу со страницы apartqn.com/ru. Интересует аренда квартиры от 6 месяцев.';
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -60,19 +61,54 @@ export default async function RuPage() {
 
       <main>
         <section className={s.hero}>
-          <div className="container">
-            <h1 className={s.h1}>Переезд из Нячанга в Куиньон</h1>
-            <p className={s.lead}>Долгосрочная аренда квартир в центре Куиньона — от 6 месяцев. Все квартиры полностью меблированы, можно заезжать сразу.</p>
+          {/* the homepage hero photo (same file), darkened for the white text */}
+          <Image src="/images/hero-quy-nhon-2000.webp" alt="" fill preload sizes="100vw" className={s.heroImg} />
+          <div className={`container ${s.heroIn}`}>
+            <h1 className={s.h1}>Куиньон — море, тишина и своя квартира</h1>
+            <p className={s.lead}>Переезжаете из Нячанга? Поможем найти квартиру в центре Куиньона на срок от 6 месяцев. Все квартиры полностью меблированы — можно заезжать сразу.</p>
             {chat}
           </div>
         </section>
 
         <div className={`container ${s.body}`}>
           <section className={s.sec}>
-            <h2 className={s.h2}>Почему Куиньон</h2>
+            <h2 className={s.h2}>Один день в Куиньоне</h2>
             <ul className={s.list}>
-              <li>Спокойный приморский город — меньше туристов и суеты.</li>
-              <li>Квартиры в центре города, полностью готовые к проживанию.</li>
+              <li>Утро — купание или пробежка на городском пляже вдоль набережной.</li>
+              <li>День — работа с ноутбуком в кафе в центре.</li>
+              <li>Вечер — прогулка у моря и свежие морепродукты.</li>
+              <li>Выходные — бухта Ky Co, мыс Eo Gio, рыбацкие деревни Bai Xep и Nhon Ly.</li>
+            </ul>
+          </section>
+
+          <section className={s.sec}>
+            <h2 className={s.h2}>Где работать онлайн</h2>
+            <p className={s.pTop}>Больших коворкингов в Куиньоне пока нет, но есть кафе, где удобно работать с ноутбуком:</p>
+            <ul className={s.list}>
+              <li>S.Blue Coffee — на пляже, у центральной площади</li>
+              <li>Marina Coffee — рядом с Co.opmart</li>
+              <li>Santorino Coffee — тихое, с кондиционером</li>
+              <li>Friendship Cafe — спокойное место для созвонов</li>
+            </ul>
+            <p className={s.p}>Интернет в квартире — уточняйте по каждой квартире.</p>
+          </section>
+
+          <section className={s.sec}>
+            <h2 className={s.h2}>Как добраться из Нячанга</h2>
+            <ul className={s.list}>
+              <li>Поезд — до станции Dieu Tri, оттуда на такси или Grab до центра Куиньона.</li>
+              <li>Автобус или минивэн-лимузин — несколько рейсов в день, билеты можно купить онлайн.</li>
+            </ul>
+            <p className={s.p}>Нужна помощь с дорогой? Напишите — подскажем удобный вариант.</p>
+          </section>
+
+          <section className={s.sec}>
+            <h2 className={s.h2}>Первые дни в Куиньоне</h2>
+            <ul className={s.list}>
+              <li>Связь — SIM-карты Viettel, Vinaphone, Mobifone в салонах операторов.</li>
+              <li>Транспорт — Grab (такси и байк) или аренда байка.</li>
+              <li>Продукты — супермаркеты Co.opmart и GO!, мини-маркеты WinMart и Circle K, рынки.</li>
+              <li>Аптеки — Pharmacity, Long Chau.</li>
             </ul>
           </section>
 
@@ -81,8 +117,15 @@ export default async function RuPage() {
             <ul className={s.list}>
               <li>Развлечений меньше, чем в Нячанге — город живёт спокойнее.</li>
               <li>Русскоязычное сообщество пока небольшое.</li>
+              <li>Коворкингов почти нет — работают в кафе или дома.</li>
             </ul>
             <p className={s.p}>Если вам важны тишина и спокойный ритм — Куиньон подойдёт. Если нужна активная ночная жизнь — возможно, нет.</p>
+          </section>
+
+          <section className={s.sec}>
+            <h2 className={s.h2}>О нас</h2>
+            <p className={s.pTop}>ApartQN — местная команда. Мы живём в Куиньоне, сами показываем квартиры и помогаем с заселением.</p>
+            <p className={s.p}>Общаемся на английском, на русском — через переводчик.</p>
           </section>
 
           <section className={s.sec}>
@@ -126,7 +169,7 @@ export default async function RuPage() {
             <ol className={s.steps}>
               <li>Напишите нам в Telegram или WhatsApp.</li>
               <li>Пришлём фото и видео квартир.</li>
-              <li>Приезжайте посмотреть лично.</li>
+              <li>Приезжайте в Куиньон — подберём несколько квартир и покажем их за одну поездку.</li>
               <li>Заселяйтесь.</li>
             </ol>
           </section>
