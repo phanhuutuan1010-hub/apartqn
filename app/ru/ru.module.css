@@ -3,16 +3,25 @@
 .topIn { display: flex; align-items: center; min-height: 56px; }
 .topIn a { text-decoration: none; display: inline-flex; min-height: 44px; align-items: center; }
 
-.hero { position: relative; isolation: isolate; overflow: hidden; background: var(--ink-heading); color: var(--white); padding: clamp(56px, 16vw, 120px) 0 clamp(32px, 7vw, 64px); min-height: min(78vh, 620px); display: flex; align-items: flex-end; }
+/* compact: the listings start within about one phone screen */
+.hero { position: relative; isolation: isolate; overflow: hidden; background: var(--ink-heading); color: var(--white); padding: clamp(28px, 8vw, 72px) 0 clamp(24px, 6vw, 56px); }
 .heroImg { object-fit: cover; object-position: center; z-index: -2; }
 /* dark overlay, strongest at the bottom where the text sits */
 .hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(10,16,32,.35) 0%, rgba(10,16,32,.55) 45%, rgba(10,16,32,.82) 100%); }
 .heroIn { width: 100%; }
-.h1 { margin: 0; max-width: 760px; font-size: clamp(28px, 7.4vw, 48px); line-height: 1.12; font-weight: 800; letter-spacing: -0.02em; color: var(--white); text-wrap: balance; text-shadow: 0 1px 12px rgba(0,0,0,.25); }
-.lead { margin: 14px 0 0; max-width: 640px; font-size: clamp(16px, 4.2vw, 19px); line-height: 1.55; color: rgba(255,255,255,.92); }
-.ctaRow { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; max-width: 640px; }
-.chatBtn { width: 100%; gap: 10px; min-height: 52px; height: auto; padding: 10px 16px; white-space: normal; text-align: center; }
-@media (min-width: 560px) { .ctaRow { flex-direction: row; } .chatBtn { width: auto; flex: 1 1 0; } }
+.h1 { margin: 0; max-width: 760px; font-size: clamp(26px, 7vw, 46px); line-height: 1.12; font-weight: 800; letter-spacing: -0.02em; color: var(--white); text-wrap: balance; text-shadow: 0 1px 12px rgba(0,0,0,.25); }
+.lead { margin: 10px 0 0; max-width: 640px; font-size: clamp(15px, 4vw, 19px); line-height: 1.5; color: rgba(255,255,255,.92); }
+.heroCta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 16px; }
+.seeBtn { width: 100%; max-width: 420px; height: auto; min-height: 52px; padding: 10px 16px; white-space: normal; text-align: center; }
+@media (min-width: 560px) { .seeBtn { width: auto; } }
+/* small Telegram / WhatsApp links (hero, under the list) */
+.chatSmall { display: inline-flex; flex-wrap: wrap; gap: 0 20px; }
+.chatLink { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-size: 15px; font-weight: 700; color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.notFound { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 18px; font-size: 16px; line-height: 1.5; color: var(--gray-700); }
+.notFound .chatLink { color: var(--blue-500); }
+/* sections 4–7: two columns on desktop */
+.duo { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(32px, 6vw, 40px); }
+@media (min-width: 900px) { .duo { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px; } }
 
 .body { display: flex; flex-direction: column; gap: clamp(32px, 6vw, 48px); padding-top: clamp(32px, 6vw, 48px); padding-bottom: clamp(32px, 6vw, 56px); }
 .sec { min-width: 0; }
@@ -29,6 +38,7 @@
 .card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--gray-200); border-radius: var(--r-card); overflow: hidden; background: var(--white); }
 .photo { position: relative; aspect-ratio: 4 / 3; background: var(--gray-100); overflow: hidden; }
 .cardBody { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px 16px; }
+.code { font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--gray-500); }
 .type { font-size: 17px; font-weight: 700; color: var(--ink-heading); }
 .rent { font-size: 18px; font-weight: 800; color: var(--red-500); }
 .floor { font-size: 14px; color: var(--gray-500); }
@@ -44,15 +54,3 @@
 .finalT { margin: 0; max-width: 640px; font-size: clamp(17px, 4.4vw, 21px); line-height: 1.45; font-weight: 700; }
 .finalLinks { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 16px; }
 .finalLink { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--white); font-size: 16px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
-
-/* phones: Telegram · WhatsApp pinned to the bottom (the English bottom bar, Russian page) */
-.bar, .barSpace { display: none; }
-@media (max-width: 767.98px) {
-  .bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; padding: 10px var(--px) calc(10px + env(safe-area-inset-bottom)); background: var(--white); border-top: 1px solid var(--gray-200); box-shadow: 0 -6px 20px rgba(16,24,40,.08); }
-  .barSpace { display: block; height: calc(72px + env(safe-area-inset-bottom)); }
-}
-.barBtn { min-width: 0; min-height: 50px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--r-card); font-size: 16px; font-weight: 700; text-decoration: none; }
-.barTg { background: var(--red-500); color: var(--white); }
-.barTg:active { background: var(--red-700); }
-.barWa { background: var(--white); color: var(--blue-500); border: 1.5px solid var(--blue-500); }
-.barWa:active { background: var(--blue-50); }

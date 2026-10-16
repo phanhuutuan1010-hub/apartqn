@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { getContact, getListings, getPricesFrom } from '@/lib/repo';
+import { getBuildings, getContact, getListings, getPricesFrom } from '@/lib/repo';
 import { contactLinks } from '@/lib/contacts';
 import { telHref, toLocal } from '@/lib/phone';
 import { RU_FLOOR, ruAlternates, ruType, rub } from '@/lib/ruPage';
@@ -33,23 +33,25 @@ const intl = (p: string) => {
 };
 
 /**
- * Russian landing page for people moving from Nha Trang: one server-rendered page (not a locale). Prices "from" come
- * from Cài đặt, the list is the public available listings (cheapest first, floor band only — never the floor or unit
- * number), and the chat buttons are the English Telegram / WhatsApp links, logged with origin 'ru-page'.
+ * Russian landing page for people moving from Nha Trang: one server-rendered page (not a locale). The available
+ * listings come right after a compact hero (cheapest first, floor band only — never the floor or unit number); prices
+ * "from" come from Cài đặt; the chat links are the English Telegram / WhatsApp links, logged with origin 'ru-page'.
  */
 export default async function RuPage() {
-  const [contact, prices, all] = await Promise.all([getContact(), getPricesFrom(), getListings()]);
+  const [contact, prices, all, buildings] = await Promise.all([getContact(), getPricesFrom(), getListings(), getBuildings()]);
   const links = contactLinks(contact, '', MESSAGE);
   const tg = links.telegram?.href, wa = links.whatsapp?.href;
   const available = all.filter((x) => x.status === 'available').sort((a, b) => a.rent - b.rent);
+  const bName = new Map(buildings.map((b) => [b.id, b.name]));
   const phone = contact.whatsapp ?? contact.hotline;
 
-  const chat = (
-    <div className={s.ctaRow}>
-      {tg && <RuChat href={tg} channel="telegram" className={`btn btn-primary ${s.chatBtn}`}><IconTelegram size={20} /> Написать в Telegram</RuChat>}
-      {wa && <RuChat href={wa} channel="whatsapp" className={`btn btn-secondary ${s.chatBtn}`}><IconWhatsApp size={20} /> Написать в WhatsApp</RuChat>}
-    </div>
-  );
+  /** small Telegram / WhatsApp links (hero, under the list) */
+  const chatSmall = (tg || wa) ? (
+    <span className={s.chatSmall}>
+      {tg && <RuChat href={tg} channel="telegram" className={s.chatLink}><IconTelegram size={18} /> Telegram</RuChat>}
+      {wa && <RuChat href={wa} channel="whatsapp" className={s.chatLink}><IconWhatsApp size={18} /> WhatsApp</RuChat>}
+    </span>
+  ) : null;
 
   return (
     <>
@@ -66,51 +68,100 @@ export default async function RuPage() {
           <div className={`container ${s.heroIn}`}>
             <h1 className={s.h1}>Куиньон — море, тишина и своя квартира</h1>
             <p className={s.lead}>Переезжаете из Нячанга? Поможем найти квартиру в центре Куиньона на срок от 6 месяцев. Все квартиры полностью меблированы — можно заезжать сразу.</p>
-            {chat}
+            <div className={s.heroCta}>
+              <a href="#kvartiry" className={`btn btn-primary ${s.seeBtn}`}>Смотреть свободные квартиры</a>
+              {chatSmall}
+            </div>
           </div>
         </section>
 
         <div className={`container ${s.body}`}>
-          <section className={s.sec}>
-            <h2 className={s.h2}>Один день в Куиньоне</h2>
-            <ul className={s.list}>
-              <li>Утро — купание или пробежка на городском пляже вдоль набережной.</li>
-              <li>День — работа с ноутбуком в кафе в центре.</li>
-              <li>Вечер — прогулка у моря и свежие морепродукты.</li>
-              <li>Выходные — бухта Ky Co, мыс Eo Gio, рыбацкие деревни Bai Xep и Nhon Ly.</li>
-            </ul>
+          <section className={s.sec} id="kvartiry">
+            <h2 className={s.h2}>Свободные квартиры</h2>
+            {available.length === 0 ? (
+              <p className={s.empty}>Сейчас свободных квартир нет. Напишите нам — сообщим, как только появятся.</p>
+            ) : (
+              <ul className={s.grid}>
+                {available.map((x, i) => {
+                  const type = ruType(x.beds);
+                  const building = bName.get(x.buildingId);
+                  return (
+                    <li key={x.code} className={s.card}>
+                      <div className={s.photo}>
+                        <Photo src={x.thumbs[0]} srcSet={x.srcsets[0]} ratio={ratioOf(x.photoMeta?.[0])} alt={`${type} — квартира в Куиньоне`}
+                          sizes="(min-width: 1024px) 380px, (min-width: 640px) 50vw, 100vw" priority={i === 0} />
+                      </div>
+                      <div className={s.cardBody}>
+                        <span className={s.code}>{x.code}{building && <> · {building}</>}</span>
+                        <span className={s.type}>{type}{x.area > 0 && <> · {x.area} м²</>}</span>
+                        <span className={s.rent}>{rub(x.rent)} VND/месяц</span>
+                        {x.floorBand && <span className={s.floor}>{RU_FLOOR[x.floorBand]}</span>}
+                        <a href={`/en/${x.code}`} className={`btn btn-secondary ${s.more}`} hrefLang="en">Подробнее (на английском)</a>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {chatSmall && (
+              <div className={s.notFound}>
+                <span>Не нашли подходящую? Напишите — подберём по вашему запросу.</span>
+                {chatSmall}
+              </div>
+            )}
           </section>
 
           <section className={s.sec}>
-            <h2 className={s.h2}>Где работать онлайн</h2>
-            <p className={s.pTop}>Больших коворкингов в Куиньоне пока нет, но есть кафе, где удобно работать с ноутбуком:</p>
-            <ul className={s.list}>
-              <li>S.Blue Coffee — на пляже, у центральной площади</li>
-              <li>Marina Coffee — рядом с Co.opmart</li>
-              <li>Santorino Coffee — тихое, с кондиционером</li>
-              <li>Friendship Cafe — спокойное место для созвонов</li>
-            </ul>
-            <p className={s.p}>Интернет в квартире — уточняйте по каждой квартире.</p>
+            <h2 className={s.h2}>Цены</h2>
+            <p className={s.p}>
+              Аренда в месяц: студия — от <b className={s.price}>{rub(prices.studio)} VND</b>, 1 спальня — от <b className={s.price}>{rub(prices.br1)} VND</b>,
+              {' '}2 спальни — от <b className={s.price}>{rub(prices.br2)} VND</b>.
+            </p>
+            <p className={s.p}>Цена зависит от расположения дома, вида, мебели, срока аренды и наличия домашних животных.</p>
           </section>
 
-          <section className={s.sec}>
-            <h2 className={s.h2}>Как добраться из Нячанга</h2>
-            <ul className={s.list}>
-              <li>Поезд — до станции Dieu Tri, оттуда на такси или Grab до центра Куиньона.</li>
-              <li>Автобус или минивэн-лимузин — несколько рейсов в день, билеты можно купить онлайн.</li>
-            </ul>
-            <p className={s.p}>Нужна помощь с дорогой? Напишите — подскажем удобный вариант.</p>
-          </section>
+          <div className={s.duo}>
+            <section className={s.sec}>
+              <h2 className={s.h2}>Один день в Куиньоне</h2>
+              <ul className={s.list}>
+                <li>Утро — купание или пробежка на городском пляже вдоль набережной.</li>
+                <li>День — работа с ноутбуком в кафе в центре.</li>
+                <li>Вечер — прогулка у моря и свежие морепродукты.</li>
+                <li>Выходные — бухта Ky Co, мыс Eo Gio, рыбацкие деревни Bai Xep и Nhon Ly.</li>
+              </ul>
+            </section>
 
-          <section className={s.sec}>
-            <h2 className={s.h2}>Первые дни в Куиньоне</h2>
-            <ul className={s.list}>
-              <li>Связь — SIM-карты Viettel, Vinaphone, Mobifone в салонах операторов.</li>
-              <li>Транспорт — Grab (такси и байк) или аренда байка.</li>
-              <li>Продукты — супермаркеты Co.opmart и GO!, мини-маркеты WinMart и Circle K, рынки.</li>
-              <li>Аптеки — Pharmacity, Long Chau.</li>
-            </ul>
-          </section>
+            <section className={s.sec}>
+              <h2 className={s.h2}>Где работать онлайн</h2>
+              <p className={s.pTop}>Больших коворкингов в Куиньоне пока нет, но есть кафе, где удобно работать с ноутбуком:</p>
+              <ul className={s.list}>
+                <li>S.Blue Coffee — на пляже, у центральной площади</li>
+                <li>Marina Coffee — рядом с Co.opmart</li>
+                <li>Santorino Coffee — тихое, с кондиционером</li>
+                <li>Friendship Cafe — спокойное место для созвонов</li>
+              </ul>
+              <p className={s.p}>Интернет в квартире — уточняйте по каждой квартире.</p>
+            </section>
+
+            <section className={s.sec}>
+              <h2 className={s.h2}>Как добраться из Нячанга</h2>
+              <ul className={s.list}>
+                <li>Поезд — до станции Dieu Tri, оттуда на такси или Grab до центра Куиньона.</li>
+                <li>Автобус или минивэн-лимузин — несколько рейсов в день, билеты можно купить онлайн.</li>
+              </ul>
+              <p className={s.p}>Нужна помощь с дорогой? Напишите — подскажем удобный вариант.</p>
+            </section>
+
+            <section className={s.sec}>
+              <h2 className={s.h2}>Первые дни в Куиньоне</h2>
+              <ul className={s.list}>
+                <li>Связь — SIM-карты Viettel, Vinaphone, Mobifone в салонах операторов.</li>
+                <li>Транспорт — Grab (такси и байк) или аренда байка.</li>
+                <li>Продукты — супермаркеты Co.opmart и GO!, мини-маркеты WinMart и Circle K, рынки.</li>
+                <li>Аптеки — Pharmacity, Long Chau.</li>
+              </ul>
+            </section>
+          </div>
 
           <section className={s.sec}>
             <h2 className={s.h2}>Честно о Куиньоне</h2>
@@ -126,42 +177,6 @@ export default async function RuPage() {
             <h2 className={s.h2}>О нас</h2>
             <p className={s.pTop}>ApartQN — местная команда. Мы живём в Куиньоне, сами показываем квартиры и помогаем с заселением.</p>
             <p className={s.p}>Общаемся на английском, на русском — через переводчик.</p>
-          </section>
-
-          <section className={s.sec}>
-            <h2 className={s.h2}>Цены</h2>
-            <p className={s.p}>
-              Аренда в месяц: студия — от <b className={s.price}>{rub(prices.studio)} VND</b>, 1 спальня — от <b className={s.price}>{rub(prices.br1)} VND</b>,
-              {' '}2 спальни — от <b className={s.price}>{rub(prices.br2)} VND</b>.
-            </p>
-            <p className={s.p}>Цена зависит от расположения дома, вида, мебели, срока аренды и наличия домашних животных.</p>
-          </section>
-
-          <section className={s.sec} id="available">
-            <h2 className={s.h2}>Свободные квартиры</h2>
-            {available.length === 0 ? (
-              <p className={s.empty}>Сейчас свободных квартир нет. Напишите нам — сообщим, как только появятся.</p>
-            ) : (
-              <ul className={s.grid}>
-                {available.map((x, i) => {
-                  const type = ruType(x.beds);
-                  return (
-                    <li key={x.code} className={s.card}>
-                      <div className={s.photo}>
-                        <Photo src={x.thumbs[0]} srcSet={x.srcsets[0]} ratio={ratioOf(x.photoMeta?.[0])} alt={`${type} — квартира в Куиньоне`}
-                          sizes="(min-width: 1024px) 380px, (min-width: 640px) 50vw, 100vw" priority={i === 0} />
-                      </div>
-                      <div className={s.cardBody}>
-                        <span className={s.type}>{type}</span>
-                        <span className={s.rent}>{rub(x.rent)} VND/месяц</span>
-                        {x.floorBand && <span className={s.floor}>{RU_FLOOR[x.floorBand]}</span>}
-                        <a href={`/en/${x.code}`} className={`btn btn-secondary ${s.more}`} hrefLang="en">Подробнее (на английском)</a>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
           </section>
 
           <section className={s.sec}>
@@ -196,16 +211,6 @@ export default async function RuPage() {
           </div>
         </section>
       </main>
-
-      {(tg || wa) && (
-        <>
-          <div className={s.barSpace} aria-hidden />
-          <nav className={s.bar} aria-label="Написать нам">
-            {tg && <RuChat href={tg} channel="telegram" className={`${s.barBtn} ${s.barTg}`}><IconTelegram size={22} /><span>Telegram</span></RuChat>}
-            {wa && <RuChat href={wa} channel="whatsapp" className={`${s.barBtn} ${s.barWa}`}><IconWhatsApp size={22} /><span>WhatsApp</span></RuChat>}
-          </nav>
-        </>
-      )}
     </>
   );
 }
