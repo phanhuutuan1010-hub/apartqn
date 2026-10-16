@@ -114,3 +114,13 @@ export const getContact = cache(async (): Promise<SiteContact> => {
     ...(name ? { person: { name, ...(v(data?.contact_person_title) ? { title: v(data?.contact_person_title) } : {}), ...(photo ? { photo: publicPhotoUrl(SUPABASE_URL, photo) } : {}) } } : {}),
   };
 });
+
+export type PricesFrom = { studio: number; br1: number; br2: number };
+
+/** "From" rents in admin Cài đặt (settings.price_from_*, public_contact view) — the Russian landing page; defaults if unset. */
+export const getPricesFrom = cache(async (): Promise<PricesFrom> => {
+  const { data, error } = await client().from('public_contact').select('price_from_studio, price_from_1br, price_from_2br').maybeSingle();
+  if (error) console.error('[repo] public_contact prices', error.message);
+  const n = (x: unknown, d: number) => (typeof x === 'number' && x > 0 ? x : d);
+  return { studio: n(data?.price_from_studio, 8000000), br1: n(data?.price_from_1br, 10000000), br2: n(data?.price_from_2br, 12000000) };
+});

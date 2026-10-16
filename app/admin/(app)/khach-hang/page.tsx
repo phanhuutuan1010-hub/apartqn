@@ -16,7 +16,7 @@ const when = (s: string) => new Date(s).toLocaleString('vi-VN', { timeZone: 'Asi
 
 type Row = {
   id: string; created_at: string; name: string; phone: string; channel: string; locale: string | null; status: LeadStatus; type: LeadType;
-  assigned_to: string | null; message: string | null; listings: { code: string | null } | null; listing_code: string | null; notes: unknown[]; payload: Record<string, string>;
+  assigned_to: string | null; message: string | null; listings: { code: string | null } | null; listing_code: string | null; notes: unknown[]; payload: Record<string, string>; src: string | null;
 };
 
 /** One inbox: rentals (viewings / manual), "Nhờ tìm giúp" and consign requests. RLS: sales see what is assigned to them. */
@@ -30,7 +30,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const page = Math.max(1, Number(sp.page) || 1);
   const sb = await supabaseServer();
 
-  let q = sb.from('leads').select('id, created_at, name, phone, channel, locale, status, type, assigned_to, message, notes, payload, listing_code, listings(code)', { count: 'exact' }).eq('status', status);
+  let q = sb.from('leads').select('id, created_at, name, phone, channel, locale, status, type, assigned_to, message, notes, payload, listing_code, src, listings(code)', { count: 'exact' }).eq('status', status);
   if (type) q = q.eq('type', type);
   const countFor = (st: LeadStatus) => {
     const c = sb.from('leads').select('id', { count: 'exact', head: true }).eq('status', st);
@@ -72,7 +72,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <Link key={t} href={href({ type: t })} className={type === t ? 'on' : undefined} aria-current={type === t ? 'true' : undefined}>{LEAD_TYPE[t].label}</Link>
         ))}
         <Link href="/admin/khach-hang?type=sr">{SR_LABEL}</Link>
-        <Link href="/admin/khach-hang?type=wa">WhatsApp click</Link>
+        <Link href="/admin/khach-hang?type=wa">Bấm WhatsApp / Telegram</Link>
       </div>
       <div className="a-tabs a-tabs-scroll" role="tablist">
         {LEAD_STATUSES.map((s, i) => (
@@ -103,6 +103,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   <b>{r.name}</b>
                   <span className={`a-badge ${LEAD_TYPE[r.type].tone}`}>{LEAD_TYPE[r.type].label}</span>
                   {r.locale && r.locale !== 'vi' && <span className="a-small a-muted">{r.locale.toUpperCase()}</span>}
+                  {r.src && <span className="a-badge gray" title="Nguồn (?src=)">src: {r.src}</span>}
                 </span>
                 <span className="a-row-sub">{r.phone} · {CHANNEL_LABEL[r.channel] ?? r.channel} · {fmtDateTime(r.created_at)}</span>
                 {what && <span className="a-row-sub a-row-what">{what}</span>}
@@ -129,7 +130,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 async function WaClicks() {
   const sb = await supabaseServer();
   const [{ data }, { data: listings }] = await Promise.all([
-    sb.from('contact_intents').select('id, code, utm_source, utm_content, page, locale, created_at').eq('channel', 'whatsapp').order('created_at', { ascending: false }).limit(200),
+    sb.from('contact_intents').select('id, code, channel, origin, src, utm_source, utm_content, page, locale, created_at').order('created_at', { ascending: false }).limit(200),
     sb.from('admin_listings').select('id, code').not('code', 'is', null),
   ]);
   const idOf = new Map((listings ?? []).map((l) => [l.code as string, l.id as string]));
@@ -139,25 +140,26 @@ async function WaClicks() {
       <div className="a-head">
         <div>
           <h1 className="a-h1">Khách</h1>
-          <div className="a-sub">WhatsApp click — khách bấm “Book a viewing” trên trang căn tiếng Anh. Chưa phải lead: chưa có tên hay số điện thoại cho tới khi họ gửi tin nhắn.</div>
+          <div className="a-sub">Bấm WhatsApp / Telegram — khách bấm “Book a viewing” trên trang căn tiếng Anh, hoặc nút chat trên trang /ru. Chưa phải lead: chưa có tên hay số điện thoại cho tới khi họ gửi tin nhắn.</div>
         </div>
       </div>
       <div className="a-seg" role="group" aria-label="Loại">
         <Link href="/admin/khach-hang">Tất cả</Link>
         {LEAD_TYPES.map((t) => <Link key={t} href={`/admin/khach-hang?type=${t}`}>{LEAD_TYPE[t].label}</Link>)}
         <Link href="/admin/khach-hang?type=sr">{SR_LABEL}</Link>
-        <Link href="/admin/khach-hang?type=wa" className="on" aria-current="true">WhatsApp click <span className="a-count">{rows.length}</span></Link>
+        <Link href="/admin/khach-hang?type=wa" className="on" aria-current="true">Bấm WhatsApp / Telegram <span className="a-count">{rows.length}</span></Link>
       </div>
       {rows.length === 0 ? <div className="a-empty">Chưa có lượt bấm nào.</div> : (
         <div className="a-table-wrap">
           <table className="a-table">
-            <thead><tr><th>Lúc</th><th>Căn</th><th>Nguồn</th><th>Trang</th><th>Ngôn ngữ</th></tr></thead>
+            <thead><tr><th>Lúc</th><th>Kênh</th><th>Căn / trang</th><th>Nguồn</th><th>Trang</th><th>Ngôn ngữ</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td>{when(r.created_at)}</td>
-                  <td>{idOf.get(r.code) ? <Link href={`/admin/can-ho/${idOf.get(r.code)}`} style={{ fontWeight: 700 }}>{r.code}</Link> : <b>{r.code}</b>}</td>
-                  <td>{r.utm_source ? <>{r.utm_source}{r.utm_content && <span className="a-small a-muted"> · {r.utm_content}</span>}</> : 'website'}</td>
+                  <td>{CHANNEL_LABEL[r.channel] ?? r.channel}</td>
+                  <td>{!r.code ? (r.origin ?? '—') : idOf.get(r.code) ? <Link href={`/admin/can-ho/${idOf.get(r.code)}`} style={{ fontWeight: 700 }}>{r.code}</Link> : <b>{r.code}</b>}</td>
+                  <td>{r.utm_source ? <>{r.utm_source}{r.utm_content && <span className="a-small a-muted"> · {r.utm_content}</span>}</> : 'website'}{r.src && <span className="a-small a-muted"> · src={r.src}</span>}</td>
                   <td className="a-small a-muted">{r.page ?? '—'}</td>
                   <td>{(r.locale ?? '—').toUpperCase()}</td>
                 </tr>
@@ -177,7 +179,7 @@ async function WaClicks() {
  */
 async function SearchIntents() {
   const sb = await supabaseServer();
-  const { data } = await sb.from('search_intents').select('id, channel, query, line, utm_source, utm_content, page, locale, created_at').order('created_at', { ascending: false }).limit(200);
+  const { data } = await sb.from('search_intents').select('id, channel, query, line, utm_source, utm_content, src, page, locale, created_at').order('created_at', { ascending: false }).limit(200);
   const rows = data ?? [];
   return (
     <div className="a-page">
@@ -191,7 +193,7 @@ async function SearchIntents() {
         <Link href="/admin/khach-hang">Tất cả</Link>
         {LEAD_TYPES.map((t) => <Link key={t} href={`/admin/khach-hang?type=${t}`}>{LEAD_TYPE[t].label}</Link>)}
         <Link href="/admin/khach-hang?type=sr" className="on" aria-current="true">{SR_LABEL} <span className="a-count">{rows.length}</span></Link>
-        <Link href="/admin/khach-hang?type=wa">WhatsApp click</Link>
+        <Link href="/admin/khach-hang?type=wa">Bấm WhatsApp / Telegram</Link>
       </div>
       {rows.length === 0 ? <div className="a-empty">Chưa có lượt bấm nào.</div> : (
         <div className="a-table-wrap">
@@ -203,7 +205,7 @@ async function SearchIntents() {
                   <td>{when(r.created_at)}</td>
                   <td><b>{CHANNEL_LABEL[r.channel] ?? r.channel}</b></td>
                   <td>{r.line ?? '—'}</td>
-                  <td>{r.utm_source ? <>{r.utm_source}{r.utm_content && <span className="a-small a-muted"> · {r.utm_content}</span>}</> : 'website'}</td>
+                  <td>{r.utm_source ? <>{r.utm_source}{r.utm_content && <span className="a-small a-muted"> · {r.utm_content}</span>}</> : 'website'}{r.src && <span className="a-small a-muted"> · src={r.src}</span>}</td>
                   <td>{(r.locale ?? '—').toUpperCase()}</td>
                 </tr>
               ))}

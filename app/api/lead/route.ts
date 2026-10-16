@@ -7,6 +7,7 @@ import { adminUrl } from '@/lib/notify';
 import { deliverLead } from '@/lib/leadNotify';
 import { fmtPhone, isVnMobile } from '@/lib/phone';
 import { utmFromCookie, type Utm } from '@/lib/attribution';
+import { srcFromCookie } from '@/lib/src';
 import { criteriaLine } from '@/lib/search/criteriaLine';
 
 export const runtime = 'nodejs';
@@ -15,6 +16,9 @@ type ErrorCode = 'INVALID' | 'CONFIG_MISSING' | 'SEND_FAILED' | 'RATE_LIMITED';
 const fail = (code: ErrorCode, status: number, detail?: unknown) => NextResponse.json({ ok: false, error: code, ...(detail ? { detail } : {}) }, { status });
 
 type Sb = ReturnType<typeof supabaseSecret>;
+/** first-touch post (utm_*) + the ?src cookie, stored on the lead */
+type Attr = Partial<Utm> & { src?: string };
+const srcRow = (a: Attr): [string, string][] => (a.src ? [['Nguồn (src)', a.src]] : []);
 type Staff = { id: string; full_name: string; email: string; telegram_chat_id: string | null; role: string };
 
 /** Active admins, oldest first (fallback assignee + notification target). */
@@ -23,7 +27,7 @@ async function admins(sb: Sb): Promise<Staff[]> {
   return (data ?? []) as Staff[];
 }
 
-async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>, attr: Partial<Utm>) {
+async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>, attr: Attr) {
   const code = lead.code.toUpperCase();
   const { data: l } = await sb.from('listings')
     .select('id, code, status, units(assigned_to, buildings(name))')
@@ -50,6 +54,7 @@ async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>, a
     ['Mã căn', code], ['Toà nhà', unit.buildings.name], ['Họ tên', lead.name], ['Điện thoại', lead.phone],
     ['Ngày muốn xem', lead.date || '—'], ['Thời gian thuê', duration], ['Ngôn ngữ khách', lead.locale.toUpperCase()],
     ['Phụ trách', assignee ? assignee.full_name || assignee.email : '—'],
+    ...srcRow(attr),
     ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
     ['Trang', lead.page || '—'],
   ];
@@ -59,7 +64,7 @@ async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>, a
 }
 
 /** "Để lại số, chúng tôi gọi lại" on /ky-gui: a consign lead with only a name + phone (admins only until assigned). */
-async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, attr: Partial<Utm>) {
+async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, attr: Attr) {
   const { data: row, error } = await sb.from('leads').insert({
     ...attr,
     type: 'consign', name: lead.owner, phone: lead.phone, channel: 'web', locale: lead.locale, page: lead.page || null,
@@ -69,6 +74,7 @@ async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, 
   if (error) console.error('[consign] callback insert failed', error);
   const rows: [string, string][] = [
     ['Chủ nhà', lead.owner], ['Điện thoại', fmtPhone(lead.phone)], ['Yêu cầu', 'Gọi lại để ghi nhận căn ký gửi'], ['Ngôn ngữ', lead.locale.toUpperCase()],
+    ...srcRow(attr),
     ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
   ];
   const subject = '[ApartQN] Chủ nhà nhờ gọi lại';
@@ -76,7 +82,7 @@ async function handleCallback(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, 
   return { saved: !error, tg, mail };
 }
 
-async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, attr: Partial<Utm>) {
+async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, attr: Attr) {
   // photos must really exist in the upload folder we issued
   let photos: string[] = [];
   if (lead.photos.length) {
@@ -107,6 +113,7 @@ async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, a
     ['Giá mong muốn (₫/tháng)', lead.rent], ['Chủ nhà', lead.owner], ['Điện thoại', lead.phone],
     ['Số ảnh', `${photos.length}${lead.photosFailed ? ` (${lead.photosFailed} ảnh tải lên lỗi — xin lại qua Zalo)` : ''}`],
     ['Ngôn ngữ', lead.locale.toUpperCase()],
+    ...srcRow(attr),
     ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
   ];
   const subject = `[ApartQN] Ký gửi căn hộ · ${bName}`;
@@ -114,7 +121,7 @@ async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, a
   return { saved: !error, tg, mail };
 }
 
-async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_request' }>, attr: Partial<Utm>) {
+async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_request' }>, attr: Attr) {
   let bName: string | undefined;
   if (lead.criteria.b) {
     const { data: b } = await sb.from('buildings').select('name').eq('slug', lead.criteria.b).maybeSingle();
@@ -133,6 +140,7 @@ async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_r
   const rows: [string, string][] = [
     ['Họ tên', lead.name], ['Điện thoại', lead.phone], ['Nhu cầu', lead.need || '—'], ['Đã tìm', lead.query || '—'],
     ['Điều kiện', line || '—'], ['Ngôn ngữ khách', lead.locale.toUpperCase()],
+    ...srcRow(attr),
     ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
   ];
   const subject = '[ApartQN] Nhờ tìm căn giúp';
@@ -164,7 +172,9 @@ export async function POST(req: Request) {
   }
   const sb = supabaseSecret();
   // came from a post's short link in the last 30 days (first touch) → utm_* on the lead
-  const attr = utmFromCookie(req.headers.get('cookie'));
+  const cookie = req.headers.get('cookie');
+  const src = srcFromCookie(cookie);
+  const attr: Attr = { ...utmFromCookie(cookie), ...(src ? { src } : {}) };
   const r = lead.type === 'viewing' ? await handleViewing(sb, lead, attr) : lead.type === 'consign' ? await (lead.source === 'callback' ? handleCallback(sb, lead, attr) : handleConsign(sb, lead, attr)) : await handleSearchRequest(sb, lead, attr);
   if ('invalid' in r) return fail('INVALID', 400, ['code']);
   if (!r.saved && !r.tg && !r.mail) return fail('SEND_FAILED', 502, { db: 'failed', telegram: r.tg, email: r.mail });

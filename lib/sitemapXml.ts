@@ -5,15 +5,18 @@
  */
 export type Alt = { vi: string; en: string };
 export type Entry = { urls: Alt; lastmod?: string | null };
+/** a page in one language only (the Russian landing page /ru) with its own hreflang list */
+export type Single = { loc: string; lastmod?: string | null; alts: [hreflang: string, href: string][] };
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const links = (a: Alt) =>
   `<xhtml:link rel="alternate" hreflang="vi" href="${esc(a.vi)}"/><xhtml:link rel="alternate" hreflang="en" href="${esc(a.en)}"/><xhtml:link rel="alternate" hreflang="x-default" href="${esc(a.en)}"/>`;
 
-/** urlset: one <url> per language version, each listing both versions */
-export function urlset(entries: Entry[]): string {
+/** urlset: one <url> per language version, each listing both versions; then the single-language pages */
+export function urlset(entries: Entry[], singles: Single[] = []): string {
   const body = entries.flatMap((e) => (['vi', 'en'] as const).map((l) =>
-    `<url><loc>${esc(e.urls[l])}</loc>${e.lastmod ? `<lastmod>${esc(e.lastmod)}</lastmod>` : ''}${links(e.urls)}</url>`)).join('\n');
+    `<url><loc>${esc(e.urls[l])}</loc>${e.lastmod ? `<lastmod>${esc(e.lastmod)}</lastmod>` : ''}${links(e.urls)}</url>`)).concat(singles.map((s) =>
+    `<url><loc>${esc(s.loc)}</loc>${s.lastmod ? `<lastmod>${esc(s.lastmod)}</lastmod>` : ''}${s.alts.map(([h, u]) => `<xhtml:link rel="alternate" hreflang="${esc(h)}" href="${esc(u)}"/>`).join('')}</url>`)).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${body}\n</urlset>\n`;
 }
 

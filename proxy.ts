@@ -5,6 +5,7 @@ import { routing } from './i18n/routing';
 import { enPath, visitorLocale, LOCALE_COOKIE, LOCALE_COOKIE_AGE } from './lib/localeDetect';
 import { listingEntry, oldListingPath, type Click } from './lib/listingEntry';
 import { FT_COOKIE } from './lib/attribution';
+import { cleanSrc, SRC_COOKIE, SRC_COOKIE_AGE } from './lib/src';
 
 const intl = createMiddleware(routing);
 
@@ -79,7 +80,7 @@ async function admin(req: NextRequest) {
   return done(res);
 }
 
-/** Russian was retired: /ru and /ru/* → 301 to the English page (localized segments mapped, query kept). */
+/** Russian was retired as a locale: /ru/* → 301 to the English page (localized segments mapped, query kept). */
 const RU_SEGMENTS: Record<string, string> = { kvartiry: 'apartments', zdaniya: 'buildings', 'sdat-kvartiru': 'list-your-apartment' };
 function ruPath(path: string) {
   const m = /^\/ru(\/.*)?$/i.exec(path);
@@ -174,8 +175,21 @@ function listing(req: NextRequest, event: NextFetchEvent) {
   return res;
 }
 
+/** ?src=xxx on any public page → the src cookie (30 days); the response itself is unchanged. */
+function withSrc(req: NextRequest, res: NextResponse) {
+  const src = cleanSrc(req.nextUrl.searchParams.get('src'));
+  if (src) res.cookies.set(SRC_COOKIE, src, { maxAge: SRC_COOKIE_AGE, path: '/', sameSite: 'lax', secure: req.nextUrl.protocol === 'https:' });
+  return res;
+}
+
 export default async function proxy(req: NextRequest, event: NextFetchEvent) {
   if (req.nextUrl.pathname === '/admin' || req.nextUrl.pathname.startsWith('/admin/')) return admin(req);
+  return withSrc(req, await site(req, event));
+}
+
+async function site(req: NextRequest, event: NextFetchEvent): Promise<NextResponse> {
+  // the Russian landing page: its own root layout (lang="ru"), never language-detected or redirected
+  if (/^\/ru\/?$/.test(req.nextUrl.pathname)) return NextResponse.next();
   const en = ruPath(req.nextUrl.pathname);
   if (en) {
     // an old QN-### code goes straight to its new code (one hop)

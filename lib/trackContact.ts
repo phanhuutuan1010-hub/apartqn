@@ -1,5 +1,7 @@
 'use client';
-/** Anonymous contact-click count (rpc log_contact_click): channel + page + site language only — no user data. */
+import { readSrc } from '@/lib/src';
+
+/** Anonymous contact-click count (rpc log_contact_click): channel + page + site language + ?src cookie — no user data. */
 export type ContactChannel = 'call' | 'zalo' | 'whatsapp' | 'telegram' | 'copy' | 'form' | 'callback';
 
 export function trackContact(channel: ContactChannel, locale: string, page = 'ky-gui') {
@@ -8,7 +10,7 @@ export function trackContact(channel: ContactChannel, locale: string, page = 'ky
   void fetch(`${url.replace(/\/$/, '')}/rest/v1/rpc/log_contact_click`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ p_channel: channel, p_page: page, p_locale: locale }),
+    body: JSON.stringify({ p_channel: channel, p_page: page, p_locale: locale, p_src: readSrc() ?? '' }),
     keepalive: true,
   }).catch(() => {});
 }
