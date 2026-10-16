@@ -37,7 +37,7 @@
 .side { display: none; }
 .content { min-width: 0; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px 24px; }
-.empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 64px 20px; text-align: center; border: 1px dashed var(--gray-300); border-radius: var(--r-panel); }
+.empty { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: clamp(36px, 8vw, 64px) clamp(14px, 4vw, 20px); text-align: center; border: 1px dashed var(--gray-300); border-radius: var(--r-panel); }
 .emptyT { font-size: 20px; font-weight: 700; }
 .emptyS { font-size: 15px; color: var(--gray-700); margin-bottom: 6px; }
 
@@ -60,3 +60,5 @@
 .askS { margin: 0 0 6px; font-size: 14px; line-height: 1.5; color: var(--gray-700); }
 .simT { margin-bottom: 16px; font-size: 20px; font-weight: 800; line-height: 1.25; color: var(--ink-heading); }
 .qNote { flex-basis: 100%; font-size: 13px; color: var(--gray-500); }
+.or { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 520px; font-size: 13px; color: var(--gray-500); }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--gray-200); }

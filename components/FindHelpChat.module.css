@@ -1,0 +1,19 @@
+.wrap { width: 100%; max-width: 520px; display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-width: 0; }
+.lead { font-size: 14px; font-weight: 600; color: var(--gray-700); text-align: center; }
+.row { display: grid; gap: 8px; min-width: 0; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 44px; padding: 0 10px; border-radius: var(--r-md); font-size: 15px; font-weight: 700; color: var(--white); text-decoration: none; white-space: nowrap; }
+.btn svg { flex: 0 0 auto; }
+.btn span { overflow: hidden; text-overflow: ellipsis; }
+.btn:focus-visible { outline: 3px solid var(--blue-500); outline-offset: 2px; }
+.zalo { background: #0068ff; }
+.zalo:hover { background: #0057d6; }
+.whatsapp { background: #128c4a; }
+.whatsapp:hover { background: #0e7a40; }
+.telegram { background: #1a78b2; }
+.telegram:hover { background: #15679a; }
+/* narrow phones: icon above the label so three fit side by side */
+@media (max-width: 479px) {
+  .btn { flex-direction: column; gap: 2px; min-height: 52px; padding: 6px 4px; font-size: 13px; }
+}
+.toast:empty { display: none; }
+.toast { position: fixed; left: 50%; bottom: calc(88px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 70; max-width: calc(100vw - 32px); padding: 10px 16px; border-radius: var(--r-md); background: var(--ink-900); color: var(--white); font-size: 14px; font-weight: 600; text-align: center; box-shadow: 0 8px 24px rgba(16, 24, 40, .2); }

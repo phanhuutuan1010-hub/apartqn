@@ -11,6 +11,8 @@ import { TableFilters } from '@/components/admin/TableFilters';
 
 export const metadata: Metadata = { title: 'Khách' };
 const PAGE = 25;
+const SR_LABEL = 'Nhờ tìm giúp (nhắn tin)';
+const when = (s: string) => new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 type Row = {
   id: string; created_at: string; name: string; phone: string; channel: string; locale: string | null; status: LeadStatus; type: LeadType;
@@ -22,6 +24,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const me = await requireStaff();
   const sp = await searchParams;
   if (sp.type === 'wa') return <WaClicks />;
+  if (sp.type === 'sr') return <SearchIntents />;
   const status = (LEAD_STATUSES as string[]).includes(sp.status ?? '') ? (sp.status as LeadStatus) : 'new';
   const type = (LEAD_TYPES as string[]).includes(sp.type ?? '') ? (sp.type as LeadType) : null;
   const page = Math.max(1, Number(sp.page) || 1);
@@ -68,6 +71,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         {LEAD_TYPES.map((t) => (
           <Link key={t} href={href({ type: t })} className={type === t ? 'on' : undefined} aria-current={type === t ? 'true' : undefined}>{LEAD_TYPE[t].label}</Link>
         ))}
+        <Link href="/admin/khach-hang?type=sr">{SR_LABEL}</Link>
         <Link href="/admin/khach-hang?type=wa">WhatsApp click</Link>
       </div>
       <div className="a-tabs a-tabs-scroll" role="tablist">
@@ -130,7 +134,6 @@ async function WaClicks() {
   ]);
   const idOf = new Map((listings ?? []).map((l) => [l.code as string, l.id as string]));
   const rows = data ?? [];
-  const when = (s: string) => new Date(s).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   return (
     <div className="a-page">
       <div className="a-head">
@@ -142,6 +145,7 @@ async function WaClicks() {
       <div className="a-seg" role="group" aria-label="Loại">
         <Link href="/admin/khach-hang">Tất cả</Link>
         {LEAD_TYPES.map((t) => <Link key={t} href={`/admin/khach-hang?type=${t}`}>{LEAD_TYPE[t].label}</Link>)}
+        <Link href="/admin/khach-hang?type=sr">{SR_LABEL}</Link>
         <Link href="/admin/khach-hang?type=wa" className="on" aria-current="true">WhatsApp click <span className="a-count">{rows.length}</span></Link>
       </div>
       {rows.length === 0 ? <div className="a-empty">Chưa có lượt bấm nào.</div> : (
@@ -155,6 +159,51 @@ async function WaClicks() {
                   <td>{idOf.get(r.code) ? <Link href={`/admin/can-ho/${idOf.get(r.code)}`} style={{ fontWeight: 700 }}>{r.code}</Link> : <b>{r.code}</b>}</td>
                   <td>{r.utm_source ? <>{r.utm_source}{r.utm_content && <span className="a-small a-muted"> · {r.utm_content}</span>}</> : 'website'}</td>
                   <td className="a-small a-muted">{r.page ?? '—'}</td>
+                  <td>{(r.locale ?? '—').toUpperCase()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="a-small a-muted" style={{ marginTop: 12 }}>200 lượt gần nhất · tự xoá sau 180 ngày · không lưu thông tin cá nhân.</p>
+    </div>
+  );
+}
+
+/**
+ * "Nhờ tìm giúp (nhắn tin)": a search with no match, then a tap on Zalo / WhatsApp / Telegram (the search typed in or
+ * copied). Not leads — no name or number until the message arrives — so listed apart, like WhatsApp click.
+ */
+async function SearchIntents() {
+  const sb = await supabaseServer();
+  const { data } = await sb.from('search_intents').select('id, channel, query, line, utm_source, utm_content, page, locale, created_at').order('created_at', { ascending: false }).limit(200);
+  const rows = data ?? [];
+  return (
+    <div className="a-page">
+      <div className="a-head">
+        <div>
+          <h1 className="a-h1">Khách</h1>
+          <div className="a-sub">{SR_LABEL} — khách tìm không ra căn rồi bấm Zalo / WhatsApp / Telegram (nội dung tìm đã soạn sẵn). Chưa phải lead: chưa có tên hay số điện thoại cho tới khi họ gửi tin nhắn.</div>
+        </div>
+      </div>
+      <div className="a-seg" role="group" aria-label="Loại">
+        <Link href="/admin/khach-hang">Tất cả</Link>
+        {LEAD_TYPES.map((t) => <Link key={t} href={`/admin/khach-hang?type=${t}`}>{LEAD_TYPE[t].label}</Link>)}
+        <Link href="/admin/khach-hang?type=sr" className="on" aria-current="true">{SR_LABEL} <span className="a-count">{rows.length}</span></Link>
+        <Link href="/admin/khach-hang?type=wa">WhatsApp click</Link>
+      </div>
+      {rows.length === 0 ? <div className="a-empty">Chưa có lượt bấm nào.</div> : (
+        <div className="a-table-wrap">
+          <table className="a-table">
+            <thead><tr><th>Lúc</th><th>Kênh</th><th>Khách tìm</th><th>Nguồn</th><th>Ngôn ngữ</th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td>{when(r.created_at)}</td>
+                  <td><b>{CHANNEL_LABEL[r.channel] ?? r.channel}</b></td>
+                  <td>{r.line ?? '—'}</td>
+                  <td>{r.utm_source ? <>{r.utm_source}{r.utm_content && <span className="a-small a-muted"> · {r.utm_content}</span>}</> : 'website'}</td>
                   <td>{(r.locale ?? '—').toUpperCase()}</td>
                 </tr>
               ))}

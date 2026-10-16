@@ -80,6 +80,8 @@ export async function GET(req: NextRequest) {
   if (pErr) console.error('[cron] post_clicks cleanup', pErr);
   const { error: iErr } = await sb.from('contact_intents').delete().lt('created_at', new Date(now - 180 * DAY).toISOString());
   if (iErr) console.error('[cron] contact_intents cleanup', iErr);
+  const { error: siErr } = await sb.from('search_intents').delete().lt('created_at', new Date(now - 180 * DAY).toISOString());
+  if (siErr) console.error('[cron] search_intents cleanup', siErr);
   const purged = await purgeExpired(sb);
   if (purged.errors.length) console.error('[cron] trash purge', purged.errors);
 

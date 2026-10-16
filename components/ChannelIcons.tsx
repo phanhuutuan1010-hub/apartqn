@@ -13,3 +13,9 @@ export const IconRequest = ({ size = 24 }: P) => (
     <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M8 3v4M16 3v4M3 10h18M9 15.5l2 2 4-4" />
   </svg>
 );
+/** Zalo (speech bubble with a Z), outline */
+export const IconZalo = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden focusable="false">
+    <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9.3 9.3 0 0 1-3.6-.7L3 21l1.6-4.6A8 8 0 0 1 3 11.5 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z" /><path d="M9 8.5h6l-6 6.5h6" />
+  </svg>
+);

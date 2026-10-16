@@ -18,3 +18,5 @@
 .title { margin: 0; font-size: 20px; font-weight: 800; line-height: 1.25; }
 .sub { margin: 0; font-size: 15px; line-height: 1.5; color: var(--gray-700); }
 .x { flex: none; width: 44px; height: 44px; margin: -8px -8px 0 0; border: 0; border-radius: 50%; background: var(--gray-100, #F2F4F7); color: var(--ink-900); font-size: 24px; line-height: 1; cursor: pointer; }
+.or { display: flex; align-items: center; gap: 10px; margin: 2px 0 0; font-size: 13px; color: var(--gray-500); }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--gray-200); }

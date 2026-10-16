@@ -7,6 +7,7 @@ import { adminUrl } from '@/lib/notify';
 import { deliverLead } from '@/lib/leadNotify';
 import { fmtPhone, isVnMobile } from '@/lib/phone';
 import { utmFromCookie, type Utm } from '@/lib/attribution';
+import { criteriaLine } from '@/lib/search/criteriaLine';
 
 export const runtime = 'nodejs';
 
@@ -111,26 +112,6 @@ async function handleConsign(sb: Sb, lead: Extract<Lead, { type: 'consign' }>, a
   const subject = `[ApartQN] Ký gửi căn hộ · ${bName}`;
   const { tg, mail } = await deliverLead(sb, { leadId: row?.id ?? null, targets: (await admins(sb)).map((a) => a.telegram_chat_id), subject, rows });
   return { saved: !error, tg, mail };
-}
-
-const RENT_VI = ['dưới 8 triệu', '8–12 triệu', '12–18 triệu', 'trên 18 triệu'];
-
-/** criteria → one Vietnamese line for staff ("Altara · 2 PN · ≤ 12 triệu · Cho nuôi thú cưng") */
-function criteriaLine(c: Extract<Lead, { type: 'search_request' }>['criteria'], buildingName?: string) {
-  const parts: string[] = [];
-  if (c.b) parts.push(buildingName ?? c.b);
-  if (c.beds) parts.push(c.beds === '0' ? 'Studio' : c.beds === '3' ? '3+ PN' : `${c.beds} PN`);
-  if (c.rent) parts.push(RENT_VI[Number(c.rent.slice(1))]);
-  if (c.pmin && c.pmax) parts.push(`${c.pmin}–${c.pmax} triệu`);
-  else if (c.pmax) parts.push(`≤ ${c.pmax} triệu`);
-  else if (c.pmin) parts.push(`≥ ${c.pmin} triệu`);
-  if (c.furn) parts.push(vi[`furn_${c.furn}` as 'furn_full']);
-  if (c.vw) parts.push(vi[`v_${c.vw}` as 'v_sea']);
-  if (c.pets) parts.push(vi.pets);
-  if (c.car) parts.push(vi.carPark);
-  if (c.date) parts.push(`dọn vào trước ${c.date.split('-').reverse().join('/')}`);
-  if (c.q) parts.push(`“${c.q}”`);
-  return parts.join(' · ');
 }
 
 async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_request' }>, attr: Partial<Utm>) {

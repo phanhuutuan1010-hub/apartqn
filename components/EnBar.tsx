@@ -10,6 +10,7 @@ import { money } from '@/lib/format';
 import { IconRequest, IconTelegram, IconWhatsApp } from './ChannelIcons';
 import { WaBookLink } from './WaBookLink';
 import { SearchRequestForm } from './SearchRequestForm';
+import { FindHelpChat } from './FindHelpChat';
 import bar from './ContactBox.module.css';
 import styles from './EnBar.module.css';
 
@@ -33,13 +34,14 @@ export type EnBarProps = {
   /** results page: what the visitor searched for, sent with the "find it for me" request */
   query?: string;
   criteria?: Filters;
+  buildingName?: string;
 };
 
 /**
  * English pages, phones (< 768 px): Telegram · WhatsApp · red action block, pinned to the bottom.
  * Hidden while the keyboard is open (a field is focused) and while the page's own form / target section is in view.
  */
-export function EnBar({ contact, message, price, from, cta, book, hideIds, query = '', criteria = EMPTY }: EnBarProps) {
+export function EnBar({ contact, message, price, from, cta, book, hideIds, query = '', criteria = EMPTY, buildingName }: EnBarProps) {
   const t = useTranslations();
   const [hide, setHide] = useState(false);
   const [open, setOpen] = useState(false);
@@ -129,6 +131,8 @@ export function EnBar({ contact, message, price, from, cta, book, hideIds, query
               <h2 id="eb-title" className={styles.title}>{t('srTitle')}</h2>
               <button type="button" className={styles.x} onClick={() => dlg.current?.close()} aria-label={t('close')}>×</button>
             </div>
+            <FindHelpChat contact={contact} query={query} criteria={criteria} buildingName={buildingName} />
+            <p className={styles.or}>{t('fhOr')}</p>
             <p className={styles.sub}>{t('srSub')}</p>
             <SearchRequestForm query={query} criteria={criteria} />
           </div>

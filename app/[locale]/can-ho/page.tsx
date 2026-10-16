@@ -3,10 +3,8 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import type { Locale } from '@/i18n/routing';
 import { getBuildings, getListings, getContact } from '@/lib/repo';
 import { alternates, OG_LOCALE } from '@/lib/seo';
-import { DEMO } from '@/data/site';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { DemoBadge } from '@/components/Badges';
 import { ResultsFromUrl } from '@/components/ResultsView';
 
 export const revalidate = 3600;
@@ -27,7 +25,7 @@ export default async function ResultsPage({ params }: PageProps<'/[locale]/can-h
   const { locale } = (await params) as { locale: Locale };
   setRequestLocale(locale);
   const t = await getTranslations();
-  const [listings, buildings, contact] = await Promise.all([getListings(), getBuildings(), locale === 'en' ? getContact() : undefined]);
+  const [listings, buildings, contact] = await Promise.all([getListings(), getBuildings(), getContact()]);
 
   return (
     <>
@@ -35,7 +33,6 @@ export default async function ResultsPage({ params }: PageProps<'/[locale]/can-h
       <main>
         <div className="container" style={{ paddingTop: 'clamp(20px, 3vw, 32px)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
           <h1 style={{ fontSize: 'clamp(26px, 3.4vw, 40px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em', textWrap: 'balance', color: 'var(--ink-heading)' }}>{t('results')}</h1>
-          {DEMO && <DemoBadge />}
         </div>
         {/* Static prerender shows the unfiltered list; the URL filters apply on the client, in place. */}
         <ResultsFromUrl listings={listings} buildings={buildings} contact={contact} />

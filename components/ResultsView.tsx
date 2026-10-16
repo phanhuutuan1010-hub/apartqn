@@ -11,6 +11,7 @@ import { textMatches } from '@/lib/search/text';
 import { similarListings } from '@/lib/search/similar';
 import { logSearchMiss } from '@/lib/search/miss';
 import { SearchRequestForm } from './SearchRequestForm';
+import { FindHelpChat } from './FindHelpChat';
 import { EnBar } from './EnBar';
 import { minRent } from '@/lib/minRent';
 import type { SiteContact } from '@/lib/repo';
@@ -21,7 +22,7 @@ import styles from './ResultsView.module.css';
 
 const FilterSheet = dynamic(() => import('./FilterSheet'), { ssr: false });
 
-type Props = { listings: Listing[]; buildings: Building[]; /** English pages only: numbers for the phone bottom bar */ contact?: SiteContact };
+type Props = { listings: Listing[]; buildings: Building[]; /** numbers for "Nhờ tìm giúp" by message and the en phone bottom bar */ contact?: SiteContact };
 
 /** Reports the URL query (?b=&beds=&rent=&furn=&pets=1&date=&rented=1&sort=) upwards; renders nothing. */
 function QuerySync({ onQuery }: { onQuery: (q: string) => void }) {
@@ -113,6 +114,9 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
   if (f.date) pills.push({ label: t('moveIn') + ': ' + dFull(f.date, l), clear: { date: '' } });
   const clearAll = () => sync({ ...EMPTY, rented: f.rented }, sort);
 
+  const bName = f.b ? bById.get(f.b)?.name : undefined;
+  const chat = contact && matched.length === 0 ? <FindHelpChat contact={contact} query={typed} criteria={f} buildingName={bName} /> : null;
+
   const rentSelect = (
     <label className={`${styles.selWrap} ${styles.mdOnly}`}>
       <select aria-label={t('sRent')} className={`${styles.sel} ${f.rent ? styles.selOn : ''}`} value={f.rent} onChange={(e) => setF({ rent: e.target.value })}>
@@ -171,8 +175,11 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
               <div className={styles.empty}>
                 <span className={styles.emptyT}>{t('noRes')}</span>
                 <span className={styles.emptyS}>{t('noResSub')}</span>
+                {/* "Nhờ ApartQN tìm giúp": message us (search already written) — or leave your details below */}
+                {chat}
+                {chat && <span className={styles.or}>{t('fhOr')}</span>}
                 <div className={styles.emptyActions}>
-                  {!ask && <button type="button" className="btn btn-blue" onClick={() => setAsk(true)} aria-expanded={false}>{t('srBtn')}</button>}
+                  {!ask && <button type="button" className={`btn ${chat ? 'btn-secondary' : 'btn-blue'}`} onClick={() => setAsk(true)} aria-expanded={false}>{t(chat ? 'srLeave' : 'srBtn')}</button>}
                   <button type="button" className="btn btn-secondary" onClick={clearAll}>{t('clearAll')}</button>
                 </div>
                 {ask && (
@@ -201,7 +208,7 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
       </div>
 
       {/* en phones: "From {lowest rent of these results}" + "Help me find" (steps aside while the inline request form is open) */}
-      {contact && l === 'en' && <EnBar contact={contact} message={F.msgG('en')} price={minRent(matched)} from cta="help" hideIds={['sr-title']} query={typed} criteria={f} />}
+      {contact && l === 'en' && <EnBar contact={contact} message={F.msgG('en')} price={minRent(matched)} from cta="help" hideIds={['sr-title']} query={typed} criteria={f} buildingName={bName} />}
       {sheet && (
         <FilterSheet
           value={f}

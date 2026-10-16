@@ -51,12 +51,14 @@ const mil = z.string().regex(/^(\d{1,4}(\.\d)?)?$/).optional();
 /** results-page filters at the time of the request (lib/filters.ts names) */
 export const searchCriteria = z.object({
   b: z.string().regex(/^[a-z0-9-]{0,40}$/).optional(),
-  beds: z.enum(['', '0', '1', '2', '3']).optional(),
+  beds: z.enum(['', '0', '1', '2', '3', '01']).optional(),
   rent: z.enum(['', 'r0', 'r1', 'r2', 'r3']).optional(),
   furn: z.enum(['', 'full', 'basic', 'empty']).optional(),
   pmin: mil,
   pmax: mil,
   vw: z.enum(['', 'sea', 'city', 'river', 'lagoon']).optional(),
+  fl: z.enum(['', 'low', 'mid', 'high']).optional(),
+  near: z.enum(['', 'sea']).optional(),
   pets: z.boolean().optional(),
   car: z.boolean().optional(),
   date: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional(),
@@ -75,6 +77,17 @@ export const searchRequestSchema = z.object({
   page,
   website,
 });
+
+/** "Nhờ tìm giúp (nhắn tin)": a tap on Zalo / WhatsApp / Telegram under a search with no match (/api/intent, no PII) */
+export const searchIntentSchema = z.object({
+  kind: z.literal('search'),
+  channel: z.enum(['zalo', 'whatsapp', 'telegram']),
+  query: z.string().trim().max(80).optional().default(''),
+  criteria: searchCriteria.optional().default({}),
+  locale,
+  page: z.string().trim().max(200).regex(/^\//).optional(),
+});
+export type SearchCriteria = z.infer<typeof searchCriteria>;
 
 export const leadSchema = z.discriminatedUnion('type', [viewingSchema, consignSchema, searchRequestSchema]);
 export type Lead = z.infer<typeof leadSchema>;
