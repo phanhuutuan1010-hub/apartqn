@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import { saveContact, saveGlossary, saveMyProfile, saveThresholds, testTelegram } from '@/lib/admin/settingsActions';
+import { saveContact, saveGlossary, saveMyProfile, savePrices, saveThresholds, testTelegram } from '@/lib/admin/settingsActions';
 import { compressImage } from '@/lib/compressImage';
 
 type Res = { ok?: string; error?: string };
@@ -19,6 +19,27 @@ export function ThresholdsForm({ v }: { v: { verify_remind_days: number; verify_
         <label className="a-field">Tự ẩn tin sau<span className="a-suffix"><input className="input" name="verify_hide_days" inputMode="numeric" defaultValue={v.verify_hide_days} /><span>ngày</span></span></label>
         <label className="a-field">Cảnh báo sao lưu sau<span className="a-suffix"><input className="input" name="backup_warn_days" inputMode="numeric" defaultValue={v.backup_warn_days} /><span>ngày</span></span></label>
         <label className="a-field">Nhắc làm mới tin Marketplace sau<span className="a-suffix"><input className="input" name="marketplace_renew_days" inputMode="numeric" defaultValue={v.marketplace_renew_days} /><span>ngày</span></span></label>
+      </div>
+      <Msg s={state} />
+      <button className="a-btn a-btn-blue" style={{ marginTop: 14 }} disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>
+    </form>
+  );
+}
+
+/** "Giá 'từ' cho mẫu trả lời": the {{price_*}} tokens in "Trả lời nhanh". */
+export function PricesForm({ v }: { v: { price_from_studio: number; price_from_1br: number; price_from_2br: number } }) {
+  const [state, action, pending] = useActionState<Res, FormData>(savePrices, {});
+  const field = (name: keyof typeof v, label: string) => (
+    <label className="a-field">{label}<span className="a-suffix"><input className="input" name={name} inputMode="numeric" pattern="[0-9]*" required defaultValue={v[name]} /><span>đ</span></span></label>
+  );
+  return (
+    <form action={action} className="a-card">
+      <h2 className="a-section-title">Giá “từ” cho mẫu trả lời</h2>
+      <p className="a-small a-muted" style={{ margin: '-6px 0 12px' }}>Thay cho {'{{price_studio}}'} {'{{price_1br}}'} {'{{price_2br}}'} trong “Trả lời nhanh” (đồng/tháng).</p>
+      <div className="a-grid">
+        {field('price_from_studio', 'Studio từ')}
+        {field('price_from_1br', '1 phòng ngủ từ')}
+        {field('price_from_2br', '2 phòng ngủ từ')}
       </div>
       <Msg s={state} />
       <button className="a-btn a-btn-blue" style={{ marginTop: 14 }} disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>

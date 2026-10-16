@@ -4,7 +4,7 @@ import { DatabaseBackup } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { daysSince, fmtDateTime } from '@/lib/admin/labels';
-import { ContactForm, GlossaryForm, ThresholdsForm } from '@/components/admin/SettingsForms';
+import { ContactForm, GlossaryForm, PricesForm, ThresholdsForm } from '@/components/admin/SettingsForms';
 import { publicPhotoUrl } from '@/lib/repoMap';
 
 export const metadata: Metadata = { title: 'Cài đặt' };
@@ -47,6 +47,8 @@ export default async function SettingsPage() {
       <TelegramCheck />
 
       <GlossaryForm rows={(glossary ?? []) as { vi: string; en: string }[]} />
+
+      <PricesForm v={{ price_from_studio: s?.price_from_studio ?? 8000000, price_from_1br: s?.price_from_1br ?? 10000000, price_from_2br: s?.price_from_2br ?? 12000000 }} />
 
       <ThresholdsForm v={{ verify_remind_days: s?.verify_remind_days ?? 14, verify_hide_days: s?.verify_hide_days ?? 21, backup_warn_days: s?.backup_warn_days ?? 7, marketplace_renew_days: s?.marketplace_renew_days ?? 7 }} />
     </div>

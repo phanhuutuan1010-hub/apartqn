@@ -25,6 +25,26 @@ export async function saveThresholds(_: Res, fd: FormData): Promise<Res> {
   return { ok: 'Đã lưu.' };
 }
 
+const Prices = z.object({
+  price_from_studio: z.coerce.number().int().min(0).max(1_000_000_000),
+  price_from_1br: z.coerce.number().int().min(0).max(1_000_000_000),
+  price_from_2br: z.coerce.number().int().min(0).max(1_000_000_000),
+});
+
+/** "Giá 'từ' cho mẫu trả lời": {{price_studio}} {{price_1br}} {{price_2br}} in "Trả lời nhanh" (VND / month). */
+export async function savePrices(_: Res, fd: FormData): Promise<Res> {
+  await requireAdmin();
+  const n = (k: string) => String(fd.get(k) ?? '').replace(/[\s.,]/g, '');
+  const p = Prices.safeParse({ price_from_studio: n('price_from_studio'), price_from_1br: n('price_from_1br'), price_from_2br: n('price_from_2br') });
+  if (!p.success) return { error: 'Nhập số nguyên (đồng), vd. 8000000.' };
+  const sb = await supabaseServer();
+  const { error } = await sb.from('settings').update(p.data).eq('id', 1);
+  if (error) return { error: 'Lỗi: ' + error.message };
+  revalidatePath('/admin/tra-loi-nhanh');
+  revalidatePath('/admin/cai-dat');
+  return { ok: 'Đã lưu.' };
+}
+
 const PHONE_RE = /^[0-9+() .-]{6,24}$/;
 const PHOTO_MAX = 2 * 1024 * 1024;
 

@@ -2,18 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, CalendarCheck, ExternalLink, Home, LogOut, MoreHorizontal, SearchX, Settings, Trash2, UserRound, Users } from 'lucide-react';
+import { Building2, CalendarCheck, ExternalLink, Home, LogOut, MessageSquareText, MoreHorizontal, SearchX, Settings, Trash2, UserRound, Users } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { signOut } from '@/app/admin/(auth)/actions';
 import styles from './AdminNav.module.css';
 
-const ICONS = { today: CalendarCheck, listings: Home, leads: UserRound, more: MoreHorizontal, buildings: Building2, users: Users, settings: Settings, demand: SearchX, trash: Trash2 };
+const ICONS = { today: CalendarCheck, listings: Home, leads: UserRound, replies: MessageSquareText, more: MoreHorizontal, buildings: Building2, users: Users, settings: Settings, demand: SearchX, trash: Trash2 };
 export type NavItem = { href: string; label: string; icon: keyof typeof ICONS; count?: number };
 
 /** pages reached from "Thêm" (the 4th tab) */
 const MORE = ['/admin/them', '/admin/toa-nha', '/admin/nguoi-dung', '/admin/cai-dat', '/admin/tai-khoan', '/admin/nhu-cau'];
 
-/** 4 tabs: bottom bar on phones / tablets, sidebar ≥ 1024 (where "Thêm" also lists its pages). */
+/** 5 tabs: bottom bar on phones / tablets, sidebar ≥ 1024 (where "Thêm" also lists its pages). */
 export function AdminNav({ items, more, me }: { items: NavItem[]; more: NavItem[]; me: { name: string; role: string } }) {
   const path = usePathname();
   const under = (href: string) => path === href || path.startsWith(href + '/');

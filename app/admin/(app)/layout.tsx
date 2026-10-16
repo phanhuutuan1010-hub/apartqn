@@ -11,11 +11,12 @@ export default async function AdminAppLayout({ children }: { children: React.Rea
     const { count } = await sb.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending');
     pending = count ?? 0;
   }
-  // 4 tabs for everyone; what sits behind "Thêm" depends on the role
+  // 5 tabs for everyone; what sits behind "Thêm" depends on the role
   const items: NavItem[] = [
     { href: '/admin', label: 'Hôm nay', icon: 'today', count: pending },
     { href: '/admin/can-ho', label: 'Căn hộ', icon: 'listings' },
     { href: '/admin/khach-hang', label: 'Khách', icon: 'leads' },
+    { href: '/admin/tra-loi-nhanh', label: 'Trả lời nhanh', icon: 'replies' },
     { href: '/admin/them', label: 'Thêm', icon: 'more' },
   ];
   const more: NavItem[] = isAdmin
