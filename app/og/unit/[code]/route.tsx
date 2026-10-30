@@ -74,6 +74,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ code: stri
                 {t('priceFrom', { price: money(x.priceFrom, l) })}<span style={{ fontSize: 30, fontWeight: 500, marginLeft: 6 }}>{t('perMonth')}</span>
               </div>
               {te && <div style={{ display: 'flex', fontSize: 28, fontWeight: 500, opacity: 0.85 }}>{te('priceFrom', { price: money(x.priceFrom, 'en') })}{te('perMonth')}</div>}
+              <div style={{ display: 'flex', fontSize: 22, fontWeight: 500, opacity: 0.8 }}>{t('priceVaries')}</div>
             </div>
           </div>
         </div>

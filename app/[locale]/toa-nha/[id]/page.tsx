@@ -105,6 +105,7 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
               <span className={styles.rangePer}>{t('perMonth')}</span>
             </div>
           )}
+          {min != null && <div style={{ fontSize: 12, color: 'var(--muted, #6b7280)' }}>{t('priceVaries')}</div>}
         </div>
 
         <div className={styles.body}>

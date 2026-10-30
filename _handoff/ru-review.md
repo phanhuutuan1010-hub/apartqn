@@ -55,7 +55,7 @@ Post word lists: types {"studio":"Студия","1pn":"Квартира — 1 с
 | navBlds | Toà nhà | Дома |
 | navConsign | Ký gửi căn hộ | Сдать квартиру |
 | navContact | Liên hệ | Контакты |
-| heroEyebrow | Thuê dài hạn · tối thiểu 6 tháng | Долгосрочная аренда · от 6 месяцев |
+| heroEyebrow | Thuê dài hạn từ 1 tháng | Долгосрочная аренда от 1 месяца |
 | heroTitle | Căn hộ thuê dài hạn tại trung tâm Quy Nhơn | Долгосрочная аренда квартир в центре Куинёна |
 | heroSub | Xem căn mẫu theo từng toà nhà và loại căn, giá thuê tham khảo minh bạch. Hỏi căn trống qua Zalo, WhatsApp hoặc Telegram. | Квартиры-образцы по домам и типам, понятные ориентировочные цены. Наличие уточняйте в Telegram или WhatsApp. |
 | sAny | Bất kỳ | Любой |
@@ -78,7 +78,7 @@ Post word lists: types {"studio":"Студия","1pn":"Квартира — 1 с
 | consignTitle | Bạn có căn hộ cho thuê? | Сдаёте квартиру в Куинёне? |
 | consignSub | Ký gửi miễn phí. Chúng tôi chụp ảnh, xác minh và tìm khách thuê dài hạn. | Размещение бесплатно. Мы фотографируем, проверяем и находим долгосрочных арендаторов. |
 | consignBtn | Ký gửi căn hộ | Сдать квартиру |
-| fAbout | Căn hộ thuê dài hạn từ 6 tháng tại trung tâm Quy Nhơn. | Долгосрочная аренда квартир от 6 месяцев в центре Куинёна. |
+| fAbout | Căn hộ thuê dài hạn từ 1 tháng tại trung tâm Quy Nhơn. | Долгосрочная аренда квартир от 1 месяца в центре Куинёна. |
 | fExplore | Khám phá | Разделы |
 | fHours | Hằng ngày 8:00–20:00 | Ежедневно 8:00–20:00 |
 | fLang | Ngôn ngữ | Язык |
@@ -103,7 +103,7 @@ Post word lists: types {"studio":"Студия","1pn":"Квартира — 1 с
 | vrName | Họ tên | Имя |
 | vrPhone | Số điện thoại | Телефон |
 | vrDur | Thời gian thuê | Срок аренды |
-| dur0 | 6 tháng | 6 месяцев |
+| dur0 | 1–3 tháng | 1–3 месяца |
 | dur1 | 12 tháng | 12 месяцев |
 | dur2 | Trên 12 tháng | Больше 12 месяцев |
 | vrNamePh | Nguyễn Văn An | Анна Иванова |
@@ -145,7 +145,7 @@ Post word lists: types {"studio":"Студия","1pn":"Квартира — 1 с
 | cs3t | Đăng tin & dẫn khách | Публикация и показы |
 | cs3d | Tin đăng tiếng Việt, Anh và Nga. Chúng tôi lọc khách và dẫn đi xem. | Объявления на вьетнамском, английском и русском. Мы отбираем арендаторов и проводим показы. |
 | cs4t | Ký hợp đồng | Договор |
-| cs4d | Hợp đồng từ 6 tháng, hỗ trợ đăng ký tạm trú cho khách. | Договор от 6 месяцев, помощь с временной регистрацией. |
+| cs4d | Thuê dài hạn từ 1 tháng, hỗ trợ đăng ký tạm trú cho khách. | Долгосрочная аренда от 1 месяца, помощь с временной регистрацией. |
 | cgArea | Chúng tôi nhận căn tại các toà nhà sau | Мы принимаем квартиры в этих домах |
 | cgAreaSub | Chỉ khu trung tâm Quy Nhơn. Căn ở toà khác? Vẫn gửi — chúng tôi sẽ phản hồi. | Только центр Куинёна. Квартира в другом доме? Всё равно присылайте — мы ответим. |
 | sending | Đang gửi… | Отправка… |

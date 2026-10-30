@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const type = t(`ut_${x.type}`);
   const price = money(x.priceFrom, locale);
   const own = `${type} ${b?.name ?? ''} – ${t('priceFrom', { price })}${t('perMonth')}`;
-  const ownDesc = `${x.code} · ${type} · ${areaRange(x.areaMin, x.areaMax, LOCALE_CONFIG[locale].decimal)} · ${t('priceFrom', { price })}${t('perMonth')} (${t('priceNote', { date: monthYear(x.priceUpdated, locale) })}). ${t('fAbout')}`;
+  const ownDesc = `${x.code} · ${type} · ${areaRange(x.areaMin, x.areaMax, LOCALE_CONFIG[locale].decimal)} · ${t('priceFrom', { price })}${t('perMonth')} (${t('priceNote', { date: monthYear(x.priceUpdated, locale) })}, ${t('priceVaries').toLowerCase()}). ${t('fAbout')}`;
   // /{CODE} is the link shared in posts: its card speaks both languages ("Altara 2PN · Quy Nhơn | 2BR from 13,000,000 VND")
   let title = `${own} | ApartQN`, description = ownDesc;
   if (locale === DEFAULT_LOCALE) {
@@ -89,7 +89,7 @@ export default async function UnitTypePage({ params }: { params: Promise<Params>
   const priceLine = (
     <>
       <div className={styles.priceRow}><span className={styles.price}>{t('priceFrom', { price })}</span><span className={styles.per}>{t('perMonth')}</span></div>
-      <div className={styles.priceNote}>{t('priceNote', { date: monthYear(x.priceUpdated, l) })}</div>
+      <div className={styles.priceNote}>{t('priceNote', { date: monthYear(x.priceUpdated, l) })} · {t('priceVaries')}</div>
     </>
   );
   const check = (variant: 'box' | 'bar') => <CheckAvailability code={x.code} typeLabel={type} building={b.name} price={x.priceFrom} contact={contact} variant={variant} />;

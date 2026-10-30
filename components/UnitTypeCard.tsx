@@ -47,6 +47,7 @@ export function UnitTypeCard({ x, building, slider = false, priority = false, si
           </div>
           <span className={styles.code}>{x.code}</span>
         </div>
+        <div style={{ fontSize: 12, color: 'var(--muted, #6b7280)' }}>{t('priceVaries')}</div>
         <NextLink href={unitTypePath(x.code, l)} className={styles.link}>{type}</NextLink>
         <div className={styles.area}>{areaRange(x.areaMin, x.areaMax, LOCALE_CONFIG[l].decimal)}</div>
         {building && <div className={styles.bname}>{building.name}</div>}

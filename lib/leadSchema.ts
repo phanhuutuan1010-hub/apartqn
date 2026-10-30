@@ -20,7 +20,7 @@ export const availabilitySchema = z.object({
   /** the type picked in the form (another type of the same building is fine) */
   unitType: z.enum(UNIT_TYPE_KINDS),
   moveIn: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional().default(''),
-  duration: z.number().int().min(0).max(2),
+  duration: z.number().int().min(0).max(3),
   /** VND / month, digits as typed ("12.000.000", "12tr") */
   budget: z.string().trim().max(30).optional().default(''),
   name: z.string().trim().max(120).optional().default(''),

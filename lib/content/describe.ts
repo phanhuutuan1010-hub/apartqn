@@ -7,10 +7,11 @@
  */
 import type { Locale } from '@/i18n/locales';
 import { money } from '@/lib/format';
+import { PRICE_VARIES, termText } from '@/lib/term';
 import type { BuildingFees } from '@/lib/fees';
 import { UNIT_TYPE_KINDS, type Amenity, type Feature, type Furniture, type UnitTypeKind, type View } from '@/lib/unitTypes';
 
-export type DescUnit = { type: UnitTypeKind; areaMin: number; areaMax: number; priceFrom: number; furniture?: Furniture; views: View[]; features: Feature[] };
+export type DescUnit = { type: UnitTypeKind; areaMin: number; areaMax: number; priceFrom: number; furniture?: Furniture; views: View[]; features: Feature[]; /** months, default 1 */ minTerm?: number };
 export type DescBuilding = { name: string; street: string; amenities: Amenity[]; fees: Pick<BuildingFees, 'mgmt_fee_per_m2' | 'mgmt_fee_vat_pct' | 'motorbike_fee' | 'car_fee' | 'car_parking'> };
 
 type Dict = {
@@ -176,6 +177,7 @@ export function describeUnitType(u: DescUnit, b: DescBuilding, l: Locale): strin
     u.features.length ? d.features(list(u.features.map((f) => d.feature[f]), d.and)) : '',
     amen.length ? d.inBuilding(list(amen, d.and)) : '',
     stop(money_.join('; ')),
+    `${PRICE_VARIES[l]}. ${termText(l, u.minTerm)}.`,
   ].filter(Boolean).join(' ');
 }
 

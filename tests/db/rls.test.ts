@@ -24,7 +24,7 @@ let l1 = '', l2 = '', l3 = '', lP = '', code1 = '';
 let lead1 = '', lead2 = '', consign1 = '';
 
 const COMPLETE = `area=68, beds=2, baths=2, dir='SE', view='sea', furn='full', rent=13500000, deposit=2, cycle='m1',
-  mgmt=816000, elec='evn', water='meter', moto=150000, car=1500000, net=220000, min_term=6, max_occ=4, move_in='2026-10-05'`;
+  mgmt=816000, elec='evn', water='meter', moto=150000, car=1500000, net=220000, min_term=1, max_occ=4, move_in='2026-10-05'`;
 
 beforeAll(async () => {
   for (const [k, v] of Object.entries(U)) {

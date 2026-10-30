@@ -5,12 +5,13 @@
  * Quy Nhơn, từ …"). No phone number, nothing invented, empty fields skipped. Pure — tests/unit/post.test.ts.
  * Russian lines are templates over structured fields and still need a native review (RU below).
  */
+import { PRICE_VARIES, termText } from './term';
 import { UNIT_TYPE_KINDS, type Feature, type Furniture, type UnitTypeKind, type View } from './unitTypes';
 
 export type PostLang = 'vi' | 'en' | 'ru';
 export type PostChannel = 'facebook' | 'zalo' | 'telegram';
 export type PostPair = 'vi-en' | 'ru-en';
-export type TypePost = { code: string; type: UnitTypeKind; building: string; priceFrom: number; areaMin: number | null; areaMax: number | null; furniture?: Furniture | null; views?: View[]; features: Feature[]; photoCount: number };
+export type TypePost = { code: string; type: UnitTypeKind; building: string; priceFrom: number; areaMin: number | null; areaMax: number | null; furniture?: Furniture | null; views?: View[]; features: Feature[]; photoCount: number; /** months, default 1 (unit_types.min_term) */ minTerm?: number };
 
 /** Every Russian string used in posts — flagged for native review. */
 export const RU = {
@@ -81,6 +82,7 @@ function block(d: TypePost, l: PostLang, origin: string, pair: PostPair): string
   return [
     `🏢 ${t.type[d.type]} · ${d.building} – ${t.city}`,
     [`${t.from} ${postMoney(d.priceFrom, l)}${t.perMonth}`, area(d, l)].filter(Boolean).join(' · '),
+    `${PRICE_VARIES[l]} · ${termText(l, d.minTerm)}`,
     ...(feats.length ? [cap(feats.join(' · '))] : []),
     ...(d.photoCount > 0 ? [`📷 ${t.sample}`] : []),
     `👉 ${typeLink(origin, d.code, l, pair)}`,
@@ -101,7 +103,7 @@ export function buildRoundup(type: UnitTypeKind, items: Omit<TypePost, 'type'>[]
   return langsOf(o.channel, o.pair).map((l) => {
     const t = T[l];
     const lines = xs.map((x) => `• ${x.building}: ${t.from.toLowerCase()} ${postMoney(x.priceFrom, l)} — ${typeLink(o.origin, x.code, l, o.pair)}`);
-    return [`🏢 ${t.roundup(t.short[type], xs.length, postMoney(xs[0].priceFrom, l))}`, ...lines, `📷 ${t.sample}`].join('\n');
+    return [`🏢 ${t.roundup(t.short[type], xs.length, postMoney(xs[0].priceFrom, l))}`, ...lines, `${PRICE_VARIES[l]} · ${termText(l)}`, `📷 ${t.sample}`].join('\n');
   }).join('\n\n');
 }
 

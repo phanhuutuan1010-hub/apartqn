@@ -25,6 +25,7 @@ export function BuildingCard({ b, types }: { b: Building; types: UnitType[] }) {
         <div className={styles.street}>{b.street}</div>
         <div className={styles.units}>{ts.length ? t('nTypes', { n: ts.length }) : t('bldNoUnits')}</div>
         {min != null && <div className={styles.from}>{t('priceFrom', { price: money(min, l) })}{t('perMonth')}</div>}
+        {min != null && <div style={{ fontSize: 12, color: 'var(--muted, #6b7280)' }}>{t('priceVaries')}</div>}
       </div>
     </article>
   );

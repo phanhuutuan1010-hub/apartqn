@@ -9,12 +9,14 @@ describe('unit type post', () => {
     expect(buildTypePost(D, O)).toBe([
       '🏢 Căn 2 phòng ngủ · Altara Residences – Quy Nhơn',
       'Từ 13.500.000 đ/tháng · 68–75,5 m²',
+      'Giá có thể thay đổi theo thời hạn thuê · Thuê dài hạn từ 1 tháng',
       'View biển · ban công',
       '📷 Ảnh căn mẫu',
       '👉 apartqn.com/ALT-2PN',
       '',
       '🏢 2-bedroom apartment · Altara Residences – Quy Nhon',
       'From 13,500,000 VND/month · 68–75.5 m²',
+      'Price may vary by rental term · Long-term rentals from 1 month',
       'Sea view · balcony',
       '📷 Sample unit photos',
       '👉 apartqn.com/en/ALT-2PN',
@@ -22,7 +24,7 @@ describe('unit type post', () => {
   });
   it('Zalo: Vietnamese only; no photos → no photo line; no features → no line', () => {
     const t = buildTypePost({ ...D, views: [], features: [], photoCount: 0, areaMax: 68 }, { ...O, channel: 'zalo' });
-    expect(t).toBe('🏢 Căn 2 phòng ngủ · Altara Residences – Quy Nhơn\nTừ 13.500.000 đ/tháng · 68 m²\n👉 apartqn.com/ALT-2PN');
+    expect(t).toBe('🏢 Căn 2 phòng ngủ · Altara Residences – Quy Nhơn\nTừ 13.500.000 đ/tháng · 68 m²\nGiá có thể thay đổi theo thời hạn thuê · Thuê dài hạn từ 1 tháng\n👉 apartqn.com/ALT-2PN');
   });
   it('RU/EN: Russian block first, then English; both link apartqn.com/{CODE}; never a phone number or availability', () => {
     const t = buildTypePost(D, { ...O, pair: 'ru-en' });
@@ -38,6 +40,7 @@ describe('unit type post', () => {
       '🏢 Căn 2PN tại 2 toà trung tâm Quy Nhơn, từ 12.000.000 đ/tháng',
       '• FLC Sea Tower: từ 12.000.000 đ — apartqn.com/FLC-2PN',
       '• Altara Residences: từ 13.500.000 đ — apartqn.com/ALT-2PN',
+      'Giá có thể thay đổi theo thời hạn thuê · Thuê dài hạn từ 1 tháng',
       '📷 Ảnh căn mẫu',
     ].join('\n'));
     expect(buildRoundup('3pn', [], O)).toBe('');

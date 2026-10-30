@@ -1,7 +1,7 @@
 # Handoff: ApartQN — long-term apartment rentals, Quy Nhon (PWA)
 
 ## Overview
-ApartQN lists long-term rentals (minimum 6 months) in 8 central Quy Nhon buildings. The site is mobile-first and ships in 3 languages: **vi** (default), **en** and **ru**.
+ApartQN lists long-term rentals (from 1 month) in 8 central Quy Nhon buildings. The site is mobile-first and ships in 3 languages: **vi** (default), **en** and **ru**.
 Screens: Home · Results (list/map) · Listing detail · Building · Consign (owner submission).
 Goal: tenants can compare apartments by their **real monthly cost**, then contact via their locale's messenger or book a viewing.
 
@@ -146,7 +146,7 @@ Sticky, white, 1px bottom border.
 
 ### Home
 Sections, in order:
-1. Hero (eyebrow pill `Thuê dài hạn · tối thiểu 6 tháng` + DEMO pill, H1, sub, image, SearchBar)
+1. Hero (eyebrow pill `Thuê dài hạn từ 1 tháng` + DEMO pill, H1, sub, image, SearchBar)
 2. Featured apartments (6 / 4 / 3 cards by breakpoint + "Xem tất cả →")
 3. Buildings (grey band `#F7F8FA`, 8 building cards: name, street, "N căn đang cho thuê", "từ X triệu/tháng")
 4. Why ApartQN (3 columns, 2px blue top rule)

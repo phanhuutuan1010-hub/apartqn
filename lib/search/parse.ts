@@ -32,6 +32,8 @@ export type Parsed = {
   code?: string;
   /** "QN-001" (old code — resolved through legacy_code) */
   legacyCode?: string;
+  /** rental term asked for, months ("1 tháng", "1 month", "1 месяц") — informational, never narrows (every type rents from 1 month) */
+  months?: number;
   /** leftover words, normalised */
   text: string;
 };
@@ -185,6 +187,11 @@ export function parseSearch(raw: string, buildings: BuildingRef[] = []): Parsed 
   });
   take('qn[\\s-]?(\\d{1,5})', (m) => {
     p.legacyCode ??= 'QN-' + m[1].padStart(3, '0');
+  });
+
+  // rental term: "thuê 1 tháng", "for 1 month", "на 1 месяц", "6-12 months" (a number glued to the month word, not "8 triệu/tháng")
+  take('(?:thue|for|на|срок|tu|from|от)?\\s*(?:(\\d{1,2})\\s*(?:-|–)\\s*)?(\\d{1,2})\\s*-?\\s*(?:thang|months?|mos?|месяц\\p{L}*|мес)(?!\\p{L})', (m) => {
+    p.months ??= Number(m[1] ?? m[2]);
   });
 
   // price: range, then max / min, then a bare amount with a unit (= budget)

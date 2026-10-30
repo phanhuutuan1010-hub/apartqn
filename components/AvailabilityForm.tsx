@@ -72,7 +72,7 @@ export function AvailabilityForm({ code, type, types }: { code: string; type: Un
           <fieldset className={styles.durs}>
             <legend className={styles.durLabel}>{t('vrDur')}</legend>
             <div className={styles.durRow}>
-              {[0, 1, 2].map((i) => (
+              {[0, 1, 2, 3].map((i) => (
                 <button key={i} type="button" aria-pressed={i === dur} className={`${styles.dur} ${i === dur ? styles.durOn : ''}`} onClick={() => setDur(i)}>
                   {t(`dur${i}` as 'dur0')}
                 </button>

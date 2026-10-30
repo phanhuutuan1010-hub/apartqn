@@ -51,12 +51,12 @@ export type Listing = {
 type Raw = Omit<Listing, 'deposit' | 'cycle' | 'elec' | 'water' | 'minTerm' | 'tempReg' | 'verified' | 'video' | 'status' | 'photos' | 'demo'> &
   Partial<Pick<Listing, 'deposit' | 'cycle' | 'elec' | 'water' | 'minTerm' | 'tempReg' | 'verified' | 'video' | 'status'>>;
 
-const base = { deposit: 2, cycle: 'm1', elec: 'evn', water: 'meter', minTerm: 6, tempReg: true, verified: true, video: false, status: 'available' } as const;
+const base = { deposit: 2, cycle: 'm1', elec: 'evn', water: 'meter', minTerm: 1, tempReg: true, verified: true, video: false, status: 'available' } as const;
 
 const RAW: Raw[] = [
   { code: 'QN-001', buildingId: 'altara', floor: 18, area: 68, beds: 2, baths: 2, dir: 'SE', view: 'sea', furn: 'full', rent: 13500000, mgmt: 816000, moto: 150000, car: 1500000, net: 220000, maxOcc: 4, pets: false, moveIn: '2026-10-05', updated: '2026-09-21', photoCount: 12, video: true },
   { code: 'QN-002', buildingId: 'flc', floor: 25, area: 45, beds: 1, baths: 1, dir: 'E', view: 'sea', furn: 'full', rent: 9000000, deposit: 1, cycle: 'm3', mgmt: 540000, elec: 'fixed', water: 'person', moto: 120000, car: 1200000, net: 0, maxOcc: 2, pets: true, moveIn: '2026-09-28', updated: '2026-09-22', photoCount: 9 },
-  { code: 'QN-003', buildingId: 'tms', floor: 30, area: 85, beds: 2, baths: 2, dir: 'S', view: 'sea', furn: 'full', rent: 18000000, mgmt: 1190000, moto: 150000, car: 1800000, net: 250000, minTerm: 12, maxOcc: 4, pets: false, moveIn: '2026-11-01', updated: '2026-09-19', photoCount: 14, video: true, status: 'reserved' },
+  { code: 'QN-003', buildingId: 'tms', floor: 30, area: 85, beds: 2, baths: 2, dir: 'S', view: 'sea', furn: 'full', rent: 18000000, mgmt: 1190000, moto: 150000, car: 1800000, net: 250000, minTerm: 1, maxOcc: 4, pets: false, moveIn: '2026-11-01', updated: '2026-09-19', photoCount: 14, video: true, status: 'reserved' },
   { code: 'QN-004', buildingId: 'phutai', floor: 9, area: 72, beds: 2, baths: 2, dir: 'NE', view: 'city', furn: 'basic', rent: 8500000, deposit: 1, mgmt: 504000, moto: 100000, car: 1000000, net: 200000, maxOcc: 4, pets: true, moveIn: '2026-10-01', updated: '2026-09-15', photoCount: 7, tempReg: false, verified: false },
   { code: 'QN-005', buildingId: 'hagl', floor: 14, area: 98, beds: 3, baths: 2, dir: 'W', view: 'lagoon', furn: 'basic', rent: 11000000, cycle: 'm3', mgmt: 686000, moto: 100000, car: 1000000, net: 200000, maxOcc: 6, pets: true, moveIn: '2026-10-10', updated: '2026-09-20', photoCount: 10, video: true },
   { code: 'QN-006', buildingId: 'ecolife', floor: 8, area: 64, beds: 2, baths: 2, dir: 'E', view: 'river', furn: 'full', rent: 8000000, mgmt: 448000, moto: 100000, car: 900000, net: 200000, maxOcc: 4, pets: false, moveIn: '2026-10-15', updated: '2026-09-18', photoCount: 8 },
