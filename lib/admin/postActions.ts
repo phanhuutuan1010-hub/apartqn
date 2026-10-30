@@ -5,15 +5,17 @@ import { requireStaff } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
 import { CANONICAL_URL } from '@/data/site';
-import { FEATURES, isUnitTypeKind, type Feature, type UnitTypeKind } from '@/lib/unitTypes';
+import { FEATURES, FURNITURE, VIEWS, isUnitTypeKind, type Feature, type Furniture, type UnitTypeKind, type View } from '@/lib/unitTypes';
 import type { TypePost } from '@/lib/unitTypePost';
 
-type Row = { id: string; code: string; type: string; building_name: string; price_from: number | null; area_min: number | null; area_max: number | null; features: string[]; is_visible: boolean; building_visible: boolean };
-const COLS = 'id, code, type, building_name, price_from, area_min, area_max, features, is_visible, building_visible';
+type Row = { id: string; code: string; type: string; building_name: string; price_from: number | null; area_min: number | null; area_max: number | null; furniture: string | null; views: string[]; features: string[]; is_visible: boolean; building_visible: boolean };
+const COLS = 'id, code, type, building_name, price_from, area_min, area_max, furniture, views, features, is_visible, building_visible';
 
 const toPost = (r: Row, photoCount: number): TypePost => ({
   code: r.code, type: r.type as UnitTypeKind, building: r.building_name, priceFrom: Number(r.price_from ?? 0),
   areaMin: r.area_min == null ? null : Number(r.area_min), areaMax: r.area_max == null ? null : Number(r.area_max),
+  furniture: (FURNITURE as readonly string[]).includes(r.furniture ?? '') ? (r.furniture as Furniture) : null,
+  views: (r.views ?? []).filter((v): v is View => (VIEWS as readonly string[]).includes(v)),
   features: (r.features ?? []).filter((f): f is Feature => (FEATURES as readonly string[]).includes(f)), photoCount,
 });
 

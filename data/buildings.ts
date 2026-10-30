@@ -6,7 +6,8 @@
  * The prototype's illustrative x/y pin positions were dropped (not real coordinates).
  */
 
-export type BuildingAmenity = 'pool' | 'gym' | 'security' | 'lift' | 'basement' | 'mart' | 'kids';
+export type { Amenity as BuildingAmenity } from '../lib/unitTypes';
+import type { Amenity as BuildingAmenity } from '../lib/unitTypes';
 
 export type Building = {
   id: string;
@@ -35,12 +36,12 @@ const FLC = p('flc', [13, 99, 98, ...range(1, 101, [13, 98, 99])]);
 const TMS = p('tms', [63, 61, 62, ...range(1, 64, [5, 9, 15, 61, 62, 63])]);
 
 export const BUILDINGS: Building[] = [
-  { id: 'altara', prefix: 'ALT', name: 'Altara Residences Quy Nhơn', street: 'Trần Hưng Đạo', amenities: ['pool', 'gym', 'security', 'lift', 'basement', 'mart'], photos: ALTARA, demo: true },
-  { id: 'phutai', prefix: 'PTC', name: 'Phú Tài Residence', street: 'Lý Thái Tổ', amenities: ['security', 'lift', 'basement', 'mart', 'kids'], photos: [], demo: true },
-  { id: 'flc', prefix: 'FLC', name: 'FLC Sea Tower Quy Nhơn', street: 'An Dương Vương', amenities: ['pool', 'gym', 'security', 'lift', 'basement', 'mart'], photos: FLC, demo: true },
-  { id: 'tms', prefix: 'TMS', name: 'TMS Luxury Hotel & Residences Quy Nhơn', street: 'Nguyễn Huệ', amenities: ['pool', 'gym', 'security', 'lift', 'basement'], photos: TMS, demo: true },
-  { id: 'hagl', prefix: 'HAG', name: 'HAGL Quy Nhơn', street: 'Đầm sinh thái Đống Đa', amenities: ['pool', 'security', 'lift', 'basement', 'mart', 'kids'], photos: [], demo: true },
-  { id: 'apt', prefix: 'APT', name: 'An Phú Thịnh Garden Tower', street: 'KĐT An Phú Thịnh', amenities: ['security', 'lift', 'mart', 'kids'], photos: [], demo: true },
-  { id: 'thinhphat', prefix: 'TPT', name: 'Thịnh Phát Tower', street: 'Thanh Niên', amenities: ['pool', 'security', 'lift', 'basement'], photos: [], demo: true },
-  { id: 'ecolife', prefix: 'ECO', name: 'Ecolife Riverside', street: 'Điện Biên Phủ', amenities: ['pool', 'gym', 'security', 'lift', 'mart', 'kids'], photos: [], demo: true },
+  { id: 'altara', prefix: 'ALT', name: 'Altara Residences Quy Nhơn', street: 'Trần Hưng Đạo', amenities: ['pool', 'gym', 'security', 'elevator', 'motorbike_parking', 'minimart'], photos: ALTARA, demo: true },
+  { id: 'phutai', prefix: 'PTC', name: 'Phú Tài Residence', street: 'Lý Thái Tổ', amenities: ['security', 'elevator', 'motorbike_parking', 'minimart', 'playground'], photos: [], demo: true },
+  { id: 'flc', prefix: 'FLC', name: 'FLC Sea Tower Quy Nhơn', street: 'An Dương Vương', amenities: ['pool', 'gym', 'security', 'elevator', 'motorbike_parking', 'minimart'], photos: FLC, demo: true },
+  { id: 'tms', prefix: 'TMS', name: 'TMS Luxury Hotel & Residences Quy Nhơn', street: 'Nguyễn Huệ', amenities: ['pool', 'gym', 'security', 'elevator', 'motorbike_parking'], photos: TMS, demo: true },
+  { id: 'hagl', prefix: 'HAG', name: 'HAGL Quy Nhơn', street: 'Đầm sinh thái Đống Đa', amenities: ['pool', 'security', 'elevator', 'motorbike_parking', 'minimart', 'playground'], photos: [], demo: true },
+  { id: 'apt', prefix: 'APT', name: 'An Phú Thịnh Garden Tower', street: 'KĐT An Phú Thịnh', amenities: ['security', 'elevator', 'minimart', 'playground'], photos: [], demo: true },
+  { id: 'thinhphat', prefix: 'TPT', name: 'Thịnh Phát Tower', street: 'Thanh Niên', amenities: ['pool', 'security', 'elevator', 'motorbike_parking'], photos: [], demo: true },
+  { id: 'ecolife', prefix: 'ECO', name: 'Ecolife Riverside', street: 'Điện Biên Phủ', amenities: ['pool', 'gym', 'security', 'elevator', 'minimart', 'playground'], photos: [], demo: true },
 ];

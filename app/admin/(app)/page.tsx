@@ -9,9 +9,9 @@ import styles from './dashboard.module.css';
 export const metadata: Metadata = { title: 'Hôm nay' };
 
 type NewLead = { id: string; name: string; phone: string; type: LeadType; created_at: string; payload: Record<string, string>; unit_type_code: string | null; assigned_to: string | null };
-type TypeRow = { id: string; code: string; type: string; building_name: string; is_visible: boolean; price_from: number | null; area_min: number | null; photo_count: number; en_status: string };
+type TypeRow = { id: string; code: string; type: string; building_name: string; is_visible: boolean; price_from: number | null; area_min: number | null; photo_count: number; furniture: string | null };
 
-/** Today's work: new leads, consign requests to hand out, unit types that still lack photos / price / EN. RLS scopes the data. */
+/** Today's work: new leads, consign requests to hand out, unit types that still lack photos / price / area / furniture. RLS scopes the data. */
 export default async function TodayPage() {
   const me = await requireStaff();
   const isAdmin = me.role === 'admin';
@@ -24,7 +24,7 @@ export default async function TodayPage() {
     sb.from('leads').select('id', head).eq('status', 'new').neq('type', 'consign'),
     sb.from('leads').select('id, name, phone, type, created_at, payload, unit_type_code, assigned_to').eq('status', 'new').eq('type', 'consign').order('created_at', { ascending: false }).limit(6),
     sb.from('leads').select('id', head).eq('status', 'new').eq('type', 'consign'),
-    sb.from('admin_unit_types').select('id, code, type, building_name, is_visible, price_from, area_min, photo_count, en_status, building_visible').eq('building_visible', true).order('building_sort').order('sort'),
+    sb.from('admin_unit_types').select('id, code, type, building_name, is_visible, price_from, area_min, photo_count, furniture, building_visible').eq('building_visible', true).order('building_sort').order('sort'),
     isAdmin ? sb.rpc('search_miss_top', { p_days: 30, p_limit: 8 }) : Promise.resolve({ data: null }),
     sb.from('buildings').select('id, name'),
     // consign-page contact clicks, 30 days (admins only — RLS)
@@ -117,7 +117,7 @@ export default async function TodayPage() {
           <ul className="a-rows">
             {missing.slice(0, 8).map(({ t, miss }) => (
               <li key={t.id} className={styles.dueRow}>
-                <Link href={`/admin/loai-can/${t.id}${miss.length === 1 && miss[0] === 'EN' ? '?queue=en' : ''}`} className={styles.dueText}>
+                <Link href={`/admin/loai-can/${t.id}`} className={styles.dueText}>
                   <b>{t.code}</b> <span className="a-muted">· {UT_LABEL[t.type]} · {t.building_name}</span>
                   <span className="a-small">Thiếu: {miss.join(', ')}{t.is_visible ? ' · đang hiển thị' : ' · đang ẩn'}</span>
                 </Link>

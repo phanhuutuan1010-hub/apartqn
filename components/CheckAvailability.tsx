@@ -31,8 +31,8 @@ function chatHref(k: ChatChannel, c: SiteContact, message: string) {
 }
 
 /**
- * "Kiểm tra căn trống" / "Check availability": opens the language's chat app (i18n/locales.ts: vi → Zalo, en → WhatsApp)
- * with "{code} – {type} at {building}" ready. Zalo and Telegram can't prefill, so the message is copied first and a toast
+ * "Kiểm tra căn trống" / "Check availability" / "Проверить наличие": opens the language's chat app (i18n/locales.ts:
+ * vi → Zalo, en → WhatsApp, ru → Telegram, with WhatsApp as a second button) with "{code} – {type} at {building}" ready. Zalo and Telegram can't prefill, so the message is copied first and a toast
  * says to paste it. No number for that app → the next one that has one. The tap is reported with sendBeacon (code,
  * channel, language — nothing about the visitor); the app opens at once either way.
  */
@@ -51,10 +51,13 @@ export function CheckAvailability({ code, typeLabel, building, price, contact, v
   const k = order.find((c) => chatHref(c, contact, message));
   const href = k ? chatHref(k, contact, message) : null;
 
-  const tap = () => {
-    if (k !== 'whatsapp') navigator.clipboard?.writeText(message).then(() => setToast(t('caCopied')), () => {});
+  // the language's second app (ru: WhatsApp), when it has a number and is not already the main one
+  const k2 = LOCALE_CONFIG[l].chat2;
+  const href2 = k2 && k2 !== k ? chatHref(k2, contact, message) : null;
+  const tap = (ch: ChatChannel | undefined = k) => {
+    if (ch !== 'whatsapp') navigator.clipboard?.writeText(message).then(() => setToast(t('caCopied')), () => {});
     try {
-      const body = JSON.stringify({ kind: 'contact', code, channel: k, origin: 'unit-type', page: location.pathname, locale: l });
+      const body = JSON.stringify({ kind: 'contact', code, channel: ch, origin: 'unit-type', page: location.pathname, locale: l });
       if (!navigator.sendBeacon?.('/api/intent', new Blob([body], { type: 'text/plain' }))) {
         void fetch('/api/intent', { method: 'POST', body, keepalive: true, headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
       }
@@ -62,9 +65,29 @@ export function CheckAvailability({ code, typeLabel, building, price, contact, v
   };
   const Icon = k ? ICON[k] : null;
   const button = href
-    ? <a href={href} target="_blank" rel="noopener noreferrer" className={styles.cta} onClick={tap}>{Icon && <Icon size={22} />}<span>{t('checkAvail')}</span></a>
+    ? <a href={href} target="_blank" rel="noopener noreferrer" className={styles.cta} onClick={() => tap()}>{Icon && <Icon size={22} />}<span>{t('checkAvail')}</span></a>
     : <a href="#check" className={styles.cta}><span>{t('checkAvail')}</span></a>;
 
+  const Icon2 = k2 && href2 ? ICON[k2] : null;
+  const second = href2 && k2 && Icon2
+    ? <a href={href2} target="_blank" rel="noopener noreferrer" className={variant === 'bar' ? styles.ico : styles.cta2} aria-label={t(`caCh_${k2}`)} onClick={() => tap(k2)}><Icon2 size={22} />{variant === 'box' && <span>{t(`caCh_${k2}`)}</span>}</a>
+    : null;
+  if (variant === 'bar' && second) {
+    // like the English bar (EnBar): the second app as an icon, then the red block — the price on a small line, the label below
+    const Main = Icon;
+    return (
+      <div className={`${styles.bar} ${styles.bar3}`}>
+        {second}
+        {href
+          ? <a href={href} target="_blank" rel="noopener noreferrer" className={`${styles.cta} ${styles.ctaStack}`} onClick={() => tap()}>
+              <span className={styles.ctaPrice}>{t('priceFrom', { price: money(price, l) })}{t('perMonth')}</span>
+              <span className={styles.ctaLabel}>{Main && <Main size={18} />}{t('checkAvail')}</span>
+            </a>
+          : button}
+        <span className={styles.toast} role="status" aria-live="polite">{toast}</span>
+      </div>
+    );
+  }
   if (variant === 'bar') {
     return (
       <div className={styles.bar}>
@@ -81,6 +104,7 @@ export function CheckAvailability({ code, typeLabel, building, price, contact, v
     <div className={styles.box}>
       {button}
       {k && <span className={styles.sub}>{t(`checkSub_${k}`)}</span>}
+      {second}
       <span className={styles.toast} role="status" aria-live="polite">{toast}</span>
     </div>
   );

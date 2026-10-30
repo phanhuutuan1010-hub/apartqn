@@ -289,3 +289,36 @@ describe('server', () => {
     }
   });
 });
+
+describe('Russian + structured fields (migration 42)', () => {
+  it('unit types: furniture, views, new features; old keys still accepted; overrides per language in the public view', async () => {
+    await as(id(U.s1), async (q) => {
+      await q(`update public.unit_types set furniture = 'full', views = '{sea,city}', features = '{washer,full_kitchen}', desc_custom_ru = 'Своё описание' where id = $1`, [T2]);
+      expect(await denied(q(`update public.unit_types set views = '{moon}' where id = $1`, [T2]))).toMatch(/check/);
+      expect(await denied(q(`update public.unit_types set furniture = 'some' where id = $1`, [T2]))).toMatch(/check/);
+      await q(`update public.unit_types set features = '{sea_view}' where id = $1`, [TS]); // pre-42 key, still valid
+    });
+    await root(`update public.unit_types set furniture = 'basic', views = '{lake}', desc_custom_en = 'Own text' where id = $1`, [T2]);
+    try {
+      const r = (await as('anon', (q) => q(`select furniture, views, desc_custom_vi, desc_custom_en, desc_custom_ru from public.public_unit_types where code = 'ALT-2PN'`))).rows[0];
+      expect(r).toEqual({ furniture: 'basic', views: ['lake'], desc_custom_vi: null, desc_custom_en: 'Own text', desc_custom_ru: null });
+    } finally {
+      await root(`update public.unit_types set furniture = null, views = '{}', desc_custom_en = null where id = $1`, [T2]);
+    }
+  });
+  it('buildings: new amenities and per-language overrides in the public view', async () => {
+    await as(id(U.admin), async (q) => {
+      await q(`update public.buildings set amenities = '{pool,elevator,car_parking,reception}', desc_custom_ru = 'Дом' where id = $1`, [B]);
+      expect(await denied(q(`update public.buildings set amenities = '{helipad}' where id = $1`, [B]))).toMatch(/check/);
+    });
+    const r = (await as('anon', (q) => q(`select desc_custom_vi, desc_custom_ru from public.public_buildings where slug = 'altara'`))).rows[0];
+    expect(Object.keys(r)).toEqual(['desc_custom_vi', 'desc_custom_ru']);
+  });
+  it('anonymous logs accept Russian visitors', async () => {
+    await as('service', async (q) => {
+      await q(`select public.log_contact_click('telegram', 'ky-gui', 'ru', '')`);
+      expect((await q(`select count(*)::int n from public.contact_clicks where locale = 'ru'`)).rows[0].n).toBe(1);
+      expect((await q(`select public.log_search_intent('telegram', 'студия', '{}', '', '', '', '/ru/kvartiry', 'ru', '') r`)).rows[0].r).toBe(true);
+    });
+  });
+});

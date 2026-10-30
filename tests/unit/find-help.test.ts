@@ -6,7 +6,7 @@ import { plainT, tVi } from '@/lib/i18nPlain';
 const tEn = plainT(en as Record<string, unknown>);
 
 describe('find-help message', () => {
-  const c = { b: 'altara', t: '2pn', pmax: '12.5', ft: ['sea_view', 'pets_ok'] };
+  const c = { b: 'altara', t: '2pn', pmax: '12.5', vw: 'sea', ft: ['pets_ok'] };
 
   it('vi: query + criteria, nothing else', () => {
     expect(findHelpMessage(tVi, 'gần biển', criteriaParts(c, tVi, ',', 'Altara'))).toBe(
@@ -18,7 +18,7 @@ describe('find-help message', () => {
     expect(findHelpMessage(tEn, '', criteriaParts({ t: '01', pmax: '10', near: 'sea' }, tEn, '.'))).toBe(
       "Hi ApartQN, I'm looking for an apartment: studio / 1 bedroom · ≤ 10 million VND · near the sea. Could you help me find one?",
     );
-    expect(criteriaParts({ near: 'sea', ft: ['sea_view'] }, tEn, '.')).toEqual(['Sea view']);
+    expect(criteriaParts({ near: 'sea', vw: 'sea' }, tEn, '.')).toEqual(['Sea view']);
   });
 
   it('empty search → generic message', () => {

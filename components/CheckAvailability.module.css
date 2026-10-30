@@ -14,3 +14,12 @@
 .barFrom { font-size: 12px; color: var(--gray-500); }
 .barRent { font-size: clamp(14px, 4.2vw, 19px); font-weight: 800; color: var(--red-500); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .per { font-size: 12px; font-weight: 500; color: var(--gray-500); }
+
+/* the language's second chat app (ru: WhatsApp) */
+.cta2 { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border-radius: 14px; border: 1.5px solid var(--gray-300); background: var(--white); color: var(--ink-900); font-size: 15px; font-weight: 700; text-decoration: none; }
+.cta2:hover { border-color: var(--blue-500); }
+.bar3 { grid-template-columns: 56px minmax(0, 1fr); }
+.ctaStack { flex-direction: column; gap: 2px; min-height: 56px; padding: 0 10px; }
+.ctaPrice { font-size: clamp(11px, 3.3vw, 13px); font-weight: 600; line-height: 1.2; opacity: .95; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ctaLabel { display: flex; align-items: center; gap: 6px; font-size: clamp(14px, 4.4vw, 17px); font-weight: 800; line-height: 1.2; white-space: nowrap; }
+.ico { display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 14px; border: 1.5px solid var(--gray-300); color: #25D366; text-decoration: none; }

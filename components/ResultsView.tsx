@@ -91,13 +91,15 @@ export function ResultsView({ types, buildings, contact, query = '' }: Props & {
   }, [typed, matched.length, f, l]);
 
   const dec = LOCALE_CONFIG[l].decimal;
-  const drawerN = [f.t, f.pmax, f.b].filter(Boolean).length + f.ft.length;
+  const drawerN = [f.t, f.pmax, f.b, f.fu, f.vw].filter(Boolean).length + f.ft.length;
   const pills: { label: string; clear: Partial<Filters> }[] = [];
   if (f.b && bById.get(f.b)) pills.push({ label: bById.get(f.b)!.name, clear: { b: '' } });
   if (f.q) pills.push({ label: `“${f.q}”`, clear: { q: '' } });
   if (f.near) pills.push({ label: t('nearSea'), clear: { near: '' } });
   if (f.t) pills.push({ label: t(`crType_${f.t as '01'}`), clear: { t: '' } });
   if (f.pmax) pills.push({ label: t('fBudgetN', { n: f.pmax.replace('.', dec) }), clear: { pmax: '' } });
+  if (f.fu) pills.push({ label: t(`fu_${f.fu}`), clear: { fu: '' } });
+  if (f.vw) pills.push({ label: t(`vw_${f.vw}`), clear: { vw: '' } });
   f.ft.forEach((k) => pills.push({ label: t(`f_${k}`), clear: { ft: f.ft.filter((x) => x !== k) } }));
   const clearAll = () => sync({ ...EMPTY }, sort);
 

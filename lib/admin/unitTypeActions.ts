@@ -7,9 +7,7 @@ import { requireAdmin, requireStaff } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
 import { revalidatePublic } from '@/lib/revalidate';
 import { parseVnd } from '@/lib/admin/labels';
-import { viHash } from '@/lib/enStatus';
-import { mismatchText } from '@/lib/translate';
-import { FEATURES, UNIT_TYPE_KINDS } from '@/lib/unitTypes';
+import { FEATURES, FURNITURE, UNIT_TYPE_KINDS, VIEWS } from '@/lib/unitTypes';
 import { removeObjects, type StorageObject } from '@/lib/admin/purge';
 
 export type UnitTypeResult = { ok?: string; error?: string; warning?: string; fieldErrors?: Record<string, string> };
@@ -23,10 +21,10 @@ const Schema = z.object({
   area_min: area,
   area_max: area,
   price_from: z.preprocess((v) => parseVnd(v as FormDataEntryValue), z.number().int().min(100_000, 'Giá từ 100.000 đ').max(1_000_000_000).nullable()),
-  furniture_note: txt(500),
-  view_note: txt(500),
-  desc_vi: txt(5000),
-  desc_en: txt(5000),
+  furniture: z.preprocess((v) => (v ? v : null), z.enum(FURNITURE).nullable()),
+  desc_custom_vi: txt(5000),
+  desc_custom_en: txt(5000),
+  desc_custom_ru: txt(5000),
   sort: z.coerce.number().int().min(0).max(999),
 }).refine((v) => v.area_min == null || v.area_max == null || v.area_max >= v.area_min, { message: 'Diện tích lớn nhất phải ≥ nhỏ nhất', path: ['area_max'] });
 
@@ -59,6 +57,7 @@ export async function saveUnitType(id: string, _: UnitTypeResult, fd: FormData):
   }
   const v = p.data;
   const features = fd.getAll('features').map(String).filter((f) => (FEATURES as readonly string[]).includes(f));
+  const views = fd.getAll('views').map(String).filter((f) => (VIEWS as readonly string[]).includes(f));
   const sb = await supabaseServer();
   const { data: cur } = await sb.from('unit_types').select('is_visible').eq('id', id).maybeSingle();
   if (!cur) return { error: 'Không thấy loại căn (đã xoá?).' };
@@ -66,16 +65,11 @@ export async function saveUnitType(id: string, _: UnitTypeResult, fd: FormData):
   if (cur.is_visible && (v.price_from == null || v.area_min == null)) {
     return { error: 'Loại căn đang hiển thị cần có giá “từ” và diện tích — ẩn trước nếu muốn xoá chúng.', fieldErrors: { ...(v.price_from == null ? { price_from: 'Bắt buộc khi hiển thị' } : {}), ...(v.area_min == null ? { area_min: 'Bắt buộc khi hiển thị' } : {}) } };
   }
-  const row = {
-    ...v, area_max: v.area_max ?? null, features,
-    // "Bản EN vẫn đúng": the English now counts as written from the current Vietnamese
-    ...(fd.get('en_confirm') === 'on' && v.desc_en ? { desc_en_vi_hash: viHash(v.desc_vi) } : {}),
-  };
+  const row = { ...v, area_max: v.area_max ?? null, features, views };
   const { error } = await sb.from('unit_types').update(row).eq('id', id).select('id').single();
   if (error) return { error: dbError(error) };
   await refreshType(id);
-  const warning = v.desc_en ? mismatchText(v.desc_vi ?? '', v.desc_en) || undefined : undefined;
-  return { ok: cur.is_visible ? 'Đã lưu. Website cập nhật ngay.' : 'Đã lưu (loại căn đang ẩn).', warning };
+  return { ok: cur.is_visible ? 'Đã lưu. Website cập nhật ngay.' : 'Đã lưu (loại căn đang ẩn).' };
 }
 
 /** "Hiển thị" switch: needs a price + an area (DB check) and publishing rights (trigger). */
@@ -102,14 +96,14 @@ export async function createUnitType(buildingId: string, type: string): Promise<
 }
 
 /**
- * "Nhân bản sang…": the reference values of this type (area, price, notes, features, descriptions) copied into another
+ * "Nhân bản sang…": the reference values of this type (area, price, furniture, views, features, own texts) copied into another
  * type — the same type in another building, or another type here. Photos and visibility stay as they are on the target.
  */
 export async function duplicateUnitType(srcId: string, targetId: string): Promise<Res> {
   await requireStaff();
   if (!Id.safeParse(srcId).success || !Id.safeParse(targetId).success || srcId === targetId) return { error: 'Chọn loại căn đích.' };
   const sb = await supabaseServer();
-  const { data: src } = await sb.from('unit_types').select('area_min, area_max, price_from, furniture_note, view_note, features, desc_vi, desc_en').eq('id', srcId).maybeSingle();
+  const { data: src } = await sb.from('unit_types').select('area_min, area_max, price_from, furniture, views, features, desc_custom_vi, desc_custom_en, desc_custom_ru').eq('id', srcId).maybeSingle();
   if (!src) return { error: 'Không thấy loại căn nguồn.' };
   const { data: tgt } = await sb.from('unit_types').select('code, is_visible').eq('id', targetId).maybeSingle();
   if (!tgt) return { error: 'Không thấy loại căn đích.' };

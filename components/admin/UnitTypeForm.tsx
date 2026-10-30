@@ -1,24 +1,33 @@
 'use client';
 
 import { useActionState } from 'react';
+import type { Locale } from '@/i18n/locales';
 import { saveUnitType, type UnitTypeResult } from '@/lib/admin/unitTypeActions';
-import { FEATURE_LABEL, fmtVnd } from '@/lib/admin/labels';
-import { FEATURES } from '@/lib/unitTypes';
-import { DescEditor } from './DescEditor';
-import type { EnStatus, GlossaryPair } from '@/lib/translateCore';
+import { FEATURE_LABEL, FURNITURE_LABEL, fmtVnd, VIEW_LABEL } from '@/lib/admin/labels';
+import { FEATURES, FURNITURE, VIEWS } from '@/lib/unitTypes';
+import { CustomDescTabs } from './CustomDescTabs';
 
 export type UnitTypeData = {
   id: string; code: string; area_min: number | null; area_max: number | null; price_from: number | null;
-  furniture_note: string | null; view_note: string | null; features: string[]; desc_vi: string | null; desc_en: string | null; sort: number;
+  furniture: string | null; views: string[]; features: string[];
+  desc_custom_vi: string | null; desc_custom_en: string | null; desc_custom_ru: string | null; sort: number;
 };
 
-/** Reference values of a unit type. Empty = unknown (never filled in for you); the site shows only what is here. */
-export function UnitTypeForm({ u, photos, enStatus, glossary, queue }: { u: UnitTypeData; photos: React.ReactNode; enStatus: EnStatus; glossary: GlossaryPair[]; queue?: boolean }) {
+/**
+ * Reference values of a unit type as structured fields — the site writes its description from them in every language.
+ * Empty = unknown (never filled in for you); the site shows only what is here.
+ */
+export function UnitTypeForm({ u, photos, generated }: { u: UnitTypeData; photos: React.ReactNode; generated: Record<Locale, string> }) {
   const [state, action, pending] = useActionState<UnitTypeResult, FormData>(saveUnitType.bind(null, u.id), {});
   const fe = state.fieldErrors ?? {};
   const cls = (k: string, extra = '') => `a-field ${extra} ${fe[k] ? 'invalid' : ''}`;
   const err = (k: string) => fe[k] && <span className="err">{fe[k]}</span>;
   const num = (v: number | null) => (v == null ? '' : String(v).replace('.', ','));
+  const chips = (name: string, all: readonly string[], label: Record<string, string>, on: string[]) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
+      {all.map((k) => <label key={k} className="a-check"><input type="checkbox" name={name} value={k} defaultChecked={on.includes(k)} /> {label[k]}</label>)}
+    </div>
+  );
 
   return (
     <form action={action}>
@@ -36,27 +45,26 @@ export function UnitTypeForm({ u, photos, enStatus, glossary, queue }: { u: Unit
 
       <section className="a-card">
         <h2 className="a-section-title">Căn mẫu</h2>
-        <div className="a-grid">
-          <label className={cls('furniture_note', 'span2')}>Ghi chú nội thất <span className="hint">hiện trên website, vd. “Đầy đủ: giường, sofa, bếp từ, máy giặt”</span>
-            <input className="input" name="furniture_note" defaultValue={u.furniture_note ?? ''} maxLength={500} />{err('furniture_note')}
-          </label>
-          <label className={cls('view_note', 'span2')}>Ghi chú view <span className="hint">vd. “Hướng biển hoặc thành phố tuỳ căn”</span>
-            <input className="input" name="view_note" defaultValue={u.view_note ?? ''} maxLength={500} />{err('view_note')}
-          </label>
-        </div>
-        <fieldset className="a-field" style={{ border: 0, padding: 0, margin: '12px 0 0' }}>
-          <legend>Đặc điểm <span className="hint">dùng cho bộ lọc trên website — chỉ chọn điều đúng với loại căn này</span></legend>
+        <fieldset className="a-field" style={{ border: 0, padding: 0, margin: 0 }}>
+          <legend>Nội thất</legend>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px' }}>
-            {FEATURES.map((f) => (
-              <label key={f} className="a-check"><input type="checkbox" name="features" value={f} defaultChecked={u.features.includes(f)} /> {FEATURE_LABEL[f]}</label>
-            ))}
+            {FURNITURE.map((k) => <label key={k} className="a-check"><input type="radio" name="furniture" value={k} defaultChecked={u.furniture === k} /> {FURNITURE_LABEL[k]}</label>)}
+            <label className="a-check"><input type="radio" name="furniture" value="" defaultChecked={!u.furniture} /> Chưa rõ</label>
           </div>
+        </fieldset>
+        <fieldset className="a-field" style={{ border: 0, padding: 0, margin: '14px 0 0' }}>
+          <legend>View <span className="hint">chọn mọi hướng nhìn mà loại căn này có</span></legend>
+          {chips('views', VIEWS, VIEW_LABEL, u.views)}
+        </fieldset>
+        <fieldset className="a-field" style={{ border: 0, padding: 0, margin: '14px 0 0' }}>
+          <legend>Trong căn <span className="hint">dùng cho bộ lọc và mô tả tự sinh — chỉ chọn điều đúng với loại căn này</span></legend>
+          {chips('features', FEATURES, FEATURE_LABEL, u.features)}
         </fieldset>
       </section>
 
       <section className="a-card">
         <h2 className="a-section-title">Mô tả</h2>
-        <DescEditor vi={u.desc_vi ?? ''} en={u.desc_en ?? ''} status={enStatus} glossary={glossary} startTab={queue ? 'en' : 'vi'} errors={{ vi: fe.desc_vi, en: fe.desc_en }} />
+        <CustomDescTabs generated={generated} custom={{ vi: u.desc_custom_vi, en: u.desc_custom_en, ru: u.desc_custom_ru }} />
       </section>
 
       <section className="a-card">
@@ -69,7 +77,6 @@ export function UnitTypeForm({ u, photos, enStatus, glossary, queue }: { u: Unit
         <button className="a-btn a-btn-blue" disabled={pending}>{pending ? 'Đang lưu…' : 'Lưu'}</button>
         {state.ok && <span className="a-small" role="status" style={{ color: 'var(--ok-fg)' }}>{state.ok}</span>}
         {state.error && <span className="a-small" role="alert" style={{ color: 'var(--error)' }}>{state.error}</span>}
-        {state.warning && <span className="a-small" role="status" style={{ color: 'var(--warn-fg)' }}>{state.warning}</span>}
       </div>
     </form>
   );

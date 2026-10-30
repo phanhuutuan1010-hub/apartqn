@@ -5,7 +5,7 @@ import type { SearchIndex } from './types';
 export function buildIndex(buildings: Building[], types: UnitType[]): SearchIndex {
   const of = (slug: string) => types.filter((x) => x.buildingId === slug);
   return {
-    v: 2,
+    v: 3,
     buildings: buildings.map((b) => {
       const ts = of(b.id);
       return {
@@ -15,7 +15,7 @@ export function buildIndex(buildings: Building[], types: UnitType[]): SearchInde
     }),
     types: types.map((x) => ({
       code: x.code, building_slug: x.buildingId, type: x.type, price_from: x.priceFrom, area_min: x.areaMin, area_max: x.areaMax,
-      features: x.features, cover_thumb: x.thumbs[0] ?? null,
+      features: x.features, furniture: x.furniture ?? null, views: x.views, cover_thumb: x.thumbs[0] ?? null,
     })),
   };
 }

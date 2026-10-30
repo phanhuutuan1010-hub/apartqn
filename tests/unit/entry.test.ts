@@ -5,7 +5,7 @@ import { parseUnitTypeCode, typeOfBeds, unitTypeCode } from '@/lib/unitTypes';
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
 const go = (pathname: string, { search = '', ...o }: Omit<Partial<Parameters<typeof entry>[0]>, 'search'> & { search?: string } = {}) =>
   entry({ pathname, search: new URLSearchParams(search), host: 'apartqn.com', userAgent: CHROME, acceptLanguage: 'vi-VN', ...o });
-const SEG = { vi: 'can-ho', en: 'apartments' };
+const SEG = { vi: 'can-ho', en: 'apartments', ru: 'kvartiry' };
 
 describe('building /{PREFIX} and unit type /{PREFIX}-{TYPE} URLs', () => {
   it('rewrite to the internal routes, in the visitor language', () => {
@@ -16,6 +16,21 @@ describe('building /{PREFIX} and unit type /{PREFIX}-{TYPE} URLs', () => {
   it('canonical case and no trailing slash: 301, query kept', () => {
     expect(go('/alt-2pn', { search: 'utm_source=x' })).toEqual({ kind: 'redirect', status: 301, location: '/ALT-2PN?utm_source=x' });
     expect(go('/en/Alt/')).toEqual({ kind: 'redirect', status: 301, location: '/en/ALT' });
+  });
+  it('routing table: cookie wins; else the first Accept-Language tag — vi → vi, ru → ru, anything else → en; bots stay', () => {
+    const where = (o: Parameters<typeof go>[1]) => {
+      const r = go('/ALT-2PN', o);
+      return r?.kind === 'rewrite' ? r.locale : r?.location;
+    };
+    expect(where({ acceptLanguage: 'vi-VN,vi;q=0.9' })).toBe('vi');
+    expect(where({ acceptLanguage: 'ru-RU,ru;q=0.9,en;q=0.8' })).toBe('/ru/ALT-2PN');
+    expect(where({ acceptLanguage: 'en-US,en;q=0.9' })).toBe('/en/ALT-2PN');
+    for (const al of ['uk-UA,uk;q=0.9,ru;q=0.8', 'be-BY', 'kk-KZ', 'de-DE']) expect(where({ acceptLanguage: al })).toBe('/en/ALT-2PN');
+    expect(where({ acceptLanguage: 'ru-RU', userAgent: 'Mozilla/5.0 (compatible; Googlebot/2.1)' })).toBe('vi');
+    expect(where({ acceptLanguage: 'ru-RU', cookie: 'vi' })).toBe('vi');
+    expect(where({ acceptLanguage: 'vi-VN', cookie: 'ru' })).toBe('/ru/ALT-2PN');
+    expect(where({ acceptLanguage: 'vi-VN', cookie: 'en' })).toBe('/en/ALT-2PN');
+    expect(go('/ru/ALT')).toMatchObject({ kind: 'rewrite', target: '/ru/toa-nha/ALT', locale: 'ru' });
   });
   it('language: crawler → default, cookie wins, browser language otherwise', () => {
     expect(go('/ALT-2PN', { userAgent: 'facebookexternalhit/1.1', acceptLanguage: 'en' })).toMatchObject({ kind: 'rewrite', locale: 'vi' });

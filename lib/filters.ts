@@ -1,6 +1,6 @@
-/** Results-page filters over unit types: type · budget ("from" price ≤) · building · features. State lives in the URL. */
+/** Results-page filters over unit types: type · budget ("from" price ≤) · building · furniture · view · features. State lives in the URL. */
 import type { UnitType } from '@/lib/types';
-import { FEATURES, type Feature } from '@/lib/unitTypes';
+import { FEATURES, FURNITURE, VIEWS, type Feature, type Furniture, type View } from '@/lib/unitTypes';
 
 /** budget chips (VND millions, "from" price ≤) */
 export const BUDGETS = ['8', '10', '12', '15', '20'] as const;
@@ -12,6 +12,10 @@ export type Filters = {
   t: string;
   /** budget: "from" price ≤, VND millions ("12", "7.5") */
   pmax: string;
+  /** '' | full | basic | none */
+  fu: '' | Furniture;
+  /** '' | sea | city | mountain | lake | river */
+  vw: '' | View;
   /** features, all required */
   ft: Feature[];
   /** leftover words → building name / alias / street / ward (lib/search/text.ts) — ranking only, never a filter */
@@ -22,7 +26,7 @@ export type Filters = {
 
 export type Sort = 'low' | 'high' | 'big';
 export const SORTS: Sort[] = ['low', 'high', 'big'];
-export const EMPTY: Filters = { b: '', t: '', pmax: '', ft: [], q: '', near: '' };
+export const EMPTY: Filters = { b: '', t: '', pmax: '', fu: '', vw: '', ft: [], q: '', near: '' };
 
 const typeOk = (x: UnitType, t: string) => !t || (t === '01' ? x.type === 'studio' || x.type === '1pn' : x.type === t);
 
@@ -31,6 +35,8 @@ export const match = (x: UnitType, f: Filters) =>
   (!f.b || x.buildingId === f.b) &&
   typeOk(x, f.t) &&
   (!f.pmax || x.priceFrom <= Number(f.pmax) * 1e6) &&
+  (!f.fu || x.furniture === f.fu) &&
+  (!f.vw || x.views.includes(f.vw)) &&
   f.ft.every((k) => x.features.includes(k));
 
 const CMP: Record<Sort, (a: UnitType, b: UnitType) => number> = {
@@ -41,7 +47,7 @@ const CMP: Record<Sort, (a: UnitType, b: UnitType) => number> = {
 
 /** how well a type fits the soft wishes: free-text match counts most, then sea view for "near the sea" */
 const boost = (x: UnitType, f: Filters, textOk?: (x: UnitType) => boolean) =>
-  (f.q && textOk?.(x) ? 2 : 0) + (f.near === 'sea' && x.features.includes('sea_view') ? 1 : 0);
+  (f.q && textOk?.(x) ? 2 : 0) + (f.near === 'sea' && x.views.includes('sea') ? 1 : 0);
 
 export const apply = (all: UnitType[], f: Filters, sort: Sort, textOk?: (x: UnitType) => boolean) =>
   all.filter((x) => match(x, f)).sort((a, b) => boost(b, f, textOk) - boost(a, f, textOk) || CMP[sort](a, b));
@@ -49,7 +55,7 @@ export const apply = (all: UnitType[], f: Filters, sort: Sort, textOk?: (x: Unit
 /** old results links (?beds=2 · ?beds=01) keep working */
 const BEDS: Record<string, string> = { '0': 'studio', '1': '1pn', '2': '2pn', '3': '3pn', '01': '01' };
 
-/** URL query → state: ?b=&t=&pmax=&ft=a,b&q=&near=&sort= */
+/** URL query → state: ?b=&t=&pmax=&fu=&vw=&ft=a,b&q=&near=&sort= */
 export const parseQuery = (q: URLSearchParams | Record<string, string | string[] | undefined>) => {
   const get = (k: string) => {
     if (q instanceof URLSearchParams) return q.get(k) ?? '';
@@ -60,12 +66,12 @@ export const parseQuery = (q: URLSearchParams | Record<string, string | string[]
     b: /^[a-z0-9-]{2,40}$/.test(get('b')) ? get('b') : '',
     t: ['studio', '1pn', '2pn', '3pn', '01'].includes(get('t')) ? get('t') : BEDS[get('beds')] ?? '',
     pmax: /^\d{1,4}(\.\d)?$/.test(get('pmax')) ? get('pmax') : '',
+    fu: (FURNITURE as readonly string[]).includes(get('fu')) ? (get('fu') as Furniture) : '',
+    vw: (VIEWS as readonly string[]).includes(get('vw')) ? (get('vw') as View) : get('vw') === 'lagoon' ? 'lake' : '',
     ft: [...new Set(get('ft').split(',').filter((k): k is Feature => (FEATURES as readonly string[]).includes(k)))],
     q: get('q').trim().replace(/\s+/g, ' ').slice(0, 80),
     near: get('near') === 'sea' ? 'sea' : '',
   };
-  // old sea-view filter (?vw=sea) → the feature
-  if (get('vw') === 'sea' && !f.ft.includes('sea_view')) f.ft.push('sea_view');
   const s = get('sort') as Sort;
   return { f, sort: SORTS.includes(s) ? s : ('low' as Sort) };
 };

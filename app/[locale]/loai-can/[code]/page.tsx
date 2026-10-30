@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { DEFAULT_LOCALE, LOCALE_CONFIG, type Locale } from '@/i18n/locales';
+import { describeUnitType, shown } from '@/lib/content/describe';
 import { getBuildings, getContact, getUnitType, getUnitTypes, hiddenUnitTypeBuilding, staticParams } from '@/lib/repo';
 import { money, monthYear } from '@/lib/format';
 import { alternatesOf, OG_LOCALE } from '@/lib/seo';
@@ -36,8 +37,15 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const t = await getTranslations({ locale });
   const type = t(`ut_${x.type}`);
   const price = money(x.priceFrom, locale);
-  const title = `${type} ${b?.name ?? ''} – ${t('priceFrom', { price })}${t('perMonth')} | ApartQN`;
-  const description = `${x.code} · ${type} · ${areaRange(x.areaMin, x.areaMax, LOCALE_CONFIG[locale].decimal)} · ${t('priceFrom', { price })}${t('perMonth')} (${t('priceNote', { date: monthYear(x.priceUpdated) })}). ${t('fAbout')}`;
+  const own = `${type} ${b?.name ?? ''} – ${t('priceFrom', { price })}${t('perMonth')}`;
+  const ownDesc = `${x.code} · ${type} · ${areaRange(x.areaMin, x.areaMax, LOCALE_CONFIG[locale].decimal)} · ${t('priceFrom', { price })}${t('perMonth')} (${t('priceNote', { date: monthYear(x.priceUpdated, locale) })}). ${t('fAbout')}`;
+  // /{CODE} is the link shared in posts: its card speaks both languages ("Altara 2PN · Quy Nhơn | 2BR from 13,000,000 VND")
+  let title = `${own} | ApartQN`, description = ownDesc;
+  if (locale === DEFAULT_LOCALE) {
+    const te = await getTranslations({ locale: 'en' });
+    title = `${b?.name ?? ''} ${t(`utShort_${x.type}`)} · ${t('city')} | ${te(`utShort_${x.type}`)} ${te('priceFrom', { price: money(x.priceFrom, 'en') }).toLowerCase()} | ApartQN`;
+    description = `${ownDesc} · ${te(`ut_${x.type}`)} ${te('priceFrom', { price: money(x.priceFrom, 'en') }).toLowerCase()}${te('perMonth')}.`;
+  }
   // 1200×630 card for this type (sample cover, "Từ {price}", logo); ?v= follows the cover so networks refetch a new one
   const cover = (x.photos[0] ?? '').split('/').pop()?.slice(0, 8);
   const image = `/og/unit/${x.code.toLowerCase()}${locale === DEFAULT_LOCALE ? '' : `.${locale}`}${cover ? `?v=${cover}` : ''}`;
@@ -70,18 +78,18 @@ export default async function UnitTypePage({ params }: { params: Promise<Params>
   const siblings = all.filter((y) => y.buildingId === b.id);
   const others = siblings.filter((y) => y.code !== x.code);
   const sameType = all.filter((y) => y.type === x.type && y.buildingId !== b.id).sort((p, q) => p.priceFrom - q.priceFrom).slice(0, 3);
-  const desc = x.desc[l];
+  const desc = shown(x.desc[l], () => describeUnitType(x, b, l));
   const labels = galleryLabels(t as unknown as Parameters<typeof galleryLabels>[0]);
   const facts: [string, string][] = [
     [t('areaT'), areaRange(x.areaMin, x.areaMax, LOCALE_CONFIG[l].decimal)],
     [t('building'), b.name],
-    ...(x.furnitureNote ? [[t('furnT'), x.furnitureNote] as [string, string]] : []),
-    ...(x.viewNote ? [[t('viewT'), x.viewNote] as [string, string]] : []),
+    ...(x.furniture ? [[t('furnT'), t(`fu_${x.furniture}`)] as [string, string]] : []),
+    ...(x.views.length ? [[t('viewT'), x.views.map((v) => t(`vw_${v}`)).join(' · ')] as [string, string]] : []),
   ];
   const priceLine = (
     <>
       <div className={styles.priceRow}><span className={styles.price}>{t('priceFrom', { price })}</span><span className={styles.per}>{t('perMonth')}</span></div>
-      <div className={styles.priceNote}>{t('priceNote', { date: monthYear(x.priceUpdated) })}</div>
+      <div className={styles.priceNote}>{t('priceNote', { date: monthYear(x.priceUpdated, l) })}</div>
     </>
   );
   const check = (variant: 'box' | 'bar') => <CheckAvailability code={x.code} typeLabel={type} building={b.name} price={x.priceFrom} contact={contact} variant={variant} />;

@@ -11,6 +11,7 @@
 .navActive { color: var(--blue-500); font-weight: 700; }
 
 .right { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+@media (max-width: 399.98px) { .right { gap: 2px; } }
 .consign { display: none !important; height: 44px; padding: 0 16px; font-size: 15px; }
 
 @media (min-width: 1024px) {

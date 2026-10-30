@@ -1,5 +1,5 @@
 /** Shape of /search-index.json — everything the search box needs, loaded once per visit (no DB call per keystroke). */
-import type { Feature, UnitTypeKind } from '@/lib/unitTypes';
+import type { Feature, Furniture, UnitTypeKind, View } from '@/lib/unitTypes';
 
 export type IndexBuilding = {
   slug: string;
@@ -25,7 +25,9 @@ export type IndexUnitType = {
   area_min: number;
   area_max: number;
   features: Feature[];
+  furniture: Furniture | null;
+  views: View[];
   cover_thumb: string | null;
 };
 
-export type SearchIndex = { v: 2; buildings: IndexBuilding[]; types: IndexUnitType[] };
+export type SearchIndex = { v: 3; buildings: IndexBuilding[]; types: IndexUnitType[] };

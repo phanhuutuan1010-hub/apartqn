@@ -9,16 +9,16 @@ import type { UnitType } from '@/lib/types';
 const b = (slug: string, name: string, street: string, type_count: number, aliases: string[] = [], prefix = slug.slice(0, 3).toUpperCase()): IndexBuilding =>
   ({ slug, name, aliases, prefix, street, ward_old: null, ward_new: null, type_count, price_from: null });
 const x = (code: string, building_slug: string, o: Partial<IndexUnitType> = {}): IndexUnitType => ({
-  code, building_slug, type: code.split('-')[1].toLowerCase() as IndexUnitType['type'], price_from: 12e6, area_min: 60, area_max: 70, features: [], cover_thumb: null, ...o,
+  code, building_slug, type: code.split('-')[1].toLowerCase() as IndexUnitType['type'], price_from: 12e6, area_min: 60, area_max: 70, features: [], furniture: null, views: [], cover_thumb: null, ...o,
 });
 const IDX: SearchIndex = {
-  v: 2,
+  v: 3,
   buildings: [b('altara', 'Altara Residences Quy Nhơn', 'Trần Hưng Đạo', 3, ['Алтара']), b('flc', 'FLC Sea Tower Quy Nhơn', 'An Dương Vương', 1), b('tms', 'TMS Luxury Hotel & Residences Quy Nhơn', 'Nguyễn Huệ', 0)],
   types: [
-    x('ALT-STUDIO', 'altara', { price_from: 8e6, features: ['sea_view'] }),
+    x('ALT-STUDIO', 'altara', { price_from: 8e6, views: ['sea'] }),
     x('ALT-1PN', 'altara', { price_from: 10e6 }),
-    x('ALT-2PN', 'altara', { price_from: 13.5e6, features: ['sea_view', 'balcony'] }),
-    x('FLC-2PN', 'flc', { price_from: 12e6, features: ['furnished'] }),
+    x('ALT-2PN', 'altara', { price_from: 13.5e6, views: ['sea', 'city'], features: ['balcony'] }),
+    x('FLC-2PN', 'flc', { price_from: 12e6, furniture: 'full' }),
   ],
 };
 

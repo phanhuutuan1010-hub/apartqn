@@ -4,7 +4,7 @@ import { DatabaseBackup } from 'lucide-react';
 import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { daysSince, fmtDateTime } from '@/lib/admin/labels';
-import { ContactForm, GlossaryForm, PricesForm, ThresholdsForm } from '@/components/admin/SettingsForms';
+import { ContactForm, PricesForm, ThresholdsForm } from '@/components/admin/SettingsForms';
 import { publicPhotoUrl } from '@/lib/repoMap';
 
 export const metadata: Metadata = { title: 'Cài đặt' };
@@ -12,10 +12,7 @@ export const metadata: Metadata = { title: 'Cài đặt' };
 export default async function SettingsPage() {
   await requireAdmin();
   const sb = await supabaseServer();
-  const [{ data: s }, { data: glossary }] = await Promise.all([
-    sb.from('settings').select('*').single(),
-    sb.from('translation_glossary').select('vi, en').order('sort').order('vi'),
-  ]);
+  const { data: s } = await sb.from('settings').select('*').single();
   const days = daysSince(s?.last_backup_at);
   const late = days == null || days > (s?.backup_warn_days ?? 7);
 
@@ -45,8 +42,6 @@ export default async function SettingsPage() {
       }} />
 
       <TelegramCheck />
-
-      <GlossaryForm rows={(glossary ?? []) as { vi: string; en: string }[]} />
 
       <PricesForm v={{ price_from_studio: s?.price_from_studio ?? 8000000, price_from_1br: s?.price_from_1br ?? 10000000, price_from_2br: s?.price_from_2br ?? 12000000 }} />
 

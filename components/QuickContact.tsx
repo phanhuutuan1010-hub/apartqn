@@ -1,5 +1,6 @@
 'use client';
 
+import { DEFAULT_LOCALE } from '@/i18n/locales';
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { fmtPhone, isVnMobile, telHref, tgHref, waHref, zaloHref } from '@/lib/phone';
@@ -33,9 +34,9 @@ export function QuickContact({ contact }: { contact: SiteContact }) {
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
   const { hotline, person } = contact;
-  const zalo = l === 'vi' ? contact.zalo : undefined;
-  const wa = l === 'en' && contact.whatsapp ? waHref(contact.whatsapp) : null;
-  const tg = l === 'en' ? tgHref(contact.telegramPhone, contact.telegramUsername) : null;
+  const zalo = l === DEFAULT_LOCALE ? contact.zalo : undefined;
+  const wa = l !== DEFAULT_LOCALE && contact.whatsapp ? waHref(contact.whatsapp) : null;
+  const tg = l !== DEFAULT_LOCALE ? tgHref(contact.telegramPhone, contact.telegramUsername) : null;
 
   const onCall = async (e: React.MouseEvent) => {
     if (!hotline) return;
@@ -156,10 +157,10 @@ export function ConsignBar({ contact }: { contact: SiteContact }) {
     vv?.addEventListener('resize', check);
     return () => { document.removeEventListener('focusin', check); document.removeEventListener('focusout', later); vv?.removeEventListener('resize', check); };
   }, []);
-  const hotline = l === 'vi' ? contact.hotline : undefined;
-  const zalo = l === 'vi' ? contact.zalo : undefined;
-  const wa = l === 'en' && contact.whatsapp ? waHref(contact.whatsapp) : null;
-  const tg = l === 'en' ? tgHref(contact.telegramPhone, contact.telegramUsername) : null;
+  const hotline = l === DEFAULT_LOCALE ? contact.hotline : undefined;
+  const zalo = l === DEFAULT_LOCALE ? contact.zalo : undefined;
+  const wa = l !== DEFAULT_LOCALE && contact.whatsapp ? waHref(contact.whatsapp) : null;
+  const tg = l !== DEFAULT_LOCALE ? tgHref(contact.telegramPhone, contact.telegramUsername) : null;
   return (
     <>
       <div className={styles.barSpace} aria-hidden />

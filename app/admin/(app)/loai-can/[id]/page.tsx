@@ -6,8 +6,11 @@ import { requireStaff, staffDirectory } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
 import { daysAgoIso, fmtDateTime, UT_LABEL } from '@/lib/admin/labels';
-import { enStatusOf } from '@/lib/enStatus';
-import { loadGlossary } from '@/lib/admin/glossary';
+import { LOCALES, type Locale } from '@/i18n/locales';
+import { describeUnitType } from '@/lib/content/describe';
+import { toBuildingFees } from '@/lib/fees';
+import type { BuildingAmenity } from '@/lib/types';
+import type { Feature, Furniture, UnitTypeKind, View } from '@/lib/unitTypes';
 import type { PhotoView } from '@/components/admin/PhotoManager';
 import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
 import { UnitTypeForm, type UnitTypeData } from '@/components/admin/UnitTypeForm';
@@ -16,20 +19,19 @@ import { PostButton } from '@/components/admin/PostButton';
 
 export const metadata: Metadata = { title: 'Loại căn' };
 
-export default async function UnitTypeEditPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string; copied?: string; queue?: string }> }) {
+export default async function UnitTypeEditPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string; copied?: string }> }) {
   const { id } = await params;
-  const { created, copied, queue } = await searchParams;
+  const { created, copied } = await searchParams;
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const me = await requireStaff();
   const sb = await supabaseServer();
-  const [{ data: u }, { data: ph }, dir, glossary] = await Promise.all([
-    sb.from('unit_types').select('*, buildings(id, name, code_prefix, is_visible)').eq('id', id).maybeSingle(),
+  const [{ data: u }, { data: ph }, dir] = await Promise.all([
+    sb.from('unit_types').select('*, buildings(*)').eq('id', id).maybeSingle(),
     sb.from('photos').select('id, path, thumb_path, visibility, is_cover, width, height, watermark, tag, source, needs_reupload').eq('unit_type_id', id).order('sort'),
     staffDirectory(),
-    loadGlossary(sb),
   ]);
   if (!u) notFound(); // not found, or in the trash (RLS)
-  const b = u.buildings as { id: string; name: string; code_prefix: string; is_visible: boolean };
+  const b = u.buildings as { id: string; name: string; street: string; amenities: string[]; code_prefix: string; is_visible: boolean } & Record<string, unknown>;
   const [{ data: others }, { count: leadN }, { count: chatN }] = await Promise.all([
     sb.from('admin_unit_types').select('id, code, building_name').neq('id', id).order('building_sort').order('sort'),
     sb.from('leads').select('id', { count: 'exact', head: true }).eq('unit_type_id', id).gte('created_at', daysAgoIso(30)),
@@ -42,6 +44,11 @@ export default async function UnitTypeEditPage({ params, searchParams }: { param
   const live = u.is_visible && b.is_visible;
   const editor = u.updated_by ? dir.get(u.updated_by)?.name : null;
   const can = me.role === 'admin' || me.can_publish;
+  // generated description preview (as saved); needs a price and an area to say anything useful
+  const unit = { type: u.type as UnitTypeKind, areaMin: Number(u.area_min ?? 0), areaMax: Number(u.area_max ?? u.area_min ?? 0), priceFrom: Number(u.price_from ?? 0),
+    furniture: (u.furniture ?? undefined) as Furniture | undefined, views: (u.views ?? []) as View[], features: (u.features ?? []) as Feature[] };
+  const bld = { name: b.name, street: b.street, amenities: (b.amenities ?? []) as BuildingAmenity[], fees: toBuildingFees(b) };
+  const generated = Object.fromEntries(LOCALES.map((l) => [l, u.price_from != null && u.area_min != null ? describeUnitType(unit, bld, l) : 'Điền giá “từ” và diện tích để xem mô tả tự sinh.'])) as Record<Locale, string>;
 
   return (
     <div className="a-page">
@@ -66,12 +73,10 @@ export default async function UnitTypeEditPage({ params, searchParams }: { param
       </div>
       {!b.is_visible && <div className="a-alert warn" style={{ marginBottom: 14 }}>Toà nhà đang ẩn — loại căn này chỉ lên website khi toà được bật hiển thị.</div>}
       {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo loại căn (đang ẩn). Điền giá, diện tích, thêm ảnh căn mẫu rồi bật Hiển thị.</div>}
-      {copied && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã nhân bản giá, diện tích, ghi chú và mô tả sang loại căn này. Kiểm tra lại rồi lưu nếu cần chỉnh.</div>}
+      {copied && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã nhân bản giá, diện tích, nội thất, view, đặc điểm và mô tả tự viết sang loại căn này. Kiểm tra lại rồi lưu nếu cần chỉnh.</div>}
       <UnitTypeForm
         u={u as UnitTypeData}
-        enStatus={enStatusOf(u.desc_vi, u.desc_en, u.desc_en_vi_hash)}
-        glossary={glossary}
-        queue={queue === 'en'}
+        generated={generated}
         photos={<PhotoManagerLazy owner={{ kind: 'unit_type', id }} photos={photos} />}
       />
     </div>

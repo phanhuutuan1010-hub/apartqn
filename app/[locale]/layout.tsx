@@ -19,6 +19,23 @@ const noto = localFont({
 });
 
 /**
+ * Cyrillic for Russian pages only: Noto Sans' own Cyrillic subset (variable 400–800, 20 KB — see app/fonts/README.md),
+ * limited by unicode-range to Cyrillic so Latin text keeps the site font. The family is referenced only under
+ * html[lang=ru] (globals.css) and not preloaded, so other languages never download it.
+ */
+const notoCyr = localFont({
+  src: '../fonts/NotoSans-cyrillic.woff2',
+  weight: '400 800',
+  style: 'normal',
+  display: 'swap',
+  preload: false,
+  adjustFontFallback: false,
+  fallback: [],
+  declarations: [{ prop: 'unicode-range', value: 'U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116' }],
+  variable: '--font-noto-cyr',
+});
+
+/**
  * Photo order: lazy photos stay out of the page until the main (fetchpriority=high) image has painted, so the cards
  * further down never compete with it for bandwidth. Any scroll / tap / key, or 3 s, lifts the hold. Without JS the
  * attribute is never set and every photo loads as usual. (CSS: html[data-pw] img[loading=lazy] in globals.css)
@@ -60,7 +77,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<'/[
   if (process.env.NEXT_PUBLIC_SUPABASE_URL) preconnect(new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin);
 
   return (
-    <html lang={locale} className={noto.variable} suppressHydrationWarning>
+    <html lang={locale} className={locale === 'ru' ? `${noto.variable} ${notoCyr.variable}` : noto.variable} suppressHydrationWarning>
       <body>
         <script dangerouslySetInnerHTML={{ __html: PHOTO_WAIT }} />
         <NextIntlClientProvider>{children}</NextIntlClientProvider>

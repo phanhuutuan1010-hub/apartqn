@@ -6,7 +6,11 @@
 - subset to Basic Latin + Latin-1, Vietnamese (incl. ₫ and combining marks), general punctuation, arrows, ▴▾▸
 
 It replaces `next/font/google`, whose CSS makes Vietnamese pages download the 168 KB `latin-ext` file
-(its unicode-range also covers đ/₫ and is declared after `vietnamese`). One 50 KB file serves vi/en (Cyrillic was dropped with the Russian locale; Cyrillic typed into search falls back to the system font).
+(its unicode-range also covers đ/₫ and is declared after `vietnamese`). One 50 KB file serves vi/en.
+
+`NotoSans-cyrillic.woff2` (20 KB, variable 400–800, same OFL licence) is Google Fonts' `cyrillic` subset of Noto Sans
+(`U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116`). Russian pages only (`html[lang=ru]`, app/[locale]/layout.tsx):
+Cyrillic comes from it, Latin / Vietnamese still from the subset above, so a Russian page loads 70 KB of fonts in total.
 
 Rebuild (Python + fonttools + brotli):
 

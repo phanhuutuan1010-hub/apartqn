@@ -17,13 +17,16 @@ export const revalidate = 3600;
 const W = 1200, H = 630;
 const font = (w: number) => readFile(join(process.cwd(), `app/fonts/og/NotoSans-${w}.ttf`));
 const fonts = Promise.all([font(500), font(800)]);
+/** Russian cards: the Cyrillic cut (one weight, used for both) */
+const cyr = readFile(join(process.cwd(), 'app/fonts/og/NotoSans-500-cyr.ttf'));
 
 /** hidden / unknown unit type → the generic site image */
 const generic = () => Response.redirect(`${SITE_URL}/images/hero-quy-nhon.webp`, 302);
 
 /**
  * Social card of a unit type, 1200×630: /og/unit/alt-2pn (default language) · /og/unit/alt-2pn.en (other languages).
- * Sample-unit cover (else the building's), building + type, "Từ {price}/tháng", "Căn mẫu" tag, ApartQN logo.
+ * Sample-unit cover (else the building's), building + type, "Từ {price}/tháng", "Căn mẫu" tag, ApartQN logo. The
+ * default-language card is the one shared in posts (apartqn.com/{CODE}): it carries the English type and price too.
  */
 export async function GET(_: Request, { params }: { params: Promise<{ code: string }> }) {
   const { code: raw } = await params;
@@ -34,6 +37,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ code: stri
   if (!x) return generic();
   const b = (await getBuildings().catch(() => [])).find((y) => y.id === x.buildingId);
   const t = await getTranslations({ locale: l });
+  const te = l === DEFAULT_LOCALE ? await getTranslations({ locale: 'en' }) : null;
 
   // satori reads JPEG / PNG: the cover (WebP in storage) is converted here, already cropped to the card
   let cover: string | null = null;
@@ -44,7 +48,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ code: stri
       cover = 'data:image/jpeg;base64,' + (await sharp(buf).resize(W, H, { fit: 'cover' }).jpeg({ quality: 78 }).toBuffer()).toString('base64');
     } catch { /* card without a photo */ }
   }
-  const [f500, f800] = await fonts;
+  const [f500, f800] = l === 'ru' ? await Promise.all([cyr, cyr]) : await fonts;
   const name = b?.name ?? '';
   const [bx, by, bw, bh] = LOGO.box;
 
@@ -61,9 +65,15 @@ export async function GET(_: Request, { params }: { params: Promise<{ code: stri
         <div style={{ position: 'absolute', left: 56, bottom: 48, width: W - 112, display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', fontSize: 58, fontWeight: 800, lineHeight: 1.12 }}>{name}</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 22 }}>
-            <div style={{ display: 'flex', fontSize: 40, fontWeight: 500 }}>{t(`ut_${x.type}`)}</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', fontSize: 52, fontWeight: 800 }}>
-              {t('priceFrom', { price: money(x.priceFrom, l) })}<span style={{ fontSize: 30, fontWeight: 500, marginLeft: 6 }}>{t('perMonth')}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', fontSize: 40, fontWeight: 500 }}>
+              <span>{t(`ut_${x.type}`)}</span>
+              {te && <span style={{ fontSize: 28, opacity: 0.85 }}>{te(`ut_${x.type}`)}</span>}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', fontSize: 52, fontWeight: 800 }}>
+                {t('priceFrom', { price: money(x.priceFrom, l) })}<span style={{ fontSize: 30, fontWeight: 500, marginLeft: 6 }}>{t('perMonth')}</span>
+              </div>
+              {te && <div style={{ display: 'flex', fontSize: 28, fontWeight: 500, opacity: 0.85 }}>{te('priceFrom', { price: money(x.priceFrom, 'en') })}{te('perMonth')}</div>}
             </div>
           </div>
         </div>

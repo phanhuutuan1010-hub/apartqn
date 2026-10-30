@@ -10,6 +10,7 @@ import { contacts } from '@/lib/contacts';
 import { minPrice } from '@/lib/filters';
 import { alternatesOf, OG_LOCALE } from '@/lib/seo';
 import { buildingPath, buildingUrl } from '@/lib/unitTypes';
+import { describeBuilding, shown } from '@/lib/content/describe';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DemoBadge } from '@/components/Badges';
@@ -118,12 +119,10 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
                 <div className={styles.empty}>{t('bldNoTypes')}</div>
               )}
             </section>
-            {b.desc[l] && (
-              <section className={styles.sec}>
-                <h2 className={styles.h2}>{t('bldDescTitle')}</h2>
-                <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: 'var(--gray-700)', whiteSpace: 'pre-line', maxWidth: '68ch' }} lang={l}>{b.desc[l]}</p>
-              </section>
-            )}
+            <section className={styles.sec}>
+              <h2 className={styles.h2}>{t('bldDescTitle')}</h2>
+              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, color: 'var(--gray-700)', whiteSpace: 'pre-line', maxWidth: '68ch' }} lang={l}>{shown(b.desc[l], () => describeBuilding(b, types, l))}</p>
+            </section>
             {videoId && (
               <section className={styles.sec} id="video">
                 <h2 className={styles.h2}>{t('video')}</h2>

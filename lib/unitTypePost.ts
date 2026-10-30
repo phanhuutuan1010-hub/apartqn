@@ -5,24 +5,26 @@
  * Quy Nhơn, từ …"). No phone number, nothing invented, empty fields skipped. Pure — tests/unit/post.test.ts.
  * Russian lines are templates over structured fields and still need a native review (RU below).
  */
-import { UNIT_TYPE_KINDS, type Feature, type UnitTypeKind } from './unitTypes';
+import { UNIT_TYPE_KINDS, type Feature, type Furniture, type UnitTypeKind, type View } from './unitTypes';
 
 export type PostLang = 'vi' | 'en' | 'ru';
 export type PostChannel = 'facebook' | 'zalo' | 'telegram';
 export type PostPair = 'vi-en' | 'ru-en';
-export type TypePost = { code: string; type: UnitTypeKind; building: string; priceFrom: number; areaMin: number | null; areaMax: number | null; features: Feature[]; photoCount: number };
+export type TypePost = { code: string; type: UnitTypeKind; building: string; priceFrom: number; areaMin: number | null; areaMax: number | null; furniture?: Furniture | null; views?: View[]; features: Feature[]; photoCount: number };
 
 /** Every Russian string used in posts — flagged for native review. */
 export const RU = {
-  type: { studio: 'Студия', '1pn': 'Квартира с 1 спальней', '2pn': 'Квартира с 2 спальнями', '3pn': 'Квартира с 3 спальнями' },
-  short: { studio: 'Студии', '1pn': 'Квартиры с 1 спальней', '2pn': 'Квартиры с 2 спальнями', '3pn': 'Квартиры с 3 спальнями' },
+  type: { studio: 'Студия', '1pn': 'Квартира — 1 спальня', '2pn': 'Квартира — 2 спальни', '3pn': 'Квартира — 3 спальни' },
+  short: { studio: 'Студии', '1pn': 'Квартиры — 1 спальня', '2pn': 'Квартиры — 2 спальни', '3pn': 'Квартиры — 3 спальни' },
   city: 'Куинён',
   from: 'от', perMonth: '/мес.',
   sample: 'Фото образца квартиры',
   roundup: (what: string, n: number, min: string) => `${what} в ${n} ${n === 1 ? 'доме' : 'домах'} в центре Куинёна, ${'от'} ${min}${'/мес.'}`,
+  view: { sea: 'вид на море', city: 'вид на город', mountain: 'вид на горы', lake: 'вид на лагуну', river: 'вид на реку' } as Record<View, string>,
+  furnished: 'полностью меблирована',
   feature: {
-    sea_view: 'вид на море', city_view: 'вид на город', river_view: 'вид на реку', lagoon_view: 'вид на лагуну', balcony: 'балкон', workspace: 'рабочее место',
-    bathtub: 'ванна', washer: 'стиральная машина', kitchen: 'кухня', furnished: 'полностью меблирована', pets_ok: 'можно с животными',
+    washer: 'стиральная машина', dryer: 'сушильная машина', full_kitchen: 'оборудованная кухня', dishwasher: 'посудомоечная машина', oven: 'духовка',
+    balcony: 'балкон', bathtub: 'ванна', workspace: 'рабочее место', air_con: 'кондиционер', wifi: 'Wi-Fi', smart_tv: 'смарт-ТВ', pets_ok: 'можно с животными',
   } as Record<Feature, string>,
 } as const;
 
@@ -32,9 +34,11 @@ const T = {
     short: { studio: 'Căn studio', '1pn': 'Căn 1PN', '2pn': 'Căn 2PN', '3pn': 'Căn 3PN' },
     city: 'Quy Nhơn', from: 'Từ', perMonth: '/tháng', sample: 'Ảnh căn mẫu',
     roundup: (what: string, n: number, min: string) => `${what} tại ${n} toà trung tâm Quy Nhơn, từ ${min}/tháng`,
+    view: { sea: 'view biển', city: 'view thành phố', mountain: 'view núi', lake: 'view đầm', river: 'view sông' } as Record<View, string>,
+    furnished: 'đầy đủ nội thất',
     feature: {
-      sea_view: 'view biển', city_view: 'view thành phố', river_view: 'view sông', lagoon_view: 'view đầm', balcony: 'ban công', workspace: 'góc làm việc',
-      bathtub: 'bồn tắm', washer: 'máy giặt riêng', kitchen: 'bếp nấu', furnished: 'đầy đủ nội thất', pets_ok: 'cho nuôi thú cưng',
+      washer: 'máy giặt riêng', dryer: 'máy sấy', full_kitchen: 'bếp đầy đủ dụng cụ', dishwasher: 'máy rửa bát', oven: 'lò nướng',
+      balcony: 'ban công', bathtub: 'bồn tắm', workspace: 'góc làm việc', air_con: 'điều hoà', wifi: 'wifi', smart_tv: 'smart TV', pets_ok: 'cho nuôi thú cưng',
     } as Record<Feature, string>,
   },
   en: {
@@ -42,9 +46,11 @@ const T = {
     short: { studio: 'Studios', '1pn': '1-bedroom apartments', '2pn': '2-bedroom apartments', '3pn': '3-bedroom apartments' },
     city: 'Quy Nhon', from: 'From', perMonth: '/month', sample: 'Sample unit photos',
     roundup: (what: string, n: number, min: string) => `${what} in ${n} central Quy Nhon building${n === 1 ? '' : 's'}, from ${min}/month`,
+    view: { sea: 'sea view', city: 'city view', mountain: 'mountain view', lake: 'lagoon view', river: 'river view' } as Record<View, string>,
+    furnished: 'fully furnished',
     feature: {
-      sea_view: 'sea view', city_view: 'city view', river_view: 'river view', lagoon_view: 'lagoon view', balcony: 'balcony', workspace: 'workspace',
-      bathtub: 'bathtub', washer: 'own washing machine', kitchen: 'kitchen', furnished: 'fully furnished', pets_ok: 'pets allowed',
+      washer: 'own washing machine', dryer: 'dryer', full_kitchen: 'fully equipped kitchen', dishwasher: 'dishwasher', oven: 'oven',
+      balcony: 'balcony', bathtub: 'bathtub', workspace: 'workspace', air_con: 'air conditioning', wifi: 'Wi-Fi', smart_tv: 'smart TV', pets_ok: 'pets allowed',
     } as Record<Feature, string>,
   },
   ru: { ...RU, from: 'От' },
@@ -60,20 +66,24 @@ const area = (d: Pick<TypePost, 'areaMin' | 'areaMax'>, l: PostLang) => {
   return `${d.areaMax && d.areaMax !== d.areaMin ? `${f(d.areaMin)}–${f(d.areaMax)}` : f(d.areaMin)} m²`;
 };
 
-/** the link: apartqn.com/ALT-2PN (default language), /en/ALT-2PN for the English block */
-export const typeLink = (origin: string, code: string, l: PostLang) =>
-  `${origin.replace(/^https?:\/\//, '').replace(/\/$/, '')}${l === 'vi' ? '' : '/en'}/${code.toUpperCase()}`;
+/**
+ * The link: apartqn.com/ALT-2PN, which opens in the reader's own language (lib/entry.ts). A VI/EN post pins the English
+ * block to /en/ALT-2PN; a RU/EN post keeps apartqn.com/{CODE} in both blocks (Russian browsers land on /ru by themselves).
+ */
+export const typeLink = (origin: string, code: string, l: PostLang, pair: PostPair = 'vi-en') =>
+  `${origin.replace(/^https?:\/\//, '').replace(/\/$/, '')}${l === 'en' && pair === 'vi-en' ? '/en' : ''}/${code.toUpperCase()}`;
 
-function block(d: TypePost, l: PostLang, origin: string): string[] {
+function block(d: TypePost, l: PostLang, origin: string, pair: PostPair): string[] {
   const t = T[l];
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  const feats = d.features.slice(0, 2).map((f) => t.feature[f]);
+  // up to two highlights: the view, full furniture, then the features
+  const feats = [...(d.views ?? []).map((v) => t.view[v]), ...(d.furniture === 'full' ? [t.furnished] : []), ...d.features.map((f) => t.feature[f])].slice(0, 2);
   return [
     `🏢 ${t.type[d.type]} · ${d.building} – ${t.city}`,
     [`${t.from} ${postMoney(d.priceFrom, l)}${t.perMonth}`, area(d, l)].filter(Boolean).join(' · '),
     ...(feats.length ? [cap(feats.join(' · '))] : []),
     ...(d.photoCount > 0 ? [`📷 ${t.sample}`] : []),
-    `👉 ${typeLink(origin, d.code, l)}`,
+    `👉 ${typeLink(origin, d.code, l, pair)}`,
   ];
 }
 
@@ -81,7 +91,7 @@ const langsOf = (channel: PostChannel, pair: PostPair): PostLang[] => (channel =
 
 /** One unit type: VI/EN (or RU/EN) blocks; Zalo Vietnamese only. */
 export function buildTypePost(d: TypePost, o: { channel: PostChannel; pair: PostPair; origin: string }): string {
-  return langsOf(o.channel, o.pair).map((l) => block(d, l, o.origin).join('\n')).join('\n\n');
+  return langsOf(o.channel, o.pair).map((l) => block(d, l, o.origin, o.pair).join('\n')).join('\n\n');
 }
 
 /** One type across buildings (visible ones only, cheapest first): headline + one line per building. */
@@ -90,7 +100,7 @@ export function buildRoundup(type: UnitTypeKind, items: Omit<TypePost, 'type'>[]
   const xs = [...items].sort((a, b) => a.priceFrom - b.priceFrom);
   return langsOf(o.channel, o.pair).map((l) => {
     const t = T[l];
-    const lines = xs.map((x) => `• ${x.building}: ${t.from.toLowerCase()} ${postMoney(x.priceFrom, l)} — ${typeLink(o.origin, x.code, l)}`);
+    const lines = xs.map((x) => `• ${x.building}: ${t.from.toLowerCase()} ${postMoney(x.priceFrom, l)} — ${typeLink(o.origin, x.code, l, o.pair)}`);
     return [`🏢 ${t.roundup(t.short[type], xs.length, postMoney(xs[0].priceFrom, l))}`, ...lines, `📷 ${t.sample}`].join('\n');
   }).join('\n\n');
 }

@@ -43,7 +43,7 @@ export function LangSwitcher() {
   return (
     <div role="group" aria-label={t('fLang')} className={styles.wrap}>
       {LOCALES.map((l) => (
-        <button key={l} type="button" lang={l} aria-pressed={l === locale} aria-label={t(`langName_${l}`)}
+        <button key={l} type="button" lang={l} aria-pressed={l === locale} aria-label={`${l.toUpperCase()} · ${t(`langName_${l}`)}`}
           className={`${styles.opt} ${l === locale ? styles.cur : ''}`} onClick={() => choose(l)}>
           {l.toUpperCase()}
         </button>

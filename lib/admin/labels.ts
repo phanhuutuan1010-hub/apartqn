@@ -18,21 +18,12 @@ export const STATUS_TONE: Record<ListingStatusAll, 'muted' | 'warn' | 'ok' | 'bl
 };
 export const PUBLIC_STATUSES: ListingStatusAll[] = ['available', 'reserved', 'rented'];
 
-export const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const;
-export const VIEWS = ['sea', 'city', 'river', 'lagoon'] as const;
-export const FURNS = ['full', 'basic', 'empty'] as const;
-export const AMENITIES = ['pool', 'gym', 'security', 'lift', 'basement', 'mart', 'kids'] as const;
-
-export const DIR_LABEL: Record<string, string> = { N: 'Bắc', NE: 'Đông Bắc', E: 'Đông', SE: 'Đông Nam', S: 'Nam', SW: 'Tây Nam', W: 'Tây', NW: 'Tây Bắc' };
-export const VIEW_LABEL: Record<string, string> = { sea: 'View biển', city: 'View thành phố', river: 'View sông', lagoon: 'View đầm' };
-export const FURN_LABEL: Record<string, string> = { full: 'Đầy đủ', basic: 'Cơ bản', empty: 'Không nội thất' };
+export { AMENITIES } from '@/lib/unitTypes';
 export const AMENITY_LABEL: Record<string, string> = {
-  pool: 'Hồ bơi', gym: 'Phòng gym', security: 'Bảo vệ 24/7', lift: 'Thang máy', basement: 'Hầm gửi xe', mart: 'Siêu thị mini', kids: 'Khu vui chơi trẻ em',
+  pool: 'Hồ bơi', gym: 'Phòng gym', security: 'Bảo vệ 24/7', elevator: 'Thang máy', car_parking: 'Chỗ đậu ô tô', motorbike_parking: 'Chỗ gửi xe máy',
+  reception: 'Lễ tân', minimart: 'Siêu thị mini', playground: 'Khu vui chơi trẻ em', garden: 'Vườn', bbq: 'Khu BBQ', sauna: 'Xông hơi', laundry: 'Giặt là',
+  coworking: 'Không gian làm việc chung',
 };
-
-export const dirLabel = (d: string) => DIR_LABEL[d] ?? d;
-export const viewLabel = (v: string) => VIEW_LABEL[v] ?? v;
-export const furnLabel = (f: string) => FURN_LABEL[f] ?? f;
 export const amenityLabel = (a: string) => AMENITY_LABEL[a] ?? a;
 
 /** "13.500.000" / "13500000" / "13,5tr" → 13500000; empty → null */
@@ -56,17 +47,19 @@ export const daysSince = (iso: string | null | undefined) =>
 /** ISO timestamp N days ago */
 export const daysAgoIso = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
 
-/** unit types (same text as i18n/vi.json ut_* / f_*) */
+/** unit types (same text as i18n/vi.json ut_* / f_* / vw_* / fu_*) */
 export const UT_LABEL: Record<string, string> = { studio: 'Studio', '1pn': '1 phòng ngủ', '2pn': '2 phòng ngủ', '3pn': '3 phòng ngủ' };
 export const UT_SHORT: Record<string, string> = { studio: 'Studio', '1pn': '1PN', '2pn': '2PN', '3pn': '3PN' };
 export const FEATURE_LABEL: Record<string, string> = {
-  sea_view: 'View biển', city_view: 'View thành phố', river_view: 'View sông', lagoon_view: 'View đầm', balcony: 'Ban công', workspace: 'Góc làm việc',
-  bathtub: 'Bồn tắm', washer: 'Máy giặt riêng', kitchen: 'Bếp nấu', furnished: 'Đầy đủ nội thất', pets_ok: 'Cho nuôi thú cưng',
+  washer: 'Máy giặt riêng', dryer: 'Máy sấy', full_kitchen: 'Bếp đầy đủ dụng cụ', dishwasher: 'Máy rửa bát', oven: 'Lò nướng', balcony: 'Ban công',
+  bathtub: 'Bồn tắm', workspace: 'Góc làm việc', air_con: 'Điều hoà', wifi: 'Wi-Fi', smart_tv: 'Smart TV', pets_ok: 'Cho nuôi thú cưng',
 };
+export const VIEW_LABEL: Record<string, string> = { sea: 'View biển', city: 'View thành phố', mountain: 'View núi', lake: 'View đầm', river: 'View sông' };
+export const FURNITURE_LABEL: Record<string, string> = { full: 'Đầy đủ nội thất', basic: 'Nội thất cơ bản', none: 'Không nội thất' };
 
-/** what a unit type still lacks before / while it is on the website (Loại căn list, Hôm nay) */
-export const missingOf = (r: { photo_count: number; price_from: number | null; area_min: number | null; en_status: string }) => [
-  !r.photo_count && 'ảnh', r.price_from == null && 'giá', r.area_min == null && 'diện tích', (r.en_status === 'none' || r.en_status === 'stale') && 'EN',
+/** what a unit type still lacks before / while it is on the website (Loại căn list, Hôm nay); descriptions are generated */
+export const missingOf = (r: { photo_count: number; price_from: number | null; area_min: number | null; furniture?: string | null }) => [
+  !r.photo_count && 'ảnh', r.price_from == null && 'giá', r.area_min == null && 'diện tích', r.furniture == null && 'nội thất',
 ].filter(Boolean) as string[];
 
 /** "Liên hệ tôi qua" chips of the "Kiểm tra căn trống" form */

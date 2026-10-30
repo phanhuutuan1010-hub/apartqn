@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildRoundup, buildTypePost, postMoney, typeLink, type TypePost } from '@/lib/unitTypePost';
 
-const D: TypePost = { code: 'ALT-2PN', type: '2pn', building: 'Altara Residences', priceFrom: 13_500_000, areaMin: 68, areaMax: 75.5, features: ['sea_view', 'balcony', 'kitchen'], photoCount: 6 };
+const D: TypePost = { code: 'ALT-2PN', type: '2pn', building: 'Altara Residences', priceFrom: 13_500_000, areaMin: 68, areaMax: 75.5, views: ['sea'], furniture: 'basic', features: ['balcony', 'full_kitchen'], photoCount: 6 };
 const O = { channel: 'facebook' as const, pair: 'vi-en' as const, origin: 'https://apartqn.com' };
 
 describe('unit type post', () => {
@@ -21,13 +21,15 @@ describe('unit type post', () => {
     ].join('\n'));
   });
   it('Zalo: Vietnamese only; no photos → no photo line; no features → no line', () => {
-    const t = buildTypePost({ ...D, features: [], photoCount: 0, areaMax: 68 }, { ...O, channel: 'zalo' });
+    const t = buildTypePost({ ...D, views: [], features: [], photoCount: 0, areaMax: 68 }, { ...O, channel: 'zalo' });
     expect(t).toBe('🏢 Căn 2 phòng ngủ · Altara Residences – Quy Nhơn\nTừ 13.500.000 đ/tháng · 68 m²\n👉 apartqn.com/ALT-2PN');
   });
-  it('RU/EN: Russian block first, then English; never a phone number or availability', () => {
+  it('RU/EN: Russian block first, then English; both link apartqn.com/{CODE}; never a phone number or availability', () => {
     const t = buildTypePost(D, { ...O, pair: 'ru-en' });
     expect(t.split('\n\n')[0]).toContain('От 13 500 000 VND/мес.');
+    expect(t.split('\n\n')[0]).toContain('Квартира — 2 спальни');
     expect(t.split('\n\n')[1]).toContain('From 13,500,000 VND/month');
+    expect(t.match(/👉 apartqn\.com\/ALT-2PN/g)).toHaveLength(2);
     expect(t).not.toMatch(/\d{9,}|còn trống|available/i);
   });
   it('roundup of one type across buildings, cheapest first', () => {

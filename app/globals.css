@@ -28,6 +28,8 @@
   --hdr: 60px;
   color-scheme: light;
 }
+/* Russian pages: the Cyrillic subset first (its unicode-range covers only Cyrillic), the site font for the rest */
+html[lang='ru'] { --font: var(--font-noto-cyr), var(--font-noto), 'Noto Sans', system-ui, sans-serif; }
 @media (min-width: 768px) { :root { --px: 24px; } }
 @media (min-width: 1024px) { :root { --px: 32px; --hdr: 72px; } }
 

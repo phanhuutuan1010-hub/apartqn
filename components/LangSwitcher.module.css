@@ -4,3 +4,8 @@
 .cur { background: var(--blue-50); color: var(--blue-500); }
 .cur:hover { color: var(--blue-500); }
 .opt:focus-visible { outline: 2px solid var(--blue-500); outline-offset: 1px; }
+/* three languages on a 320–399 px phone: header logo + search + VI|EN|RU + menu must fit */
+@media (max-width: 399.98px) {
+  .wrap { padding: 2px; gap: 0; }
+  .opt { min-width: 30px; padding: 0 4px; font-size: 12px; letter-spacing: 0; }
+}

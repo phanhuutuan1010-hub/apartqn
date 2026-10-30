@@ -10,8 +10,10 @@ import { fmtDateTime } from '@/lib/admin/labels';
 import { BuildingForm, type BuildingData } from '@/components/admin/BuildingForm';
 import { BuildingDelete } from '@/components/admin/BuildingDelete';
 import { BuildingVisibility } from '@/components/admin/BuildingVisibility';
-import { enStatusOf } from '@/lib/enStatus';
-import { loadGlossary } from '@/lib/admin/glossary';
+import { LOCALES, type Locale } from '@/i18n/locales';
+import { describeBuilding } from '@/lib/content/describe';
+import { isUnitTypeKind } from '@/lib/unitTypes';
+import type { BuildingAmenity } from '@/lib/types';
 import type { PhotoView } from '@/components/admin/PhotoManager';
 import { PhotoManagerLazy } from '@/components/admin/PhotoManagerLazy';
 
@@ -27,7 +29,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
 
   let b: BuildingData = {
     id: null, slug: '', name: '', aliases: [], code_prefix: '', street: '', maps_url: null, video_url: null, lat: null, lng: null, amenities: [], default_fees: {},
-    desc_vi: null, desc_en: null, sort: 0, is_demo: false, ...EMPTY_FEES,
+    sort: 0, is_demo: false, ...EMPTY_FEES,
   };
   let copiedFrom: string | null = null;
   let photos: PhotoView[] = [];
@@ -41,7 +43,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
       copiedFrom = src.name;
       const fees = toBuildingFees(src);
       b = {
-        ...b, amenities: src.amenities ?? [], default_fees: src.default_fees ?? {}, desc_vi: src.desc_vi, desc_en: src.desc_en,
+        ...b, amenities: src.amenities ?? [], default_fees: src.default_fees ?? {},
         sort: src.sort, ...Object.fromEntries(FEE_FIELDS.map((k) => [k, fees[k]])),
       } as BuildingData;
     }
@@ -60,7 +62,6 @@ export default async function BuildingEditPage({ params, searchParams }: { param
       !(ph ?? []).length && 'Chưa có ảnh toà nhà',
       (data.lat == null || data.lng == null) && 'Chưa có vị trí (link Google Maps)',
       !data.fee_verified && 'Phí toà nhà chưa xác minh',
-      !data.desc_vi && 'Chưa có mô tả',
     ].filter(Boolean) as string[];
     if (!data) notFound();
     b = { ...(data as BuildingData), ...toBuildingFees(data) };
@@ -69,6 +70,10 @@ export default async function BuildingEditPage({ params, searchParams }: { param
     photos = (ph ?? []).map((p) => ({ id: p.id, visibility: 'public', is_cover: p.is_cover, watermark: p.watermark, tag: p.tag, source: p.source, needs_reupload: p.needs_reupload, width: p.width, height: p.height, url: publicPhotoUrl(SUPABASE_URL, p.thumb_path ?? p.path) }));
   }
   const dir = await staffDirectory();
+  // generated description preview (as saved): the building's visible types and fees
+  const { data: vt } = isNew ? { data: [] } : await sb.from('unit_types').select('type, price_from').eq('building_id', id).eq('is_visible', true);
+  const types = (vt ?? []).filter((t) => isUnitTypeKind(t.type) && t.price_from != null).map((t) => ({ type: t.type, priceFrom: Number(t.price_from) }));
+  const generated = Object.fromEntries(LOCALES.map((l) => [l, b.name ? describeBuilding({ name: b.name, street: b.street, amenities: b.amenities as BuildingAmenity[], fees: b }, types, l) : ''])) as Record<Locale, string>;
 
   return (
     <div className="a-page">
@@ -94,8 +99,8 @@ export default async function BuildingEditPage({ params, searchParams }: { param
         )}
       </div>
       {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo toà nhà kèm 4 loại căn nháp (ẩn). Thêm ảnh bên dưới, rồi điền giá và diện tích ở <Link href={`/admin/loai-can?b=${id}`}>Loại căn</Link>.</div>}
-      {copiedFrom && <div className="a-alert info" style={{ marginBottom: 14 }}>Bản sao từ <b>{copiedFrom}</b>: đã chép phí, tiện ích, mô tả. Nhập tên, đường dẫn, tiền tố mã và địa chỉ rồi bấm Tạo toà nhà.</div>}
-      <BuildingForm b={b} demoLeft={demoLeft} frozen={frozen} enStatus={enStatusOf(b.desc_vi, b.desc_en, b.desc_en_vi_hash)} glossary={await loadGlossary(sb)} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
+      {copiedFrom && <div className="a-alert info" style={{ marginBottom: 14 }}>Bản sao từ <b>{copiedFrom}</b>: đã chép phí và tiện ích. Nhập tên, đường dẫn, tiền tố mã và địa chỉ rồi bấm Tạo toà nhà.</div>}
+      <BuildingForm b={b} demoLeft={demoLeft} frozen={frozen} generated={generated} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
     </div>
   );
 }

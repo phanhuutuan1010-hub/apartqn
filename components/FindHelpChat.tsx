@@ -18,8 +18,8 @@ const ICON: Record<Channel, typeof IconZalo> = { zalo: IconZalo, whatsapp: IconW
 
 /** what describes the search (lib/filters.ts names, empty ones left out); free text goes as the query */
 const criteriaOf = (f: Filters) => {
-  const { b, t, pmax, ft, near } = f;
-  return Object.fromEntries(Object.entries({ b, t, pmax, ft, near }).filter(([, v]) => v !== '' && !(Array.isArray(v) && !v.length)));
+  const { b, t, pmax, fu, vw, ft, near } = f;
+  return Object.fromEntries(Object.entries({ b, t, pmax, fu, vw, ft, near }).filter(([, v]) => v !== '' && !(Array.isArray(v) && !v.length)));
 };
 
 /**

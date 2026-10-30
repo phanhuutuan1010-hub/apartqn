@@ -6,11 +6,10 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
 import { revalidatePublic } from '@/lib/revalidate';
-import { parseVnd, AMENITIES } from '@/lib/admin/labels';
+import { parseVnd } from '@/lib/admin/labels';
+import { AMENITIES } from '@/lib/unitTypes';
 import { FEE_FIELDS, type BuildingFees } from '@/lib/fees';
 import { normaliseYoutube, YOUTUBE_RE } from '@/lib/youtube';
-import { viHash } from '@/lib/enStatus';
-import { mismatchText } from '@/lib/translate';
 import { coordsFromMapsUrl, isMapsHost, mapsUrlOk } from '@/lib/maps';
 
 export type BuildingResult = { ok?: string; error?: string; warning?: string; fieldErrors?: Record<string, string> };
@@ -40,7 +39,7 @@ const Schema = z.object({
   electricity_rate: vnd, electricity_vat_pct: pct, water_rate: vnd, water_vat_pct: pct,
   water_extra_note: txt(300), fee_source: txt(300), fee_updated_on: date,
   fee_verified: z.preprocess((v) => v === 'on', z.boolean()),
-  desc_vi: txt(8000), desc_en: txt(8000),
+  desc_custom_vi: txt(8000), desc_custom_en: txt(8000), desc_custom_ru: txt(8000),
   sort: z.coerce.number().int().min(0).max(999),
   is_demo: z.preprocess((v) => v === 'on', z.boolean()),
 }).refine((v) => (v.lat == null) === (v.lng == null), { message: 'Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai', path: ['lat'] });
@@ -115,9 +114,8 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, v[k]])) as BuildingFees;
   const row = {
     name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street, video_url: v.video_url,
-    amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo,
-    // "Bản EN vẫn đúng": the English now counts as written from the current Vietnamese
-    ...(fd.get('en_confirm') === 'on' && v.desc_en ? { desc_en_vi_hash: viHash(v.desc_vi) } : {}),
+    amenities, default_fees, ...fees, desc_custom_vi: v.desc_custom_vi, desc_custom_en: v.desc_custom_en, desc_custom_ru: v.desc_custom_ru,
+    sort: v.sort, is_demo: v.is_demo,
   };
   const sb = await supabaseServer();
   // position = the lat/lng fields (filled from the link in the form, editable by hand). A new link whose coordinates
@@ -144,8 +142,7 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   if (error) return dbError(error);
   await refreshBuilding(id);
   revalidatePath(`/admin/toa-nha/${id}`);
-  const warning = v.desc_en ? mismatchText(v.desc_vi ?? '', v.desc_en) || undefined : undefined;
-  return { ok: 'Đã lưu. Website cập nhật ngay (trang toà nhà và các loại căn trong toà).', warning };
+  return { ok: 'Đã lưu. Website cập nhật ngay (trang toà nhà và các loại căn trong toà).' };
 }
 
 /**

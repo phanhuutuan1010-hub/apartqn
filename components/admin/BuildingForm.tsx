@@ -6,19 +6,19 @@ import { mapsEmbedUrl } from '@/lib/maps';
 import type { BuildingFees } from '@/lib/fees';
 import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
 import { TagInput } from './TagInput';
-import { DescEditor } from './DescEditor';
-import type { EnStatus, GlossaryPair } from '@/lib/translateCore';
+import { CustomDescTabs } from './CustomDescTabs';
+import type { Locale } from '@/i18n/locales';
 
 export type BuildingData = {
   id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; maps_url: string | null; video_url: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
-  desc_vi: string | null; desc_en: string | null; desc_en_vi_hash?: string | null; sort: number; is_demo: boolean;
+  desc_custom_vi?: string | null; desc_custom_en?: string | null; desc_custom_ru?: string | null; sort: number; is_demo: boolean;
 } & BuildingFees;
 
 /** `frozen`: the building already has a public page (/PREFIX) → the prefix can't change. */
-export function BuildingForm({ b, photos, frozen = false, enStatus, glossary, demoLeft = [] }: {
-  b: BuildingData; photos?: React.ReactNode; frozen?: boolean; enStatus: EnStatus; glossary: GlossaryPair[];
+export function BuildingForm({ b, photos, frozen = false, generated, demoLeft = [] }: {
+  b: BuildingData; photos?: React.ReactNode; frozen?: boolean; /** the generated description per language (as saved) */ generated: Record<Locale, string>;
   /** placeholder data still on a demo building (shown when "Dữ liệu demo" is unticked) */
   demoLeft?: string[];
 }) {
@@ -127,8 +127,7 @@ export function BuildingForm({ b, photos, frozen = false, enStatus, glossary, de
 
       <section className="a-card">
         <h2 className="a-section-title">Mô tả</h2>
-        <DescEditor vi={s(b.desc_vi)} en={s(b.desc_en)} status={enStatus} glossary={glossary}
-          errors={{ vi: fe.desc_vi, en: fe.desc_en }} note="Trang EN chỉ hiện mô tả tiếng Anh; chưa dịch thì phần mô tả không hiện trên trang EN." />
+        <CustomDescTabs generated={generated} custom={{ vi: b.desc_custom_vi, en: b.desc_custom_en, ru: b.desc_custom_ru }} maxLength={8000} />
       </section>
 
       <div className="a-actions">

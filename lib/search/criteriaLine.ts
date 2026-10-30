@@ -5,7 +5,7 @@
  */
 import type { Feature } from '@/lib/unitTypes';
 
-export type Criteria = { b?: string; t?: string; pmax?: string; ft?: string[]; near?: string; q?: string };
+export type Criteria = { b?: string; t?: string; pmax?: string; fu?: string; vw?: string; ft?: string[]; near?: string; q?: string };
 export type T = (key: string, values?: Record<string, string | number>) => string;
 
 export function criteriaParts(c: Criteria, t: T, decimal: string, buildingName?: string): string[] {
@@ -13,8 +13,10 @@ export function criteriaParts(c: Criteria, t: T, decimal: string, buildingName?:
   if (c.b) parts.push(buildingName ?? c.b);
   if (c.t) parts.push(t(`crType_${c.t}`));
   if (c.pmax) parts.push(t('crBudget', { n: c.pmax.replace('.', decimal) }));
+  if (c.fu) parts.push(t(`fu_${c.fu}`));
+  if (c.vw) parts.push(t(`vw_${c.vw}`));
   for (const f of c.ft ?? []) parts.push(t(`f_${f as Feature}`));
-  if (c.near === 'sea' && !(c.ft ?? []).includes('sea_view')) parts.push(t('crNear'));
+  if (c.near === 'sea' && c.vw !== 'sea') parts.push(t('crNear'));
   return parts;
 }
 

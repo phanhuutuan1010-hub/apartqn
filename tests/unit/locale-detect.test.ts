@@ -11,10 +11,12 @@ describe('home page language', () => {
     expect(firstLanguage('*')).toBeNull();
     expect(firstLanguage(null)).toBeNull();
   });
-  it('Vietnamese browsers stay, everyone else goes to English', () => {
+  it('Vietnamese and Russian browsers get their language, everyone else (uk, be, kk …) English', () => {
     expect(visitorLocale({ acceptLanguage: 'vi-VN,vi;q=0.9', userAgent: CHROME })).toEqual({ locale: 'vi', remember: true });
     expect(visitorLocale({ acceptLanguage: 'en-US,en;q=0.9,vi;q=0.8', userAgent: CHROME })).toEqual({ locale: 'en', remember: true });
-    expect(visitorLocale({ acceptLanguage: 'ru-RU', userAgent: CHROME })).toEqual({ locale: 'en', remember: true });
+    expect(visitorLocale({ acceptLanguage: 'ru-RU', userAgent: CHROME })).toEqual({ locale: 'ru', remember: true });
+    expect(visitorLocale({ acceptLanguage: 'uk-UA,ru;q=0.9', userAgent: CHROME })).toEqual({ locale: 'en', remember: true });
+    expect(visitorLocale({ acceptLanguage: 'kk', userAgent: CHROME })).toEqual({ locale: 'en', remember: true });
     expect(visitorLocale({ userAgent: CHROME })).toEqual({ locale: 'en', remember: true });
     expect(visitorLocale({})).toEqual({ locale: 'en', remember: true });
   });
@@ -37,5 +39,7 @@ describe('home page language', () => {
     expect(enPath('/ky-gui')).toBe('/en/list-your-apartment');
     expect(enPath('/khong-co-trang-nay')).toBe('/en');
     expect(enPath('/can-ho/a/b')).toBe('/en');
+    expect(localizedPath('/can-ho', 'ru')).toBe('/ru/kvartiry');
+    expect(localizedPath('/ky-gui', 'ru')).toBe('/ru/sdat-kvartiru');
   });
 });

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { LOCALES, type Locale } from '@/i18n/locales';
-import { CONTACT_CHANNELS, FEATURES, UNIT_TYPE_KINDS } from '@/lib/unitTypes';
+import { CONTACT_CHANNELS, FEATURES, FURNITURE, UNIT_TYPE_KINDS, VIEWS } from '@/lib/unitTypes';
 
 export const MAX_PHOTOS = 10;
 
@@ -63,6 +63,8 @@ export const searchCriteria = z.object({
   b: z.string().regex(/^[a-z0-9-]{0,40}$/).optional(),
   t: z.enum(['', ...UNIT_TYPE_KINDS, '01']).optional(),
   pmax: mil,
+  fu: z.enum(['', ...FURNITURE]).optional(),
+  vw: z.enum(['', ...VIEWS]).optional(),
   ft: z.array(z.enum(FEATURES)).max(FEATURES.length).optional(),
   near: z.enum(['', 'sea']).optional(),
   q: z.string().trim().max(80).optional(),

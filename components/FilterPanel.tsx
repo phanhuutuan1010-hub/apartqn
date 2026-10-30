@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { LOCALE_CONFIG, type Locale } from '@/i18n/locales';
 import type { Building, UnitType } from '@/lib/types';
 import { BUDGETS, match, type Filters } from '@/lib/filters';
-import { FEATURES, UNIT_TYPE_KINDS, type Feature } from '@/lib/unitTypes';
+import { FEATURES, FURNITURE, UNIT_TYPE_KINDS, VIEWS, type Feature } from '@/lib/unitTypes';
 import styles from './FilterPanel.module.css';
 
 type Props = {
@@ -32,7 +32,7 @@ export function FilterPanel({ variant, value, types, buildings, onApply, onClose
     if (side) onApply(next);
     else setDraft(next);
   };
-  const chip = (key: 't' | 'pmax', v: string, label: string) => {
+  const chip = (key: 't' | 'pmax' | 'fu' | 'vw', v: string, label: string) => {
     const on = st[key] === v;
     return (
       <button key={v} type="button" aria-pressed={on} className={`${styles.chip} ${on ? styles.chipOn : ''}`} onClick={() => upd({ [key]: on ? '' : v })}>
@@ -51,7 +51,8 @@ export function FilterPanel({ variant, value, types, buildings, onApply, onClose
   // only features some type actually has (a chip that can only empty the list helps nobody)
   const offered = FEATURES.filter((k) => types.some((x) => x.features.includes(k)) || st.ft.includes(k));
   const n = types.filter((x) => match(x, st)).length;
-  const reset = () => upd({ t: '', pmax: '', ft: [], b: '' });
+  const reset = () => upd({ t: '', pmax: '', fu: '', vw: '', ft: [], b: '' });
+  const views = VIEWS.filter((k) => types.some((x) => x.views.includes(k)) || st.vw === k);
 
   return (
     <div className={`${styles.panel} ${side ? styles.side : styles.sheet}`}>
@@ -80,6 +81,16 @@ export function FilterPanel({ variant, value, types, buildings, onApply, onClose
             {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </label>
+        <fieldset className={styles.group}>
+          <legend>{t('fFurn')}</legend>
+          <div className={styles.chips}>{FURNITURE.map((k) => chip('fu', k, t(`fu_${k}`)))}</div>
+        </fieldset>
+        {views.length > 0 && (
+          <fieldset className={styles.group}>
+            <legend>{t('fView')}</legend>
+            <div className={styles.chips}>{views.map((k) => chip('vw', k, t(`vw_${k}`)))}</div>
+          </fieldset>
+        )}
         {offered.length > 0 && (
           <fieldset className={styles.group}>
             <legend>{t('fFeatures')}</legend>

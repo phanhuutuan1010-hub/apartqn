@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { createServerClient } from '@supabase/ssr';
 import { routing } from './i18n/routing';
-import { DEFAULT_LOCALE, LOCALE_CONFIG, LOCALES, isLocale, localePrefix, type Locale } from './i18n/locales';
+import { DEFAULT_LOCALE, LOCALE_CONFIG, LOCALES, localePrefix, type Locale } from './i18n/locales';
 import { localizedPath, pathLocale, visitorLocale, LOCALE_COOKIE, LOCALE_COOKIE_AGE } from './lib/localeDetect';
 import { entry, internalPath, oldBuilding, oldListing } from './lib/entry';
 import { listingTarget, redirectStatus } from './lib/listingRedirect';
@@ -80,16 +80,6 @@ async function admin(req: NextRequest) {
   }
   res.headers.set('X-Robots-Tag', 'noindex, nofollow');
   return done(res);
-}
-
-/** Russian is not a site language (yet): /ru/* → 301 to the English page (localized segments mapped, query kept). */
-const RU_SEGMENTS: Record<string, string> = { kvartiry: 'apartments', zdaniya: 'buildings', 'sdat-kvartiru': 'list-your-apartment' };
-function ruPath(path: string) {
-  if (isLocale('ru')) return null; // the day it becomes one, next-intl serves /ru/* like any other language
-  const m = /^\/ru(\/.*)?$/i.exec(path);
-  if (!m) return null;
-  const rest = (m[1] ?? '').replace(/^\/([^/]+)/, (_, seg: string) => '/' + (RU_SEGMENTS[seg.toLowerCase()] ?? seg));
-  return '/en' + rest.replace(/\/$/, '');
 }
 
 const SEGMENTS = Object.fromEntries(LOCALES.map((l) => [l, LOCALE_CONFIG[l].segments['can-ho']])) as Record<Locale, string>;
@@ -197,17 +187,6 @@ export default async function proxy(req: NextRequest) {
 }
 
 async function site(req: NextRequest): Promise<NextResponse> {
-  // the Russian landing page: its own root layout (lang="ru"), never language-detected or redirected
-  if (/^\/ru\/?$/.test(req.nextUrl.pathname)) return NextResponse.next();
-  const en = ruPath(req.nextUrl.pathname);
-  if (en) {
-    // an old listing code goes straight to its unit type (one hop)
-    const moved = await listingRedirect(req, en);
-    if (moved) return moved;
-    const to = req.nextUrl.clone();
-    to.pathname = en;
-    return NextResponse.redirect(to, 301);
-  }
   return (await listingRedirect(req)) ?? (await buildingRedirect(req)) ?? unitEntry(req) ?? localized(req);
 }
 

@@ -16,8 +16,10 @@ export const LOCALE_CONFIG = {
     currency: 'đ',
     /** 05/11/2026 */
     date: 'dmy',
-    /** the chat app the "Kiểm tra căn trống" button opens */
+    dateSep: '/',
+    /** the chat app the "Kiểm tra căn trống" button opens; chat2 = a second, smaller button (none here) */
     chat: 'zalo',
+    chat2: null,
     /** contact buttons (header menu, building pages), first = the main one */
     buttons: ['zalo', 'call'],
     /** localized first URL segments (internal Vietnamese name → this language) */
@@ -30,11 +32,28 @@ export const LOCALE_CONFIG = {
     currency: 'VND',
     /** 11/05/2026 */
     date: 'mdy',
+    dateSep: '/',
     chat: 'whatsapp',
+    chat2: null,
     buttons: ['whatsapp', 'telegram'],
     segments: { 'can-ho': 'apartments', 'ky-gui': 'list-your-apartment' },
   },
-} as const satisfies Record<string, { og: string; group: string; decimal: string; currency: string; date: 'dmy' | 'mdy'; chat: 'zalo' | 'whatsapp' | 'telegram'; buttons: readonly ('zalo' | 'call' | 'whatsapp' | 'telegram')[]; segments: Record<'can-ho' | 'ky-gui', string> }>;
+  ru: {
+    og: 'ru_RU',
+    /** 13 000 000 VND (no-break space) */
+    group: '\u00a0',
+    decimal: ',',
+    currency: 'VND',
+    /** 05.11.2026 */
+    date: 'dmy',
+    dateSep: '.',
+    /** "Проверить наличие" = Telegram (message copied), WhatsApp (prefilled) below it */
+    chat: 'telegram',
+    chat2: 'whatsapp',
+    buttons: ['telegram', 'whatsapp'],
+    segments: { 'can-ho': 'kvartiry', 'ky-gui': 'sdat-kvartiru' },
+  },
+} as const satisfies Record<string, { og: string; group: string; decimal: string; currency: string; date: 'dmy' | 'mdy'; dateSep: '/' | '.'; chat: 'zalo' | 'whatsapp' | 'telegram'; chat2: 'zalo' | 'whatsapp' | 'telegram' | null; buttons: readonly ('zalo' | 'call' | 'whatsapp' | 'telegram')[]; segments: Record<'can-ho' | 'ky-gui', string> }>;
 
 export type Locale = keyof typeof LOCALE_CONFIG;
 export const LOCALES = Object.keys(LOCALE_CONFIG) as Locale[];

@@ -10,13 +10,13 @@ export const SITEMAPS = ['/sitemap.xml', '/sitemap-pages.xml', '/sitemap-buildin
 export const revalidateSitemaps = () => SITEMAPS.forEach((p) => revalidatePath(p));
 
 /**
- * Refresh the public pages that show a building and / or unit types (every language), plus home, results, the Russian
- * page, sitemaps, social cards and the search index. Internal route paths always carry the locale segment (/vi/…), even
+ * Refresh the public pages that show a building and / or unit types (every language), plus home, results,
+ * sitemaps, social cards and the search index. Internal route paths always carry the locale segment (/vi/…), even
  * though default-language URLs are unprefixed: buildings live at app/[locale]/toa-nha/[PREFIX], types at loai-can/[CODE].
  * A building change touches every one of its types (their pages show its fees and photos) — pass them in `codes`.
  */
 export function revalidatePublic({ building, codes = [] }: { /** code prefix (ALT) */ building?: string | null; /** unit type codes (ALT-2PN) */ codes?: (string | null | undefined)[] }) {
-  const paths = new Set<string>(['/ru']);
+  const paths = new Set<string>();
   for (const l of LOCALES) {
     paths.add(`/${l}`);
     paths.add(`/${l}/can-ho`);

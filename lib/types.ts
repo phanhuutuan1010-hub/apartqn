@@ -1,12 +1,12 @@
 /** Public data shapes used by the site. Produced by lib/repo.ts from the Supabase public views (buildings, unit types). */
 
 import type { Locale } from '@/i18n/locales';
-import type { Feature, UnitTypeKind } from './unitTypes';
+import type { Amenity, Feature, Furniture, UnitTypeKind, View } from './unitTypes';
 
-export type BuildingAmenity = 'pool' | 'gym' | 'security' | 'lift' | 'basement' | 'mart' | 'kids';
+export type BuildingAmenity = Amenity;
 export type Furnishing = 'full' | 'basic' | 'empty';
 export type ViewKind = 'sea' | 'city' | 'river' | 'lagoon';
-/** desc_{locale} of every site language (i18n/locales.ts) */
+/** a text per site language (i18n/locales.ts) — here the staff overrides desc_custom_{locale} */
 export type Descriptions = Partial<Record<Locale, string>>;
 export type { BuildingFees } from './fees';
 import type { BuildingFees } from './fees';
@@ -66,9 +66,10 @@ export type UnitType = {
   priceFrom: number;
   /** YYYY-MM-DD of the last price change ("cập nhật 10/2026") */
   priceUpdated: string;
-  furnitureNote?: string;
-  viewNote?: string;
+  furniture?: Furniture;
+  views: View[];
   features: Feature[];
+  /** staff override per language (desc_custom_{locale}); none → the generated description (lib/content/describe.ts) */
   desc: Descriptions;
   /** sample-unit photos: full-size URLs, cover first; empty → striped placeholder */
   photos: string[];

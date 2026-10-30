@@ -5,7 +5,7 @@
 import { PHOTO_TAGS, type Building, type BuildingAmenity, type Descriptions, type PhotoMeta, type PhotoTag, type UnitType } from './types';
 import { toBuildingFees } from './fees';
 import { LOCALES } from '@/i18n/locales';
-import { FEATURES, isUnitTypeKind, type Feature } from './unitTypes';
+import { AMENITIES, FEATURES, FURNITURE, VIEWS, isUnitTypeKind, type Amenity, type Feature, type Furniture, type View } from './unitTypes';
 
 type PhotoRow = { path: string; thumb: string | null; w?: number | null; h?: number | null; tag?: string | null; source?: string | null; v?: { w: number; path: string }[] | null };
 /** "url 640w, url 1200w, …" from the photo's own variants (older photos: the 600 px thumb + the full file) */
@@ -50,9 +50,11 @@ export const publicPhotoUrl = (supabaseUrl: string, path: string) =>
 
 const n = (v: number | string | null | undefined) => (v == null ? 0 : Number(v));
 const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
-/** desc_{locale} for every site language (a language without its column simply has no text) */
+/** desc_custom_{locale} (staff override) for every site language; none → the page generates the text */
 const desc = (r: Record<string, unknown>): Descriptions =>
-  Object.fromEntries(LOCALES.flatMap((l) => (text(r[`desc_${l}`]) ? [[l, text(r[`desc_${l}`])]] : [])));
+  Object.fromEntries(LOCALES.flatMap((l) => (text(r[`desc_custom_${l}`]) ? [[l, text(r[`desc_custom_${l}`])]] : [])));
+/** the known values of a list, in their canonical order (lib/unitTypes.ts) */
+const only = <T extends string>(xs: unknown, ok: readonly T[]): T[] => (Array.isArray(xs) ? ok.filter((k) => xs.includes(k)) : []);
 
 /** YYYY-MM-DD in Vietnam time */
 export const vnDate = (v: string | Date) => {
@@ -70,7 +72,7 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
     wardOld: text(r.ward_old),
     ...(r.lat != null && r.lng != null ? { lat: n(r.lat), lng: n(r.lng) } : {}),
     ...(text(r.maps_url ?? null) ? { mapsUrl: text(r.maps_url ?? null) } : {}),
-    amenities: r.amenities as BuildingAmenity[],
+    amenities: only<Amenity>(r.amenities, AMENITIES) as BuildingAmenity[],
     photos: photos.map((p) => publicPhotoUrl(supabaseUrl, p.path)),
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),
     srcsets: photos.map((p) => srcset(p, supabaseUrl)),
@@ -97,9 +99,9 @@ export function toUnitType(r: PublicUnitTypeRow, supabaseUrl: string): UnitType 
     areaMax: r.area_max == null ? areaMin : Math.max(areaMin, n(r.area_max)),
     priceFrom: n(r.price_from),
     priceUpdated: vnDate(r.price_updated_at ?? r.updated_at),
-    ...(text(r.furniture_note) ? { furnitureNote: text(r.furniture_note) } : {}),
-    ...(text(r.view_note) ? { viewNote: text(r.view_note) } : {}),
-    features: (r.features ?? []).filter((f): f is Feature => (FEATURES as readonly string[]).includes(f)),
+    ...((FURNITURE as readonly unknown[]).includes(r.furniture) ? { furniture: r.furniture as Furniture } : {}),
+    views: only<View>(r.views, VIEWS),
+    features: only<Feature>(r.features, FEATURES),
     desc: desc(r),
     photos: photos.map((p) => publicPhotoUrl(supabaseUrl, p.path)),
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),

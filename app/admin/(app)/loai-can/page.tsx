@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { requireStaff } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
-import { EN_STATUS_LABEL, type EnStatus } from '@/lib/translate';
 import { fmtVnd, missingOf, UT_LABEL, UT_SHORT } from '@/lib/admin/labels';
 import { UNIT_TYPE_KINDS } from '@/lib/unitTypes';
 import { UnitTypeCreate, UnitTypeVisibility } from '@/components/admin/UnitTypeControls';
@@ -13,19 +12,19 @@ export const metadata: Metadata = { title: 'Loại căn' };
 type Row = {
   id: string; building_id: string; type: string; code: string; area_min: number | null; area_max: number | null; price_from: number | null;
   has_vi: boolean; is_visible: boolean; building_name: string; building_sort: number; building_visible: boolean; building_demo: boolean;
-  photo_count: number; cover_thumb: string | null; en_status: EnStatus;
+  photo_count: number; cover_thumb: string | null; furniture: string | null;
 };
 
 /**
- * Loại căn, grouped by building: cover · code · "Từ" price · area · photos · EN · what is missing · Hiển thị.
- * ?b=<building id> one building · ?v=missing only types that still lack photos / price / area / EN · ?trashed=1 notice.
+ * Loại căn, grouped by building: cover · code · "Từ" price · area · photos · what is missing · Hiển thị.
+ * ?b=<building id> one building · ?v=missing only types that still lack photos / price / area / furniture · ?trashed=1 notice.
  */
 export default async function UnitTypesPage({ searchParams }: { searchParams: Promise<{ b?: string; v?: string; trashed?: string }> }) {
   const me = await requireStaff();
   const { b, v, trashed } = await searchParams;
   const sb = await supabaseServer();
   const { data } = await sb.from('admin_unit_types')
-    .select('id, building_id, type, code, area_min, area_max, price_from, has_vi, is_visible, building_name, building_sort, building_visible, building_demo, photo_count, cover_thumb, en_status')
+    .select('id, building_id, type, code, area_min, area_max, price_from, has_vi, is_visible, building_name, building_sort, building_visible, building_demo, photo_count, cover_thumb, furniture')
     .order('building_sort').order('building_name').order('sort');
   const all = (data ?? []) as Row[];
   const rows = all.filter((r) => (!b || r.building_id === b) && (v !== 'missing' || missingOf(r).length > 0));
@@ -65,7 +64,7 @@ export default async function UnitTypesPage({ searchParams }: { searchParams: Pr
             </div>
             <div className="a-table-wrap">
               <table className="a-table">
-                <thead><tr><th>Loại căn</th><th className="num">Giá từ (₫/tháng)</th><th>Diện tích</th><th className="num">Ảnh</th><th>EN</th><th>Còn thiếu</th><th>Hiển thị</th></tr></thead>
+                <thead><tr><th>Loại căn</th><th className="num">Giá từ (₫/tháng)</th><th>Diện tích</th><th className="num">Ảnh</th><th>Còn thiếu</th><th>Hiển thị</th></tr></thead>
                 <tbody>
                   {list.map((r) => {
                     const miss = missingOf(r);
@@ -86,7 +85,6 @@ export default async function UnitTypesPage({ searchParams }: { searchParams: Pr
                         <td className="num">{r.price_from != null ? fmtVnd(r.price_from) : <span className="a-muted">—</span>}</td>
                         <td className="nowrap">{r.area_min != null ? `${String(r.area_min).replace('.', ',')}${r.area_max != null && r.area_max !== r.area_min ? `–${String(r.area_max).replace('.', ',')}` : ''} m²` : <span className="a-muted">—</span>}</td>
                         <td className="num">{r.photo_count || <span className="a-badge warn">0</span>}</td>
-                        <td className="nowrap">{r.en_status === 'na' ? <span className="a-muted a-small">—</span> : <span className={`a-badge ${EN_STATUS_LABEL[r.en_status].tone}`}>{EN_STATUS_LABEL[r.en_status].label}</span>}</td>
                         <td>{miss.length ? miss.map((m) => <span key={m} className="a-badge warn" style={{ marginRight: 4 }}>{m}</span>) : <span className="a-badge ok">Đủ</span>}</td>
                         <td><UnitTypeVisibility id={r.id} visible={r.is_visible} ready={r.price_from != null && r.area_min != null} can={can} /></td>
                       </tr>

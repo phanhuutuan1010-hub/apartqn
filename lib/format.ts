@@ -17,9 +17,11 @@ export const dec = (n: number | string, l: Locale) => String(n).replace('.', LOC
 // Dates are YYYY-MM-DD strings, formatted from the string itself: no time zone, server and browser always agree.
 /** today in Vietnam (UTC+7, no daylight saving), YYYY-MM-DD */
 export const vnToday = () => new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
-/** vi "05/11/2026" · en "11/05/2026" (order from i18n/locales.ts) */
-export const dFull = (s: string, l: Locale) =>
-  LOCALE_CONFIG[l].date === 'mdy' ? `${s.slice(5, 7)}/${s.slice(8, 10)}/${s.slice(0, 4)}` : `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}`;
-/** "10/2026" from YYYY-MM(-DD) */
-export const monthYear = (s: string) => `${s.slice(5, 7)}/${s.slice(0, 4)}`;
+/** vi "05/11/2026" · en "11/05/2026" · ru "05.11.2026" (order and separator from i18n/locales.ts) */
+export const dFull = (s: string, l: Locale) => {
+  const { date, dateSep: x } = LOCALE_CONFIG[l];
+  return date === 'mdy' ? `${s.slice(5, 7)}${x}${s.slice(8, 10)}${x}${s.slice(0, 4)}` : `${s.slice(8, 10)}${x}${s.slice(5, 7)}${x}${s.slice(0, 4)}`;
+};
+/** "10/2026" (ru "10.2026") from YYYY-MM(-DD) */
+export const monthYear = (s: string, l?: Locale) => `${s.slice(5, 7)}${l ? LOCALE_CONFIG[l].dateSep : '/'}${s.slice(0, 4)}`;
 export const M2 = 'm²';

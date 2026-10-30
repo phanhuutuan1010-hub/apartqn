@@ -6,7 +6,7 @@ import { norm, words } from './normalize';
 import { matchWords, MIN_SCORE, splitWords } from './fuzzy';
 import { parseSearch, type Parsed } from './parse';
 import { qWords, textMatches } from './text';
-import { parsedFeatures } from './url';
+import { parsedFeatures, parsedFurniture, parsedView } from './url';
 import { typeOfBeds, unitTypeCode } from '@/lib/unitTypes';
 import type { IndexBuilding, IndexUnitType, SearchIndex } from './types';
 
@@ -45,6 +45,9 @@ export function criteriaScore(x: IndexUnitType, p: Parsed, b: IndexBuilding | un
   check(p.building != null, () => x.building_slug === p.building);
   check(p.beds != null, () => (p.bedsOrStudio ? x.type === 'studio' || x.type === '1pn' : x.type === typeOfBeds(p.beds!)));
   check(p.priceMax != null, () => x.price_from <= p.priceMax!);
+  const fu = parsedFurniture(p), vw = parsedView(p);
+  check(!!fu, () => x.furniture === fu);
+  check(!!vw, () => x.views.includes(vw!));
   for (const f of parsedFeatures(p)) check(true, () => x.features.includes(f));
   for (const w of words(p.text)) check(true, () => textMatches(w, b));
   return { n, of };

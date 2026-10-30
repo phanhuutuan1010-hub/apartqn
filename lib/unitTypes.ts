@@ -10,9 +10,18 @@ export const UNIT_TYPE_KINDS = ['studio', '1pn', '2pn', '3pn'] as const;
 export type UnitTypeKind = (typeof UNIT_TYPE_KINDS)[number];
 export const isUnitTypeKind = (v: unknown): v is UnitTypeKind => (UNIT_TYPE_KINDS as readonly unknown[]).includes(v);
 
-/** filterable features (DB check on unit_types.features); labels: i18n f_{key} */
-export const FEATURES = ['sea_view', 'city_view', 'river_view', 'lagoon_view', 'balcony', 'workspace', 'bathtub', 'washer', 'kitchen', 'furnished', 'pets_ok'] as const;
+/** in-unit features (DB check on unit_types.features, migration 42); labels: i18n f_{key} */
+export const FEATURES = ['washer', 'dryer', 'full_kitchen', 'dishwasher', 'oven', 'balcony', 'bathtub', 'workspace', 'air_con', 'wifi', 'smart_tv', 'pets_ok'] as const;
 export type Feature = (typeof FEATURES)[number];
+/** what the windows look at (unit_types.views); labels: i18n vw_{key} */
+export const VIEWS = ['sea', 'city', 'mountain', 'lake', 'river'] as const;
+export type View = (typeof VIEWS)[number];
+/** unit_types.furniture; labels: i18n fu_{key} */
+export const FURNITURE = ['full', 'basic', 'none'] as const;
+export type Furniture = (typeof FURNITURE)[number];
+/** building amenities (DB check on buildings.amenities, migration 42); labels: i18n b_{key} */
+export const AMENITIES = ['pool', 'gym', 'security', 'elevator', 'car_parking', 'motorbike_parking', 'reception', 'minimart', 'playground', 'garden', 'bbq', 'sauna', 'laundry', 'coworking'] as const;
+export type Amenity = (typeof AMENITIES)[number];
 
 /** how a visitor of the "Kiểm tra căn trống" form wants to be reached */
 export const CONTACT_CHANNELS = ['zalo', 'whatsapp', 'telegram', 'phone'] as const;
