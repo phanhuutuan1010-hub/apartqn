@@ -2,13 +2,17 @@ import type { Metadata } from 'next';
 import { EnBarAuto } from '@/components/EnBarAuto';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
-import { getBuildings, getListings } from '@/lib/repo';
+import type { Locale } from '@/i18n/locales';
+import { getBuildings, getUnitTypes } from '@/lib/repo';
+import { money } from '@/lib/format';
+import { minPrice } from '@/lib/filters';
+import { UNIT_TYPE_KINDS, type UnitTypeKind } from '@/lib/unitTypes';
+import type { UnitType } from '@/lib/types';
 import { alternates, OG_LOCALE } from '@/lib/seo';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { SmartSearch } from '@/components/SmartSearch';
-import { ListingCard } from '@/components/ListingCard';
+import { UnitTypeCard } from '@/components/UnitTypeCard';
 import { BuildingCard } from '@/components/BuildingCard';
 import styles from './home.module.css';
 
@@ -17,7 +21,7 @@ export const revalidate = 3600;
 export async function generateMetadata({ params }: PageProps<'/[locale]'>): Promise<Metadata> {
   const { locale } = (await params) as { locale: Locale };
   const t = await getTranslations({ locale });
-  const title = `${t('heroTitle').replace(/ /g, ' ')} | ApartQN`;
+  const title = `${t('heroTitle').replace(/ /g, ' ')} | ApartQN`;
   return {
     title: { absolute: title },
     description: t('heroSub'),
@@ -33,14 +37,21 @@ export async function generateMetadata({ params }: PageProps<'/[locale]'>): Prom
 const heroSet = (ext: string) => [640, 960, 1280, 1600, 2000].map((w) => `/images/hero-quy-nhon-${w}.${ext} ${w}w`).join(', ');
 const HERO = { avif: heroSet('avif'), webp: heroSet('webp'), sizes: '(min-width:1024px) 660px, (min-width:768px) calc(100vw - 48px), calc((100vw - 32px) * 1.34)' };
 
+/** one card per type (its cheapest), then the next cheapest — 6 / 4 / 3 by breakpoint (extra cards hidden with CSS) */
+function featured(types: UnitType[]) {
+  const byPrice = [...types].sort((a, b) => a.priceFrom - b.priceFrom);
+  const first = UNIT_TYPE_KINDS.flatMap((k) => byPrice.find((x) => x.type === k) ?? []);
+  return [...first, ...byPrice.filter((x) => !first.includes(x))].slice(0, 6);
+}
+
 export default async function Home({ params }: PageProps<'/[locale]'>) {
   const { locale } = (await params) as { locale: Locale };
   setRequestLocale(locale);
   const t = await getTranslations();
-  const [listings, buildings] = await Promise.all([getListings(), getBuildings()]);
+  const [types, buildings] = await Promise.all([getUnitTypes(), getBuildings()]);
   const bById = new Map(buildings.map((b) => [b.id, b]));
-  // 6 / 4 / 3 cards by breakpoint (extra cards hidden with CSS)
-  const featured = listings.filter((x) => x.status !== 'rented').slice(0, 6);
+  const of = (k: UnitTypeKind) => types.filter((x) => x.type === k);
+  const tiles = UNIT_TYPE_KINDS.filter((k) => of(k).length);
 
   return (
     <>
@@ -57,31 +68,43 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
           <div className={styles.heroImg}>
             <picture>
               <source type="image/avif" srcSet={HERO.avif} sizes={HERO.sizes} />
-              <img src="/images/hero-quy-nhon-1280.webp" srcSet={HERO.webp} sizes={HERO.sizes} alt={t('heroTitle').replace(/ /g, ' ')} width={2000} height={1125} decoding="async" fetchPriority="high" loading="eager" />
+              <img src="/images/hero-quy-nhon-1280.webp" srcSet={HERO.webp} sizes={HERO.sizes} alt={t('heroTitle').replace(/ /g, ' ')} width={2000} height={1125} decoding="async" fetchPriority="high" loading="eager" />
             </picture>
           </div>
           <div className={styles.search}>
-            <SmartSearch listings={listings} />
+            <SmartSearch types={types} buildings={buildings.filter((b) => types.some((x) => x.buildingId === b.id))} />
           </div>
         </section>
 
-        <section className={`container ${styles.section}`}>
-          <div className={styles.secHead}>
-            <h2 className="h2">{t('featured')}</h2>
-            <Link href="/can-ho" className="link-more">{t('seeAll')} →</Link>
-          </div>
-          <div className={styles.cards}>
-            {featured.map((x) => (
-              <ListingCard key={x.code} x={x} building={bById.get(x.buildingId)} />
-            ))}
-          </div>
-        </section>
+        {types.length > 0 && (
+          <section className={`container ${styles.section}`}>
+            <div className={styles.secHead}>
+              <h2 className="h2">{t('byType')}</h2>
+              <Link href="/can-ho" className="link-more">{t('seeAll')} →</Link>
+            </div>
+            <div className={styles.tiles}>
+              {tiles.map((k) => {
+                const n = new Set(of(k).map((x) => x.buildingId)).size;
+                return (
+                  <Link key={k} href={{ pathname: '/can-ho', query: { t: k } }} className={styles.tile}>
+                    <span className={styles.tileT}>{t(`ut_${k}`)}</span>
+                    <span className={styles.tileS}>{t('nBuildings', { n })}</span>
+                    <span className={styles.tileP}>{t('priceFrom', { price: money(minPrice(of(k))!, locale) })}</span>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className={styles.cards}>
+              {featured(types).map((x) => <UnitTypeCard key={x.code} x={x} building={bById.get(x.buildingId)} />)}
+            </div>
+          </section>
+        )}
 
         <section id="buildings" className={styles.band}>
           <div className={`container ${styles.bandInner}`}>
             <h2 className="h2">{t('bldTitle')}</h2>
             <div className={styles.blds}>
-              {buildings.map((b) => <BuildingCard key={b.id} b={b} listings={listings} />)}
+              {buildings.map((b) => <BuildingCard key={b.id} b={b} types={types} />)}
             </div>
           </div>
         </section>

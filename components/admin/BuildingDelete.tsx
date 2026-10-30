@@ -6,14 +6,14 @@ import { useRouter } from 'next/navigation';
 import { buildingRefs, trashBuilding } from '@/lib/admin/trashActions';
 import { ConfirmDialog } from './Danger';
 
-/** "Xoá toà nhà" menu item: refused while any unit / listing points at it (trash included); otherwise typed-name confirm. */
-export function BuildingDelete({ id, name, slug }: { id: string; name: string; slug: string }) {
-  const [refs, setRefs] = useState<{ units: number; listings: number } | null>(null);
+/** "Xoá toà nhà" menu item: refused while one of its unit types is on the website; otherwise typed-name confirm. */
+export function BuildingDelete({ id, name }: { id: string; name: string }) {
+  const [refs, setRefs] = useState<{ visible: number } | null>(null);
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState('');
   const [busy, start] = useTransition();
   const router = useRouter();
-  const blocked = !!refs && refs.units > 0;
+  const blocked = !!refs && refs.visible > 0;
   return (
     <>
       <button type="button" role="menuitem" className="danger"
@@ -31,10 +31,10 @@ export function BuildingDelete({ id, name, slug }: { id: string; name: string; s
           router.push('/admin/toa-nha');
         })}>
         {blocked ? (
-          <>Toà nhà còn <b>{refs!.listings} tin</b>{refs!.units > refs!.listings ? <> và {refs!.units - refs!.listings} căn chưa có tin</> : null} (kể cả trong Thùng rác).
-            Xoá hoặc chuyển các căn đó trước. <Link href={`/admin/can-ho?b=${slug}`}>Xem các căn của toà →</Link></>
+          <>Toà nhà còn <b>{refs!.visible} loại căn</b> đang hiển thị trên website.
+            Ẩn các loại căn đó trước. <Link href={`/admin/loai-can?b=${id}`}>Mở Loại căn →</Link></>
         ) : (
-          <>Toà nhà gỡ khỏi website và nằm trong Thùng rác 30 ngày. Tiền tố mã căn của toà được giữ riêng, không bao giờ cấp lại.</>
+          <>Toà nhà gỡ khỏi website và nằm trong Thùng rác 30 ngày. Tiền tố mã của toà được giữ riêng, không bao giờ cấp lại.</>
         )}
       </ConfirmDialog>
     </>

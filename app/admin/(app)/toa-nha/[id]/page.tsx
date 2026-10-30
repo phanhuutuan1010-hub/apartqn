@@ -31,7 +31,7 @@ export default async function BuildingEditPage({ params, searchParams }: { param
   };
   let copiedFrom: string | null = null;
   let photos: PhotoView[] = [];
-  let coded = 0, live = 0, visible = true;
+  let frozen = false, live = 0, visible = true;
   let demoLeft: string[] = [];
   let meta: { updated_at: string; updated_by: string | null } | null = null;
   // "Nhân bản toà nhà": fees, amenities, default terms and descriptions; NOT name, slug, prefix, aliases, address, coordinates, photos
@@ -47,22 +47,20 @@ export default async function BuildingEditPage({ params, searchParams }: { param
     }
   }
   if (!isNew) {
-    const [{ data }, { data: ph }, { count }, { count: liveCount }, { count: demoListings }] = await Promise.all([
+    const [{ data }, { data: ph }, { count: coded }, { count: liveCount }] = await Promise.all([
       sb.from('buildings').select('*').eq('id', id).maybeSingle(),
       sb.from('photos').select('id, path, thumb_path, visibility, is_cover, width, height, watermark, tag, source, needs_reupload').eq('building_id', id).order('sort'),
+      // the prefix is frozen once the building had a public page: an old listing code, or a visible unit type
       sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).not('code', 'is', null),
-      sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).not('code', 'is', null).in('status', ['available', 'reserved', 'rented']),
-      sb.from('admin_listings').select('id', { count: 'exact', head: true }).eq('building_id', id).eq('is_demo', true),
+      sb.from('admin_unit_types').select('id', { count: 'exact', head: true }).eq('building_id', id).eq('is_visible', true),
     ]);
-    coded = count ?? 0;
     live = liveCount ?? 0;
+    frozen = (coded ?? 0) + live > 0;
     if (data) demoLeft = [
       !(ph ?? []).length && 'Chưa có ảnh toà nhà',
       (data.lat == null || data.lng == null) && 'Chưa có vị trí (link Google Maps)',
       !data.fee_verified && 'Phí toà nhà chưa xác minh',
       !data.desc_vi && 'Chưa có mô tả',
-      data.total_floors == null && 'Chưa có tổng số tầng',
-      (demoListings ?? 0) > 0 && `${demoListings} căn của toà vẫn mang nhãn demo`,
     ].filter(Boolean) as string[];
     if (!data) notFound();
     b = { ...(data as BuildingData), ...toBuildingFees(data) };
@@ -87,16 +85,17 @@ export default async function BuildingEditPage({ params, searchParams }: { param
             <summary className="a-btn a-btn-ghost a-btn-sm" aria-label="Thao tác với toà nhà"><MoreHorizontal size={16} aria-hidden /></summary>
             <div role="menu">
               <Link role="menuitem" href={`/admin/toa-nha/moi?from=${id}`}><Copy size={14} aria-hidden /> Nhân bản toà nhà</Link>
-              <a role="menuitem" href={`/en/buildings/${b.slug}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
-              <BuildingDelete id={id} name={b.name} slug={b.slug} />
+              <Link role="menuitem" href={`/admin/loai-can?b=${id}`}>Loại căn của toà</Link>
+              <a role="menuitem" href={`/${b.code_prefix}`} target="_blank" rel="noopener"><ExternalLink size={14} aria-hidden /> Xem trên website</a>
+              <BuildingDelete id={id} name={b.name} />
             </div>
           </details>
           </div>
         )}
       </div>
-      {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo toà nhà. Thêm ảnh bên dưới.</div>}
+      {created && <div className="a-alert ok" style={{ marginBottom: 14 }}>Đã tạo toà nhà kèm 4 loại căn nháp (ẩn). Thêm ảnh bên dưới, rồi điền giá và diện tích ở <Link href={`/admin/loai-can?b=${id}`}>Loại căn</Link>.</div>}
       {copiedFrom && <div className="a-alert info" style={{ marginBottom: 14 }}>Bản sao từ <b>{copiedFrom}</b>: đã chép phí, tiện ích, mô tả. Nhập tên, đường dẫn, tiền tố mã và địa chỉ rồi bấm Tạo toà nhà.</div>}
-      <BuildingForm b={b} demoLeft={demoLeft} codedListings={coded} enStatus={enStatusOf(b.desc_vi, b.desc_en, b.desc_en_vi_hash)} glossary={await loadGlossary(sb)} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
+      <BuildingForm b={b} demoLeft={demoLeft} frozen={frozen} enStatus={enStatusOf(b.desc_vi, b.desc_en, b.desc_en_vi_hash)} glossary={await loadGlossary(sb)} photos={isNew ? undefined : <PhotoManagerLazy owner={{ kind: 'building', id }} photos={photos} />} />
     </div>
   );
 }

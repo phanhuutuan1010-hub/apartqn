@@ -1,20 +1,13 @@
 /** Locale contact buttons. Numbers come from admin Cài đặt (getContact); a channel with no number is left out. */
-import type { Locale } from '@/i18n/routing';
+import { LOCALE_CONFIG, type Locale } from '@/i18n/locales';
 import type { SiteContact } from '@/lib/repo';
-import { F } from '@/lib/format';
 import { telHref, tgHref, waHref, zaloHref } from '@/lib/phone';
 
 export type ContactKind = 'zalo' | 'call' | 'telegram' | 'whatsapp';
 export type Contact = { k: ContactKind; label: string; href: string; external: boolean };
 
-/** vi Zalo + Call · en WhatsApp + Telegram */
-export const CONTACT_ORDER: Record<Locale, [ContactKind, ContactKind]> = {
-  vi: ['zalo', 'call'],
-  en: ['whatsapp', 'telegram'],
-};
-
-/** Mobile contact bar, left to right: vi Call + Zalo · en Telegram + WhatsApp (no Call) */
-export const BAR_BUTTONS: Record<Locale, ContactKind[]> = { vi: ['call', 'zalo'], en: ['telegram', 'whatsapp'] };
+/** English phone bottom bar, left to right */
+export const EN_BAR: ContactKind[] = ['telegram', 'whatsapp'];
 
 export const contactLinks = (c: SiteContact, callLabel: string, message: string): Partial<Record<ContactKind, Contact>> => {
   const m = encodeURIComponent(message);
@@ -29,8 +22,8 @@ export const contactLinks = (c: SiteContact, callLabel: string, message: string)
   return all;
 };
 
-/** The two locale buttons. `code` → listing message, otherwise pass `message` (building / generic). */
-export const contacts = (c: SiteContact, l: Locale, callLabel: string, opts: { code?: string; message?: string } = {}): Contact[] => {
-  const all = contactLinks(c, callLabel, opts.message ?? (opts.code ? F.msg(opts.code, l) : F.msgG(l)));
-  return CONTACT_ORDER[l].flatMap((k) => all[k] ?? []);
+/** The language's buttons (i18n/locales.ts), with `message` typed in where the app allows it. */
+export const contacts = (c: SiteContact, l: Locale, callLabel: string, message: string): Contact[] => {
+  const all = contactLinks(c, callLabel, message);
+  return LOCALE_CONFIG[l].buttons.flatMap((k) => all[k] ?? []);
 };

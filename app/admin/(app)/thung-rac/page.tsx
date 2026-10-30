@@ -7,14 +7,14 @@ import { TrashList, type TrashRow } from '@/components/admin/TrashList';
 
 export const metadata: Metadata = { title: 'Thùng rác' };
 
-const KINDS = [['listing', 'Căn hộ'], ['building', 'Toà nhà'], ['lead', 'Khách'], ['photo', 'Ảnh']] as const;
+const KINDS = [['unit_type', 'Loại căn'], ['building', 'Toà nhà'], ['lead', 'Khách'], ['photo', 'Ảnh']] as const;
 type Kind = (typeof KINDS)[number][0];
 
 /** Admin: what was deleted in the last 30 days — restore, or delete for good. The daily cron empties older items. */
 export default async function TrashPage({ searchParams }: { searchParams: Promise<{ k?: string }> }) {
   await requireAdmin();
   const { k } = await searchParams;
-  const kind: Kind = KINDS.some(([x]) => x === k) ? (k as Kind) : 'listing';
+  const kind: Kind = KINDS.some(([x]) => x === k) ? (k as Kind) : 'unit_type';
   const sb = await supabaseServer();
   const [{ data, error }, dir, { data: settings }] = await Promise.all([
     sb.rpc('trash_items'),

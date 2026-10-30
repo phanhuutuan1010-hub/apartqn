@@ -6,6 +6,8 @@ import { utmFromCookie, type Utm } from '@/lib/attribution';
 import { searchIntentSchema } from '@/lib/leadSchema';
 import { criteriaLine } from '@/lib/search/criteriaLine';
 import { srcFromCookie } from '@/lib/src';
+import { tVi } from '@/lib/i18nPlain';
+import { isLocale } from '@/i18n/locales';
 
 export const runtime = 'nodejs';
 
@@ -27,7 +29,7 @@ function searchIntent(body: unknown, utm: Partial<Utm>, src: string | null) {
     const sb = supabaseSecret();
     let bName: string | undefined;
     if (criteria.b) bName = (await sb.from('buildings').select('name').eq('slug', criteria.b).maybeSingle()).data?.name ?? undefined;
-    const line = [query && `“${query}”`, criteriaLine({ ...criteria, q: '' }, bName, false)].filter(Boolean).join(' · ');
+    const line = [query && `“${query}”`, criteriaLine({ ...criteria, q: '' }, tVi, bName)].filter(Boolean).join(' · ');
     const { data: stored, error } = await sb.rpc('log_search_intent', {
       p_channel: channel, p_query: query, p_criteria: criteria, p_line: line, p_source: utm.utm_source ?? '', p_content: utm.utm_content ?? '', p_page: page ?? '', p_locale: locale, p_src: src ?? '',
     });
@@ -43,8 +45,8 @@ const BOT = /bot\b|crawler|spider|preview|facebookexternalhit|headless|lighthous
 /**
  * Chat-button taps, sent by sendBeacon (the app opens at the same moment). Answers 204 at once; the row and the Telegram
  * note to the admins are written after the response. Nothing about the visitor — only the ?src cookie and first-touch post.
- * · `code` + whatsapp: "Book a viewing" on an English listing page (origin 'listing')
- * · `kind: 'contact'`: a page-level Telegram / WhatsApp button, e.g. the Russian landing page (origin 'ru-page')
+ * · `kind: 'contact'` + a unit type `code`: "Kiểm tra căn trống" (Zalo / WhatsApp / Telegram, origin 'unit-type')
+ * · `kind: 'contact'` without a code: a page-level Telegram / WhatsApp button, e.g. the Russian landing page (origin 'ru-page')
  * · `kind: 'search'`: Zalo / WhatsApp / Telegram under a search with no match (see searchIntent)
  */
 export async function POST(req: Request) {
@@ -61,12 +63,12 @@ export async function POST(req: Request) {
     searchIntent(b, utm, src);
     return done;
   }
-  const code = typeof b.code === 'string' && /^[A-Za-z]{3}-\d{3,6}$/.test(b.code) ? b.code.toUpperCase() : null;
-  const channel = b.channel === 'whatsapp' || b.channel === 'telegram' ? b.channel : null;
-  if (!channel || (b.kind !== 'contact' && (!code || channel !== 'whatsapp'))) return done;
-  const origin = b.kind === 'contact' ? (typeof b.origin === 'string' && /^[a-z0-9-]{1,40}$/.test(b.origin) ? b.origin : 'page') : 'listing';
+  const code = typeof b.code === 'string' && /^[A-Za-z]{3}-(studio|1pn|2pn|3pn)$/i.test(b.code) ? b.code.toUpperCase() : null;
+  const channel = b.channel === 'whatsapp' || b.channel === 'telegram' || b.channel === 'zalo' ? b.channel : null;
+  if (!channel || b.kind !== 'contact') return done;
+  const origin = typeof b.origin === 'string' && /^[a-z0-9-]{1,40}$/.test(b.origin) ? b.origin : 'page';
   const page = typeof b.page === 'string' && b.page.startsWith('/') ? b.page.slice(0, 200) : null;
-  const locale = b.locale === 'vi' || b.locale === 'en' || b.locale === 'ru' ? b.locale : null;
+  const locale = typeof b.locale === 'string' && (isLocale(b.locale) || b.locale === 'ru') ? b.locale : null;
 
   after(async () => {
     const sb = supabaseSecret();

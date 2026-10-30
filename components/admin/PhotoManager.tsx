@@ -1,13 +1,13 @@
 'use client';
 
 import { memo, useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { Camera, Check, Eye, Lock, MoreHorizontal, RotateCcw, Star, Upload } from 'lucide-react';
+import { Camera, Check, Lock, MoreHorizontal, RotateCcw, Star, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
-  bulkPhotoMeta, movePhotos, moveTargets, photoPrefix, prepareMasterUpload, refreshPhotos, registerPhotos, reorderPhotos, restorePhotos,
-  setCover, setVisibility, trashPhotos, type MoveTarget, type PhotoOwner,
+  bulkPhotoMeta, movePhotos, moveTargets, prepareMasterUpload, refreshPhotos, reorderPhotos, restorePhotos,
+  setCover, trashPhotos, type MoveTarget, type PhotoOwner,
 } from '@/lib/admin/photoActions';
-import { ACCEPT, classify, MAX_FILES, prepareImage, prepareOriginal } from '@/lib/admin/imageInput';
+import { ACCEPT, classify, MAX_FILES, prepareOriginal } from '@/lib/admin/imageInput';
 import styles from './PhotoManager.module.css';
 
 export type PhotoView = {
@@ -24,7 +24,7 @@ type Source = 'own' | 'reference' | null;
 
 const NO_COVER = 'Ảnh nội bộ không thể làm bìa';
 
-/** photos per listing / building */
+/** photos per building / unit type */
 const MAX_PHOTOS = 40;
 
 type Status = 'waiting' | 'processing' | 'uploading' | 'done' | 'error';
@@ -81,7 +81,6 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
   const isBuilding = owner.kind === 'building';
   const router = useRouter();
   const [order, setOrder] = useState<string[] | null>(null);
-  const [target, setTarget] = useState<'public' | 'internal'>('public');
   const [queue, setQueue] = useState<QItem[]>([]);
   const [running, setRunning] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -146,7 +145,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
       // Supabase browser client (and the HEIC decoder inside prepareImage) load on first upload only
       const { supabaseBrowser } = await import('@/lib/supabase/browser');
       const sb = supabaseBrowser();
-      if (it.target === 'public' || isBuilding) {
+      {
         const master = await prepareOriginal(it.file);
         patch(it.key, { status: 'uploading' });
         const slot = await prepareMasterUpload(owner);
@@ -160,20 +159,6 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
         });
         const j = (await r.json().catch(() => ({}))) as { error?: string };
         if (!r.ok) throw new Error(j.error ?? `Máy chủ báo lỗi ${r.status}`);
-      } else {
-        // internal: clean files straight to the private bucket, never watermarked, never public
-        const [full, thumb] = await Promise.all([prepareImage(it.file, 2400, 0.9), prepareImage(it.file, 640, 0.8)]);
-        patch(it.key, { status: 'uploading' });
-        const prefix = await photoPrefix(owner);
-        if (!prefix) throw new Error('Không xác định được thư mục ảnh');
-        const id = crypto.randomUUID();
-        const path = `${prefix}${id}.${full.ext}`, thumbPath = `${prefix}thumbs/${id}.${thumb.ext}`;
-        for (const [p, f] of [[path, full], [thumbPath, thumb]] as const) {
-          const { error } = await sb.storage.from('listing-internal').upload(p, f.blob, { contentType: f.type, cacheControl: '31536000', upsert: false });
-          if (error) throw new Error(error.message);
-        }
-        const r = await registerPhotos(owner, [{ bucket: 'listing-internal', path, thumb_path: thumbPath, width: full.width, height: full.height }]);
-        if (r.error) throw new Error(r.error);
       }
       patch(it.key, { status: 'done' });
       return true;
@@ -196,14 +181,14 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
     if (!files.length) return;
     setErr(null);
     const room = Math.max(0, MAX_PHOTOS - photos.length - queue.filter((q) => q.status !== 'done' && q.status !== 'error').length);
-    const t = isBuilding ? 'public' : target;
+    const t = 'public' as const;
     let accepted = 0;
     const items: QItem[] = files.map((file, i) => {
       const key = `${Date.now()}-${i}-${file.name}`;
       const c = classify(file);
       if ('error' in c) return { key, file, target: t, status: 'error', error: c.error };
       if (i >= MAX_FILES) return { key, file, target: t, status: 'error', error: `Mỗi lần tối đa ${MAX_FILES} ảnh` };
-      if (accepted >= room) return { key, file, target: t, status: 'error', error: `Đã đủ ${MAX_PHOTOS} ảnh cho ${isBuilding ? 'toà nhà' : 'căn'} này` };
+      if (accepted >= room) return { key, file, target: t, status: 'error', error: `Đã đủ ${MAX_PHOTOS} ảnh cho ${isBuilding ? 'toà nhà' : 'loại căn'} này` };
       accepted++;
       return { key, file, target: t, status: 'waiting' };
     });
@@ -341,7 +326,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
   };
   const open = menu ? list.find((p) => p.id === menu) : undefined;
   const openIdx = open ? list.indexOf(open) : -1;
-  const moveLabel = isBuilding ? 'Chuyển sang căn hộ…' : 'Chuyển sang toà nhà / căn khác…';
+  const moveLabel = isBuilding ? 'Chuyển sang loại căn…' : 'Chuyển sang toà nhà / loại căn khác…';
 
   return (
     <div>
@@ -361,20 +346,9 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
           JPG, PNG, HEIC, WebP · tối đa {MAX_FILES} ảnh mỗi lần, mỗi ảnh ≤ 25MB
           <div className="a-small a-muted">
             Tải ảnh gốc, không nén trên máy. Máy chủ tự xoay đúng chiều, xoá thông tin vị trí (GPS) và tạo các cỡ ảnh sắc nét.{' '}
-            {isBuilding ? 'Ảnh toà nhà mặc định không gắn watermark.' : 'Ảnh công khai mặc định gắn watermark ApartQN; ảnh nội bộ không bao giờ.'} Bật/tắt ở nút “…” hoặc chọn nhiều ảnh.
+            {isBuilding ? 'Ảnh toà nhà mặc định không gắn watermark.' : 'Ảnh căn mẫu mặc định gắn watermark ApartQN.'} Bật/tắt ở nút “…” hoặc chọn nhiều ảnh.
           </div>
         </div>
-        {!isBuilding && (
-          <div className={styles.target} role="radiogroup" aria-labelledby="pm-target">
-            <span id="pm-target" className={styles.targetLabel}>Ảnh tải lên sẽ vào:</span>
-            {(['public', 'internal'] as const).map((t) => (
-              <label key={t} className={`${styles.pill} ${target === t ? styles.pillOn : ''}`}>
-                <input type="radio" name="photo-target" checked={target === t} onChange={() => setTarget(t)} />
-                {t === 'public' ? <><Eye size={14} aria-hidden /> Công khai</> : <><Lock size={14} aria-hidden /> Nội bộ</>}
-              </label>
-            ))}
-          </div>
-        )}
         <input ref={input} type="file" accept={ACCEPT} multiple hidden onChange={(e) => { upload(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
         {/* phones: opens the camera directly; same compress / watermark pipeline */}
         <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { upload(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
@@ -386,7 +360,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
             {queue.map((q) => (
               <li key={q.key} className={styles[q.status]}>
                 <span className={styles.qName} title={q.file.name}>{q.file.name}</span>
-                <span className={styles.qTarget}>{q.target === 'public' || isBuilding ? 'Công khai' : 'Nội bộ'}</span>
+                <span className={styles.qTarget}>Công khai</span>
                 <span className={styles.qStatus}>{STATUS_LABEL[q.status]}{q.status === 'processing' || q.status === 'uploading' ? '…' : ''}</span>
                 {q.error && <span className={styles.qErr}>{q.error}</span>}
                 {q.status === 'error' && !('error' in classify(q.file)) && (
@@ -437,11 +411,6 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
                     {p.visibility === 'public' && (p.watermark || p.source !== 'reference') && (
                       <button type="button" role="menuitem" disabled={!!job} onClick={() => watermark([p], !p.watermark)}>{p.watermark ? 'Tắt watermark' : 'Bật watermark'}</button>
                     )}
-                    {!isBuilding && (
-                      <button type="button" role="menuitem" onClick={() => act(() => setVisibility(owner, p.id, p.visibility === 'public' ? 'internal' : 'public'))}>
-                        {p.visibility === 'public' ? 'Chuyển sang nội bộ' : 'Chuyển sang công khai'}
-                      </button>
-                    )}
                     <button type="button" role="menuitem" onClick={() => openPicker([p.id])}>{moveLabel}</button>
                     <button type="button" role="menuitem" disabled={openIdx === 0} onClick={() => move(p.id, -1)}>Di chuyển trái</button>
                     <button type="button" role="menuitem" disabled={openIdx === list.length - 1} onClick={() => move(p.id, 1)}>Di chuyển phải</button>
@@ -465,7 +434,7 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
                 <button type="button" className={styles.chip} disabled={picked[0].visibility !== 'public'} title={picked[0].visibility !== 'public' ? NO_COVER : undefined} onClick={() => cover(picked[0])}>Đặt làm bìa</button>
               )}
               <button type="button" className={`${styles.chip} ${styles.danger}`} onClick={() => del(picked.map((p) => p.id))}>Xoá</button>
-              <button type="button" className={styles.chip} onClick={() => openPicker(picked.map((p) => p.id))}>{isBuilding ? 'Chuyển sang căn hộ…' : 'Chuyển…'}</button>
+              <button type="button" className={styles.chip} onClick={() => openPicker(picked.map((p) => p.id))}>{isBuilding ? 'Chuyển sang loại căn…' : 'Chuyển…'}</button>
               <select className={styles.chip} aria-label="Gắn nhãn" value="" onChange={(e) => e.target.value && setTag(picked.map((p) => p.id), e.target.value as PhotoTagV)}>
                 <option value="">Gắn nhãn</option>
                 {TAGS.map((k) => <option key={k} value={k}>{TAG_LABEL[k]}</option>)}
@@ -488,13 +457,13 @@ export function PhotoManager({ owner, photos }: { owner: PhotoOwner; photos: Pho
             <b>Chuyển {picker.ids.length} ảnh sang…</b>
             <button type="button" className={styles.link} onClick={() => setPicker(null)}>Đóng</button>
           </div>
-          <input className="input" type="search" placeholder="Tìm theo mã căn, vd. ALT-012" value={picker.q} autoFocus onChange={(e) => setPicker({ ...picker, q: e.target.value })} />
+          <input className="input" type="search" placeholder="Tìm theo mã, vd. ALT-2PN" value={picker.q} autoFocus onChange={(e) => setPicker({ ...picker, q: e.target.value })} />
           <ul>
             {picker.list == null ? <li className="a-small a-muted">Đang tải…</li>
               : picker.list.filter((t) => t.label.toLowerCase().includes(picker.q.trim().toLowerCase())).map((t) => (
                 <li key={t.id}><button type="button" onClick={() => moveTo(t)}>{t.label}</button></li>
               ))}
-            {picker.list?.length === 0 && <li className="a-small a-muted">Toà nhà này chưa có căn nào khác{isBuilding ? '' : ' của bạn'}.</li>}
+            {picker.list?.length === 0 && <li className="a-small a-muted">Toà nhà này chưa có loại căn nào khác.</li>}
           </ul>
         </div>
       )}

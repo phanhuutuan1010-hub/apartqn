@@ -19,12 +19,12 @@ npm test                     # RLS / RPC / seed / unit tests (embedded Postgres,
 
 | Path | What |
 |---|---|
-| `app/[locale]/…` | Public site: Home, `can-ho` (results), `can-ho/[code]`, `toa-nha/[id]`, `ky-gui`. ISR (on-demand + 1 h fallback). |
+| `app/[locale]/…` | Public site: Home, `can-ho` (results), buildings `/{PREFIX}` (`toa-nha/[id]`), unit types `/{PREFIX}-{TYPE}` (`loai-can/[code]`), `ky-gui`. ISR (on-demand + 1 h fallback). |
 | `app/admin/…` | Staff admin (Vietnamese, invite-only). |
 | `app/api/lead` | Website forms → `leads` / `consign_inbox` + Telegram / email. |
 | `app/api/consign/upload` | One-time signed upload URLs into the private `consign-inbox` bucket. |
-| `app/api/cron/daily` | Daily cron (keep-alive, availability reminders / auto-hide, Monday backup reminder). |
-| `lib/repo.ts` | Public data access — reads only the `public_listings` / `public_buildings` views (publishable key). |
+| `app/api/cron/daily` | Daily cron (keep-alive, log retention, trash purge, Monday backup reminder). |
+| `lib/repo.ts` | Public data access — reads only the `public_buildings` / `public_unit_types` / `public_contact` views (publishable key). |
 | `lib/supabase/` | `server.ts` (staff session, RLS) · `browser.ts` · `secret.ts` (server only, bypasses RLS). |
 | `lib/admin/` | Admin server actions, labels, helpers. |
 | `supabase/migrations/` | Schema, guard triggers, RLS, views, RPCs, storage policies. |

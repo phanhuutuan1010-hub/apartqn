@@ -9,6 +9,7 @@ import { fmtPhone, isVnMobile } from '@/lib/phone';
 import { utmFromCookie, type Utm } from '@/lib/attribution';
 import { srcFromCookie } from '@/lib/src';
 import { criteriaLine } from '@/lib/search/criteriaLine';
+import { tVi } from '@/lib/i18nPlain';
 
 export const runtime = 'nodejs';
 
@@ -27,39 +28,46 @@ async function admins(sb: Sb): Promise<Staff[]> {
   return (data ?? []) as Staff[];
 }
 
-async function handleViewing(sb: Sb, lead: Extract<Lead, { type: 'viewing' }>, attr: Attr) {
-  const code = lead.code.toUpperCase();
-  const { data: l } = await sb.from('listings')
-    .select('id, code, status, units(assigned_to, buildings(name))')
-    .eq('code', code).in('status', ['available', 'reserved', 'rented']).is('deleted_at', null).maybeSingle();
-  if (!l) return { invalid: true as const };
-  const unit = l.units as unknown as { assigned_to: string | null; buildings: { name: string } };
-  const adminList = await admins(sb);
-  let assignee: Staff | undefined;
-  if (unit.assigned_to) {
-    const { data } = await sb.from('profiles').select('id, full_name, email, telegram_chat_id, role').eq('id', unit.assigned_to).eq('active', true).maybeSingle();
-    assignee = (data as Staff) ?? undefined;
-  }
-  assignee ??= adminList[0];
+type TypeRow = { id: string; code: string; type: string; building_id: string; buildings: { name: string } };
+const TYPE_COLS = 'id, code, type, building_id, buildings(name)';
+const CHANNEL_VI = { zalo: 'Zalo', whatsapp: 'WhatsApp', telegram: 'Telegram', phone: 'Gọi điện' } as const;
 
+/** "Kiểm tra căn trống" on a unit type page → a 'rent' lead on that unit type (admins: there is no per-unit owner any more). */
+async function handleAvailability(sb: Sb, lead: Extract<Lead, { type: 'availability' }>, attr: Attr) {
+  const code = lead.code.toUpperCase();
+  const find = async (k: 'code' | 'type', v: string, building?: string) => {
+    let q = sb.from('unit_types').select(TYPE_COLS).eq(k, v).eq('is_visible', true).is('deleted_at', null);
+    if (building) q = q.eq('building_id', building);
+    return ((await q.maybeSingle()).data ?? null) as unknown as TypeRow | null;
+  };
+  const page = await find('code', code);
+  if (!page) return { invalid: true as const };
+  // the type picked in the form: another visible type of the same building, else the page's
+  const picked = page.type === lead.unitType ? page : (await find('type', lead.unitType, page.building_id)) ?? page;
+  const adminList = await admins(sb);
+  const assignee = adminList[0];
   const duration = vi[`dur${lead.duration}` as 'dur0'];
+  const type = tVi(`ut_${picked.type}`);
+  const how = `${CHANNEL_VI[lead.channel]}: ${lead.contact}`;
+  const message = [`Kiểm tra căn trống ${picked.code} (${type})`, lead.budget && `Ngân sách: ${lead.budget}`, `Liên hệ qua ${how}`].filter(Boolean).join('\n');
   const { data: row, error } = await sb.from('leads').insert({
     ...attr,
-    listing_id: l.id, name: lead.name, phone: lead.phone, channel: 'web', locale: lead.locale,
-    preferred_date: lead.date || null, duration_months: duration, page: lead.page || null, assigned_to: assignee?.id ?? null,
+    type: 'rent', unit_type_id: picked.id, unit_type_code: picked.code,
+    name: lead.name || 'Khách website', phone: lead.contact, channel: 'web', locale: lead.locale,
+    preferred_date: lead.moveIn || null, duration_months: duration, message, page: lead.page || null, assigned_to: assignee?.id ?? null,
+    payload: { preferred_channel: lead.channel, ...(lead.budget ? { budget: lead.budget } : {}) },
   }).select('id').single();
-  if (error) console.error('[lead] insert failed', error);
+  if (error) console.error('[lead] availability insert failed', error);
 
   const rows: [string, string][] = [
-    ['Mã căn', code], ['Toà nhà', unit.buildings.name], ['Họ tên', lead.name], ['Điện thoại', lead.phone],
-    ['Ngày muốn xem', lead.date || '—'], ['Thời gian thuê', duration], ['Ngôn ngữ khách', lead.locale.toUpperCase()],
-    ['Phụ trách', assignee ? assignee.full_name || assignee.email : '—'],
+    ['Loại căn', `${picked.code} · ${type}`], ['Toà nhà', picked.buildings.name], ['Ngày dọn vào', lead.moveIn || '—'], ['Thời gian thuê', duration],
+    ['Ngân sách', lead.budget || '—'], ['Liên hệ qua', how], ['Tên', lead.name || '—'], ['Ngôn ngữ khách', lead.locale.toUpperCase()],
     ...srcRow(attr),
     ...(row ? ([['Mở trong quản trị', adminUrl(`/admin/khach-hang/${row.id}`)]] as [string, string][]) : []),
     ['Trang', lead.page || '—'],
   ];
-  const subject = `[ApartQN] Đặt lịch xem ${code}`;
-  const { tg, mail } = await deliverLead(sb, { leadId: row?.id ?? null, targets: assignee?.telegram_chat_id ? [assignee.telegram_chat_id] : adminList.map((a) => a.telegram_chat_id), subject, rows });
+  const subject = `[ApartQN] Kiểm tra căn trống ${picked.code}`;
+  const { tg, mail } = await deliverLead(sb, { leadId: row?.id ?? null, targets: adminList.map((a) => a.telegram_chat_id), subject, rows });
   return { saved: !error, tg, mail };
 }
 
@@ -127,7 +135,7 @@ async function handleSearchRequest(sb: Sb, lead: Extract<Lead, { type: 'search_r
     const { data: b } = await sb.from('buildings').select('name').eq('slug', lead.criteria.b).maybeSingle();
     bName = b?.name;
   }
-  const line = criteriaLine(lead.criteria, bName);
+  const line = criteriaLine(lead.criteria, tVi, bName);
   const adminList = await admins(sb);
   const message = [lead.need, lead.query && `Đã tìm: “${lead.query}”`, line && `Điều kiện: ${line}`].filter(Boolean).join('\n');
   const { data: row, error } = await sb.from('leads').insert({
@@ -175,7 +183,7 @@ export async function POST(req: Request) {
   const cookie = req.headers.get('cookie');
   const src = srcFromCookie(cookie);
   const attr: Attr = { ...utmFromCookie(cookie), ...(src ? { src } : {}) };
-  const r = lead.type === 'viewing' ? await handleViewing(sb, lead, attr) : lead.type === 'consign' ? await (lead.source === 'callback' ? handleCallback(sb, lead, attr) : handleConsign(sb, lead, attr)) : await handleSearchRequest(sb, lead, attr);
+  const r = lead.type === 'availability' ? await handleAvailability(sb, lead, attr) : lead.type === 'consign' ? await (lead.source === 'callback' ? handleCallback(sb, lead, attr) : handleConsign(sb, lead, attr)) : await handleSearchRequest(sb, lead, attr);
   if ('invalid' in r) return fail('INVALID', 400, ['code']);
   if (!r.saved && !r.tg && !r.mail) return fail('SEND_FAILED', 502, { db: 'failed', telegram: r.tg, email: r.mail });
   return NextResponse.json({ ok: true, channels: { db: r.saved ? 'saved' : 'failed', telegram: r.tg ? 'sent' : 'off', email: r.mail ? 'sent' : 'off' } });

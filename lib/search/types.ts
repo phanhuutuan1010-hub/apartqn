@@ -1,37 +1,31 @@
 /** Shape of /search-index.json — everything the search box needs, loaded once per visit (no DB call per keystroke). */
-import type { Furnishing, ListingStatus, ViewKind } from '@/lib/types';
+import type { Feature, UnitTypeKind } from '@/lib/unitTypes';
 
 export type IndexBuilding = {
   slug: string;
   name: string;
   aliases: string[];
-  /** listing code prefix, e.g. ALT */
+  /** code prefix, e.g. ALT (the building URL /ALT) */
   prefix: string;
   street: string;
   ward_old: string | null;
   ward_new: string | null;
-  available_count: number;
+  /** visible unit types */
+  type_count: number;
+  /** lowest "from" price of its visible unit types */
+  price_from: number | null;
 };
 
-export type IndexListing = {
+export type IndexUnitType = {
+  /** ALT-2PN */
   code: string;
-  /** URL slug: alt-001 */
-  slug: string;
-  /** old QN-### code, if any */
-  legacy_code: string | null;
   building_slug: string;
-  beds: number;
-  rent: number;
-  furniture: Furnishing;
-  pets: boolean;
-  car_parking: boolean | null;
-  view: ViewKind;
-  /** low / mid / high — never the floor number */
-  floor_band: 'low' | 'mid' | 'high' | null;
-  status: ListingStatus;
-  verified_at: string | null;
-  published_at: string | null;
+  type: UnitTypeKind;
+  price_from: number;
+  area_min: number;
+  area_max: number;
+  features: Feature[];
   cover_thumb: string | null;
 };
 
-export type SearchIndex = { v: 1; buildings: IndexBuilding[]; listings: IndexListing[] };
+export type SearchIndex = { v: 2; buildings: IndexBuilding[]; types: IndexUnitType[] };

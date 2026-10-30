@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Link } from '@/i18n/navigation';
 import type { Locale } from '@/i18n/routing';
 import { getBuildings, getContact } from '@/lib/repo';
 import { alternates, OG_LOCALE } from '@/lib/seo';
+import { buildingPath } from '@/lib/unitTypes';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { ConsignForm } from '@/components/ConsignForm';
@@ -77,10 +77,10 @@ export default async function ConsignPage({ params }: PageProps<'/[locale]/ky-gu
           <p className={styles.areaSub}>{t('cgAreaSub')}</p>
           <div className={styles.blds}>
             {buildings.map((b) => (
-              <Link key={b.id} href={{ pathname: '/toa-nha/[id]', params: { id: b.id } }} className={styles.bld}>
+              <a key={b.id} href={buildingPath(b.prefix, locale)} className={styles.bld}>
                 <span className={styles.bName}>{b.name}</span>
                 <span className={styles.bStreet}>{b.street}</span>
-              </Link>
+              </a>
             ))}
           </div>
         </section>

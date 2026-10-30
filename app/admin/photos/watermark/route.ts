@@ -9,7 +9,7 @@ export const maxDuration = 30;
 
 const Body = z.object({
   owner: z.discriminatedUnion('kind', [
-    z.object({ kind: z.literal('listing'), id: z.string().uuid() }),
+    z.object({ kind: z.literal('unit_type'), id: z.string().uuid() }),
     z.object({ kind: z.literal('building'), id: z.string().uuid() }),
   ]),
   photoId: z.string().uuid(),
@@ -22,7 +22,7 @@ const fail = (status: number, error: string) => NextResponse.json({ ok: false, e
 /**
  * Bulk "Bật / Tắt watermark": the grid's queue calls this once per photo (3 at a time — one sharp render per request fits
  * Vercel Hobby). Re-renders the public pair from the clean master. No revalidation here: the grid refreshes the pages once
- * when the queue is done. Runs as the signed-in staff member (RLS: admins; sales on their own listings).
+ * when the queue is done. Runs as the signed-in staff member (RLS: building photos admins; unit type photos staff).
  */
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin');

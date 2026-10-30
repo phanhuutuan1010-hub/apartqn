@@ -1,7 +1,7 @@
 'use client';
 
-import { startTransition, useActionState, useState } from 'react';
-import { previewFeeSync, readMapsLink, saveBuilding, type BuildingResult } from '@/lib/admin/buildingActions';
+import { useActionState, useState } from 'react';
+import { readMapsLink, saveBuilding, type BuildingResult } from '@/lib/admin/buildingActions';
 import { mapsEmbedUrl } from '@/lib/maps';
 import type { BuildingFees } from '@/lib/fees';
 import { AMENITIES, amenityLabel, fmtVnd } from '@/lib/admin/labels';
@@ -13,12 +13,12 @@ export type BuildingData = {
   id: string | null; slug: string; name: string; aliases: string[]; code_prefix: string; street: string; maps_url: string | null; video_url: string | null;
   lat: number | null; lng: number | null; amenities: string[];
   default_fees: { mgmt_per_m2?: number; moto?: number; car?: number; net?: number };
-  desc_vi: string | null; desc_en: string | null; desc_en_vi_hash?: string | null; sort: number; is_demo: boolean; total_floors?: number | null;
+  desc_vi: string | null; desc_en: string | null; desc_en_vi_hash?: string | null; sort: number; is_demo: boolean;
 } & BuildingFees;
 
-/** `codedListings`: listings of this building that already carry a code → the prefix is frozen. */
-export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary, demoLeft = [] }: {
-  b: BuildingData; photos?: React.ReactNode; codedListings?: number; enStatus: EnStatus; glossary: GlossaryPair[];
+/** `frozen`: the building already has a public page (/PREFIX) → the prefix can't change. */
+export function BuildingForm({ b, photos, frozen = false, enStatus, glossary, demoLeft = [] }: {
+  b: BuildingData; photos?: React.ReactNode; frozen?: boolean; enStatus: EnStatus; glossary: GlossaryPair[];
   /** placeholder data still on a demo building (shown when "Dữ liệu demo" is unticked) */
   demoLeft?: string[];
 }) {
@@ -30,22 +30,7 @@ export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary,
   const s = (v: unknown) => (v == null ? '' : String(v));
   const pctS = (v: number | null) => (v == null ? '' : String(v).replace('.', ','));
   const [carParking, setCarParking] = useState(b.car_parking ?? '');
-  const [checking, setChecking] = useState(false);
 
-  // existing building: ask before re-pricing its listings ("Cập nhật N căn")
-  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    if (!b.id) return;
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    setChecking(true);
-    const { count } = await previewFeeSync(b.id, fd);
-    setChecking(false);
-    if (count > 0) {
-      if (!confirm(`Phí mới áp dụng cho ${count} căn của toà này (căn có phí ghi đè giữ nguyên).\n\nLưu và cập nhật ${count} căn?`)) return;
-      fd.set('propagate', '1');
-    }
-    startTransition(() => action(fd));
-  };
   const money = (k: keyof BuildingFees, label: React.ReactNode, unit: string, extra = '') => (
     <label className={cls(k, extra)}>{label}<span className="a-suffix"><input className="input" name={k} inputMode="numeric" defaultValue={fmtVnd(b[k] as number | null)} placeholder="chưa rõ" /><span>{unit}</span></span>{err(k)}</label>
   );
@@ -54,7 +39,7 @@ export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary,
   );
 
   return (
-    <form action={action} onSubmit={onSubmit}>
+    <form action={action}>
       <section className="a-card">
         <h2 className="a-section-title">Thông tin</h2>
         <div className="a-grid">
@@ -62,15 +47,12 @@ export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary,
           <label className={cls('slug')}>Đường dẫn (slug) <span className="hint">{b.id ? 'không đổi được' : 'vd. altara'}</span>
             <input className="input a-mono" name={b.id ? undefined : 'slug'} defaultValue={b.slug} disabled={!!b.id} pattern="[a-z0-9-]{2,40}" />{err('slug')}
           </label>
-          <label className={cls('code_prefix')}>Tiền tố mã căn <span className="hint">{codedListings ? `đã có ${codedListings} căn mang mã → không đổi được` : '3 chữ cái, vd. ALT → ALT-001'}</span>
-            <input className="input a-mono" name={codedListings ? undefined : 'code_prefix'} defaultValue={b.code_prefix} disabled={codedListings > 0}
-              required={!codedListings} maxLength={3} pattern="[A-Za-z]{3}" style={{ textTransform: 'uppercase' }} />
+          <label className={cls('code_prefix')}>Tiền tố mã <span className="hint">{frozen ? 'đã có trang công khai → không đổi được' : '3 chữ cái: apartqn.com/ALT, loại căn ALT-2PN'}</span>
+            <input className="input a-mono" name={frozen ? undefined : 'code_prefix'} defaultValue={b.code_prefix} disabled={frozen}
+              required={!frozen} maxLength={3} pattern="[A-Za-z]{3}" style={{ textTransform: 'uppercase' }} />
             {err('code_prefix')}
           </label>
           <label className={cls('sort')}>Thứ tự hiển thị<input className="input" name="sort" inputMode="numeric" defaultValue={b.sort} /></label>
-          <label className={cls('total_floors')}>Tổng số tầng <span className="hint">để website hiện tầng thấp / trung / cao; trống = chưa rõ</span>
-            <input className="input" name="total_floors" inputMode="numeric" defaultValue={s(b.total_floors)} placeholder="chưa rõ" />{err('total_floors')}
-          </label>
           <div className={cls('aliases', 'span4')}>
             <label htmlFor="b-aliases">Tên gọi khác <span className="hint">tên khách hay gõ khi tìm (viết tắt, không dấu, tiếng Nga…), Enter để thêm, tối đa 20</span></label>
             <TagInput id="b-aliases" name="aliases" defaultValue={b.aliases ?? []} placeholder="vd. Altara, Алтара" />
@@ -154,7 +136,7 @@ export function BuildingForm({ b, photos, codedListings = 0, enStatus, glossary,
         {state.ok && <span className="a-small" style={{ color: 'var(--ok-fg)' }} role="status">✓ {state.ok}</span>}
         {state.warning && <span className="a-small" style={{ color: 'var(--warn-fg)' }} role="status">⚠ {state.warning}</span>}
         <span className="spacer" />
-        <button className="a-btn a-btn-blue" disabled={pending || checking}>{pending || checking ? 'Đang lưu…' : b.id ? 'Lưu' : 'Tạo toà nhà'}</button>
+        <button className="a-btn a-btn-blue" disabled={pending}>{pending ? 'Đang lưu…' : b.id ? 'Lưu' : 'Tạo toà nhà'}</button>
       </div>
     </form>
   );

@@ -1,87 +1,68 @@
 import { describe, expect, it } from 'vitest';
-import { suggest, textMatches } from '@/lib/search/suggest';
-import { parsedToQuery } from '@/lib/search/url';
-import type { IndexBuilding, IndexListing, SearchIndex } from '@/lib/search/types';
+import { countResults, resolveType, suggest, textMatches } from '@/lib/search/suggest';
+import { parseSearch } from '@/lib/search/parse';
+import { similarTypes } from '@/lib/search/similar';
+import { EMPTY } from '@/lib/filters';
+import type { IndexBuilding, IndexUnitType, SearchIndex } from '@/lib/search/types';
+import type { UnitType } from '@/lib/types';
 
-const b = (slug: string, name: string, street: string, available_count: number, aliases: string[] = [], prefix = slug.slice(0, 3).toUpperCase()): IndexBuilding =>
-  ({ slug, name, aliases, prefix, street, ward_old: null, ward_new: null, available_count });
-const x = (code: string, building_slug: string, o: Partial<IndexListing> = {}): IndexListing => ({
-  code, slug: code.toLowerCase(), legacy_code: null, building_slug, beds: 2, rent: 12e6, furniture: 'full', pets: false, car_parking: null, view: 'city', floor_band: null,
-  status: 'available', verified_at: '2026-09-01T00:00:00Z', published_at: '2026-08-01T00:00:00Z', cover_thumb: null, ...o,
+const b = (slug: string, name: string, street: string, type_count: number, aliases: string[] = [], prefix = slug.slice(0, 3).toUpperCase()): IndexBuilding =>
+  ({ slug, name, aliases, prefix, street, ward_old: null, ward_new: null, type_count, price_from: null });
+const x = (code: string, building_slug: string, o: Partial<IndexUnitType> = {}): IndexUnitType => ({
+  code, building_slug, type: code.split('-')[1].toLowerCase() as IndexUnitType['type'], price_from: 12e6, area_min: 60, area_max: 70, features: [], cover_thumb: null, ...o,
 });
 const IDX: SearchIndex = {
-  v: 1,
+  v: 2,
   buildings: [b('altara', 'Altara Residences Quy Nhơn', 'Trần Hưng Đạo', 3, ['Алтара']), b('flc', 'FLC Sea Tower Quy Nhơn', 'An Dương Vương', 1), b('tms', 'TMS Luxury Hotel & Residences Quy Nhơn', 'Nguyễn Huệ', 0)],
-  listings: [
-    x('ALT-001', 'altara', { verified_at: '2026-09-20T00:00:00Z', legacy_code: 'QN-001' }),
-    x('ALT-002', 'altara', { status: 'rented' }),
-    x('ALT-003', 'altara', { beds: 1, rent: 8e6 }),
-    x('ALT-004', 'altara', { verified_at: '2026-09-25T00:00:00Z', rent: 15e6 }),
-    x('FLC-001', 'flc', { view: 'sea' }),
-    x('TMS-012', 'tms', { status: 'reserved', legacy_code: 'QN-012' }),
+  types: [
+    x('ALT-STUDIO', 'altara', { price_from: 8e6, features: ['sea_view'] }),
+    x('ALT-1PN', 'altara', { price_from: 10e6 }),
+    x('ALT-2PN', 'altara', { price_from: 13.5e6, features: ['sea_view', 'balcony'] }),
+    x('FLC-2PN', 'flc', { price_from: 12e6, features: ['furnished'] }),
   ],
 };
 
-describe('suggest', () => {
-  it('building group with highlight; listings available only, max 3, most criteria then newest confirmation', () => {
-    const s = suggest('altara 2pn dưới 13tr', IDX);
+describe('suggest over unit types', () => {
+  it('"altara 2pn" names ALT-2PN: it leads the building group, the building is suggested too', () => {
+    const s = suggest('altara 2pn', IDX);
     expect(s.buildings[0].b.slug).toBe('altara');
-    expect(s.buildings[0].hl).toEqual([[0, 6]]);
-    // ALT-001 meets all 3; ALT-004 / ALT-003 / FLC-001 meet 2 → newest confirmation (ALT-004) first, then list order
-    expect(s.listings.map((l) => l.x.code)).toEqual(['ALT-001', 'ALT-004', 'ALT-003']);
-    expect(s.listings.every((l) => l.x.status === 'available')).toBe(true);
+    expect(s.codes[0].x.code).toBe('ALT-2PN');
+    expect(s.codes.map((c) => c.x.code)).toEqual(['ALT-2PN', 'ALT-STUDIO', 'ALT-1PN']);
+    expect(resolveType(parseSearch('altara 2pn', IDX.buildings), IDX)?.code).toBe('ALT-2PN');
+    expect(resolveType(parseSearch('ALT-2PN', IDX.buildings), IDX)?.code).toBe('ALT-2PN');
+    expect(resolveType(parseSearch('altara 3pn', IDX.buildings), IDX)).toBeUndefined(); // not on the site
   });
-  it('fewer matches → fewer rows; none → empty group', () => {
-    expect(suggest('studio', IDX).listings).toEqual([]);
-    expect(suggest('view biển', IDX).listings.map((l) => l.x.code)).toEqual(['FLC-001']);
+  it('a bare prefix lists its building’s types', () => {
+    expect(suggest('alt', IDX).codes.map((c) => c.x.code)).toEqual(['ALT-STUDIO', 'ALT-1PN', 'ALT-2PN']);
+    expect(suggest('flc-', IDX).codes.map((c) => c.x.code)).toEqual(['FLC-2PN']);
   });
-  it('streets and wards', () => {
-    const s = suggest('tran hung', IDX);
-    expect(s.areas.map((a) => [a.label, a.available])).toEqual([['Trần Hưng Đạo', 3]]);
+  it('matching types: at least half of the asks, most criteria then cheapest', () => {
+    expect(suggest('2pn dưới 13tr', IDX).types.map((t) => t.x.code)).toEqual(['FLC-2PN', 'ALT-STUDIO', 'ALT-1PN', 'ALT-2PN']);
+    expect(suggest('view biển', IDX).types.map((t) => t.x.code)).toEqual(['ALT-STUDIO', 'ALT-2PN']);
   });
-  it('codes by prefix, any public status', () => {
-    expect(suggest('alt-00', IDX).codes.map((c) => c.x.code)).toEqual(['ALT-001', 'ALT-002', 'ALT-003', 'ALT-004']);
-    expect(suggest('alt', IDX).codes).toHaveLength(4);
-    expect(suggest('alt', IDX).buildings[0].b.slug).toBe('altara'); // a prefix also suggests its building
-    expect(suggest('alt1', IDX).codes.map((c) => c.x.code)).toEqual(['ALT-001']);
-    // old codes still resolve through legacy_code
-    expect(suggest('qn-1', IDX).codes[0].x.code).toBe('ALT-001'); // exact (padded) match first
-    expect(suggest('qn-01', IDX).codes.map((c) => c.x.code)).toEqual(['ALT-001', 'TMS-012']);
-    expect(suggest('TMS-012', IDX).codes.map((c) => c.x.code)).toEqual(['TMS-012']);
-    expect(suggest('TMS-012', IDX).listings).toEqual([]);
+  it('streets and wards count the types of their buildings', () => {
+    expect(suggest('tran hung', IDX).areas.map((a) => [a.label, a.types])).toEqual([['Trần Hưng Đạo', 3]]);
   });
   it('text filter on the results page: name, alias, street', () => {
     expect(textMatches('nguyen hue', IDX.buildings[2])).toBe(true);
     expect(textMatches('алтара', IDX.buildings[0])).toBe(true);
     expect(textMatches('vinhomes', IDX.buildings[0])).toBe(false);
   });
-  it('parsed → URL params', () => {
-    expect(parsedToQuery({ building: 'altara', beds: 4, priceMax: 12.5e6, pets: true, view: 'sea', text: 'x' }))
-      .toEqual({ b: 'altara', beds: '3', pmax: '12.5', pets: '1', vw: 'sea', q: 'x' });
-  });
 });
 
-describe('countResults / similarListings', async () => {
-  const { countResults } = await import('@/lib/search/suggest');
-  const { parseSearch } = await import('@/lib/search/parse');
-  const { similarListings } = await import('@/lib/search/similar');
-  const { EMPTY } = await import('@/lib/filters');
-  it('counts like the results page', () => {
+describe('countResults / similarTypes', () => {
+  it('counts like the results page (free text only ranks)', () => {
     const c = (q: string) => countResults(parseSearch(q, IDX.buildings), IDX);
-    expect(c('altara 2pn')).toBe(2); // ALT-001, ALT-004 (ALT-002 rented)
-    expect(c('vinhomes')).toBe(0);
-    expect(c('căn hộ cho thuê')).toBe(5); // nothing asked → all non-rented
-    expect(c('ALT-099')).toBe(0);
-    expect(c('TMS-012')).toBe(1);
-    expect(c('tms12')).toBe(1);
-    expect(c('qn-012')).toBe(1);
-    expect(c('QN-077')).toBe(0);
+    expect(c('altara 2pn')).toBe(1);
+    expect(c('2pn')).toBe(2);
+    expect(c('dưới 11tr')).toBe(2);
+    expect(c('căn hộ cho thuê')).toBe(4);
+    expect(c('3pn')).toBe(0);
   });
-  it('relaxes building → beds → price ±20 %, available only, max 6', () => {
-    const L = (code: string, buildingId: string, beds: number, rent: number, status: 'available' | 'rented' = 'available') =>
-      ({ code, buildingId, beds, rent, status, updated: '2026-09-01' }) as unknown as import('@/lib/types').Listing;
-    const all = [L('A', 'x', 1, 5e6), L('B', 'y', 2, 20e6), L('C', 'z', 3, 11.5e6), L('D', 'x', 2, 9e6, 'rented'), L('E', 'z', 1, 30e6)];
-    expect(similarListings(all, { ...EMPTY, b: 'x', beds: '2', pmax: '10' }).map((x) => x.code)).toEqual(['A', 'B', 'C']);
-    expect(similarListings(all, { ...EMPTY })).toEqual([]);
+  it('relaxes type → building → budget +20 %, cheapest first, max 6', () => {
+    const T = (code: string, buildingId: string, type: string, priceFrom: number) => ({ code, buildingId, type, priceFrom }) as unknown as UnitType;
+    const all = [T('A', 'x', '1pn', 5e6), T('B', 'y', '2pn', 20e6), T('C', 'z', '2pn', 11.5e6), T('D', 'x', '3pn', 30e6), T('E', 'z', 'studio', 13e6)];
+    expect(similarTypes(all, { ...EMPTY, t: '2pn', b: 'x', pmax: '10' }).map((y) => y.code)).toEqual(['C', 'B', 'A', 'D']);
+    expect(similarTypes(all, { ...EMPTY })).toEqual([]);
   });
 });

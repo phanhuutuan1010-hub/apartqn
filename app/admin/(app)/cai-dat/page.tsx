@@ -26,7 +26,7 @@ export default async function SettingsPage() {
       <section className="a-card">
         <h2 className="a-section-title"><DatabaseBackup size={18} aria-hidden /> Xuất dữ liệu</h2>
         <p style={{ margin: '0 0 12px', fontSize: 14 }}>
-          Tải về file .zip gồm căn hộ, nguồn hàng (chủ nhà), tin đăng, khách hàng, người dùng, toà nhà — dạng JSON (khôi phục) và CSV (mở bằng Excel).
+          Tải về file .zip gồm toà nhà, loại căn, ảnh (danh sách), khách hàng, người dùng và dữ liệu căn hộ lưu trữ (tin đăng, chủ nhà) — dạng JSON (khôi phục) và CSV (mở bằng Excel).
           Lưu file ở nơi an toàn: có số điện thoại chủ nhà và khách.
         </p>
         <div className={`a-alert ${late ? 'error' : 'ok'}`} style={{ marginBottom: 12 }}>
@@ -50,7 +50,7 @@ export default async function SettingsPage() {
 
       <PricesForm v={{ price_from_studio: s?.price_from_studio ?? 8000000, price_from_1br: s?.price_from_1br ?? 10000000, price_from_2br: s?.price_from_2br ?? 12000000 }} />
 
-      <ThresholdsForm v={{ verify_remind_days: s?.verify_remind_days ?? 14, verify_hide_days: s?.verify_hide_days ?? 21, backup_warn_days: s?.backup_warn_days ?? 7, marketplace_renew_days: s?.marketplace_renew_days ?? 7 }} />
+      <ThresholdsForm v={{ backup_warn_days: s?.backup_warn_days ?? 7 }} />
     </div>
   );
 }

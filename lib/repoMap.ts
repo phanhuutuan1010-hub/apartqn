@@ -1,10 +1,11 @@
 /**
- * Pure mappers: public_* view rows → site types. Kept separate from lib/repo.ts so they can be tested
+ * Pure mappers: public_buildings / public_unit_types rows → site types. Kept separate from lib/repo.ts so they can be tested
  * against rows from plain Postgres (bigint/numeric arrive as strings there, numbers via PostgREST).
  */
-import { PHOTO_TAGS, type Building, type BuildingAmenity, type Descriptions, type Listing, type PhotoMeta, type PhotoTag } from './types';
+import { PHOTO_TAGS, type Building, type BuildingAmenity, type Descriptions, type PhotoMeta, type PhotoTag, type UnitType } from './types';
 import { toBuildingFees } from './fees';
-import { isBand } from './floorBand';
+import { LOCALES } from '@/i18n/locales';
+import { FEATURES, isUnitTypeKind, type Feature } from './unitTypes';
 
 type PhotoRow = { path: string; thumb: string | null; w?: number | null; h?: number | null; tag?: string | null; source?: string | null; v?: { w: number; path: string }[] | null };
 /** "url 640w, url 1200w, …" from the photo's own variants (older photos: the 600 px thumb + the full file) */
@@ -21,7 +22,7 @@ const meta = (p: PhotoRow): PhotoMeta => ({
 export type PublicBuildingRow = {
   slug: string; name: string; street: string; ward_new: string | null; ward_old: string | null;
   lat: number | string | null; lng: number | string | null; amenities: string[];
-  desc_vi: string | null; desc_en: string | null; is_demo: boolean; photos: PhotoRow[] | null;
+  /** desc_{locale} */ desc_vi: string | null; desc_en: string | null; is_demo: boolean; photos: PhotoRow[] | null;
   /** missing before migration 9 */
   aliases?: string[] | null;
   /** missing before migration 13 */
@@ -34,22 +35,13 @@ export type PublicBuildingRow = {
   [fee: string]: unknown;
 };
 
-export type PublicListingRow = {
-  code: string; building_slug: string; /** always null since migration 28 */ floor?: number | string | null; floor_band?: string | null; area: number | string; beds: number | string;
-  baths: number | string; dir: string; view: string; furn: string; rent: number | string; deposit: number | string;
-  cycle: string; mgmt: number | string; elec: string; water: string; moto: number | string; car: number | string;
-  net: number | string; min_term: number | string; max_occ: number | string; pets: boolean; temp_reg: boolean;
-  car_parking: boolean | null; verified: boolean; video: boolean; status: string; move_in: string | Date;
-  updated_at: string | Date; placeholder_photos: number | string; is_demo: boolean;
-  desc_vi: string | null; desc_en: string | null; photos: PhotoRow[] | null;
-  /** missing before migration 9 */
-  verified_at?: string | Date | null; published_at?: string | Date | null;
-  /** missing before migration 12 */
-  video_url?: string | null;
-  /** missing before migration 13 */
-  legacy_code?: string | null;
-  /** missing before migration 14 */
-  mgmt_fee_paid_by?: 'tenant' | 'owner' | null;
+export type PublicUnitTypeRow = {
+  code: string; building_slug: string; code_prefix: string; type: string;
+  area_min: number | string; area_max: number | string | null; price_from: number | string;
+  price_updated_at: string | Date | null; furniture_note: string | null; view_note: string | null; features: string[] | null;
+  sort: number | string; updated_at: string | Date; is_demo: boolean; photos: PhotoRow[] | null;
+  /** desc_{locale} */
+  [desc: string]: unknown;
 };
 
 /** Public URL of an object in the listing-public bucket */
@@ -57,19 +49,16 @@ export const publicPhotoUrl = (supabaseUrl: string, path: string) =>
   `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/listing-public/${path.split('/').map(encodeURIComponent).join('/')}`;
 
 const n = (v: number | string | null | undefined) => (v == null ? 0 : Number(v));
-const text = (v: string | null) => (v && v.trim() ? v.trim() : undefined);
-const desc = (r: { desc_vi: string | null; desc_en: string | null }): Descriptions => ({
-  vi: text(r.desc_vi), en: text(r.desc_en),
-});
+const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+/** desc_{locale} for every site language (a language without its column simply has no text) */
+const desc = (r: Record<string, unknown>): Descriptions =>
+  Object.fromEntries(LOCALES.flatMap((l) => (text(r[`desc_${l}`]) ? [[l, text(r[`desc_${l}`])]] : [])));
 
 /** YYYY-MM-DD in Vietnam time */
 export const vnDate = (v: string | Date) => {
   if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
   return new Date(v).toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' });
 };
-/** A DATE column: pg gives a local-midnight Date, PostgREST gives "YYYY-MM-DD" */
-const dateOnly = (v: string | Date) =>
-  typeof v === 'string' ? v.slice(0, 10) : `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`;
 
 export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building {
   const photos = r.photos ?? [];
@@ -87,7 +76,7 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
     srcsets: photos.map((p) => srcset(p, supabaseUrl)),
     photoMeta: photos.map(meta),
     ...(text(r.video_url ?? null) ? { videoUrl: text(r.video_url ?? null) } : {}),
-    desc: desc(r),
+    desc: desc(r as Record<string, unknown>),
     demo: r.is_demo,
     aliases: r.aliases ?? [],
     prefix: r.code_prefix ?? '',
@@ -95,50 +84,29 @@ export function toBuilding(r: PublicBuildingRow, supabaseUrl: string): Building 
   };
 }
 
-const iso = (v: string | Date | null | undefined) => (v == null ? undefined : new Date(v).toISOString());
-
-export function toListing(r: PublicListingRow, supabaseUrl: string): Listing {
+export function toUnitType(r: PublicUnitTypeRow, supabaseUrl: string): UnitType | null {
+  if (!isUnitTypeKind(r.type)) return null;
   const photos = r.photos ?? [];
+  const areaMin = n(r.area_min);
   return {
     code: r.code,
     buildingId: r.building_slug,
-    ...(isBand(r.floor_band) ? { floorBand: r.floor_band } : {}),
-    area: n(r.area),
-    beds: n(r.beds),
-    baths: n(r.baths),
-    dir: r.dir as Listing['dir'],
-    view: r.view as Listing['view'],
-    furn: r.furn as Listing['furn'],
-    rent: n(r.rent),
-    deposit: n(r.deposit),
-    cycle: r.cycle as Listing['cycle'],
-    mgmt: n(r.mgmt),
-    elec: r.elec as Listing['elec'],
-    water: r.water as Listing['water'],
-    moto: n(r.moto),
-    car: n(r.car),
-    net: n(r.net),
-    minTerm: n(r.min_term),
-    maxOcc: n(r.max_occ),
-    pets: r.pets,
-    tempReg: r.temp_reg,
-    verified: r.verified,
-    video: r.video,
-    status: r.status as Listing['status'],
-    moveIn: dateOnly(r.move_in),
-    updated: vnDate(r.updated_at),
+    prefix: r.code_prefix,
+    type: r.type,
+    areaMin,
+    areaMax: r.area_max == null ? areaMin : Math.max(areaMin, n(r.area_max)),
+    priceFrom: n(r.price_from),
+    priceUpdated: vnDate(r.price_updated_at ?? r.updated_at),
+    ...(text(r.furniture_note) ? { furnitureNote: text(r.furniture_note) } : {}),
+    ...(text(r.view_note) ? { viewNote: text(r.view_note) } : {}),
+    features: (r.features ?? []).filter((f): f is Feature => (FEATURES as readonly string[]).includes(f)),
+    desc: desc(r),
     photos: photos.map((p) => publicPhotoUrl(supabaseUrl, p.path)),
     thumbs: photos.map((p) => publicPhotoUrl(supabaseUrl, p.thumb ?? p.path)),
     srcsets: photos.map((p) => srcset(p, supabaseUrl)),
     photoMeta: photos.map(meta),
-    photoCount: photos.length || n(r.placeholder_photos),
-    ...(r.car_parking != null ? { carParking: r.car_parking } : {}),
-    desc: desc(r),
+    sort: n(r.sort),
     demo: r.is_demo,
-    ...(r.video_url ? { videoUrl: r.video_url } : {}),
-    ...(r.legacy_code ? { legacyCode: r.legacy_code } : {}),
-    ...(r.mgmt_fee_paid_by === 'owner' ? { mgmtPaidBy: 'owner' as const } : {}),
-    ...(r.verified_at != null ? { verifiedAt: iso(r.verified_at) } : {}),
-    ...(r.published_at != null ? { publishedAt: iso(r.published_at) } : {}),
+    updated: vnDate(r.updated_at),
   };
 }

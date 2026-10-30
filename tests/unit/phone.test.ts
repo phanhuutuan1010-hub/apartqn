@@ -28,12 +28,12 @@ describe('VN phone helpers', () => {
     const c = { hotline: '0363480154', zalo: '0906051010', whatsapp: '0906051010', telegramPhone: '0906051010' };
     expect(fmtPhone(c.hotline)).toBe('0363 480 154');
     expect(fmtPhone(c.zalo)).toBe('0906 051 010');
-    expect(contacts(c, 'vi', 'Gọi').map((x) => x.href)).toEqual(['https://zalo.me/0906051010', 'tel:+84363480154']);
-    const [wa, tg] = contacts(c, 'en', 'Call', { code: 'ALT-001' });
-    expect(wa.href).toMatch(/^https:\/\/wa\.me\/84906051010\?text=.*ALT-001/);
-    expect(tg.href).toMatch(/^https:\/\/t\.me\/\+84906051010\?text=.*ALT-001/);
+    expect(contacts(c, 'vi', 'Gọi', 'chào').map((x) => x.href)).toEqual(['https://zalo.me/0906051010', 'tel:+84363480154']);
+    const [wa, tg] = contacts(c, 'en', 'Call', 'about ALT-2PN');
+    expect(wa.href).toMatch(/^https:\/\/wa\.me\/84906051010\?text=.*ALT-2PN/);
+    expect(tg.href).toMatch(/^https:\/\/t\.me\/\+84906051010\?text=.*ALT-2PN/);
     expect(contactLinks({ ...c, telegramUsername: 'apartqn' }, 'Call', 'hi').telegram?.href).toBe('https://t.me/apartqn?text=hi');
-    expect(contacts({}, 'en', 'Call')).toEqual([]);
+    expect(contacts({}, 'en', 'Call', 'hi')).toEqual([]);
   });
   it('mobile validation', () => {
     for (const ok of ['0905123456', '+84 905 123 456', '0389 999 000', '0705.111.222']) expect(isVnMobile(ok)).toBe(true);

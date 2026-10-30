@@ -1,93 +1,78 @@
-import { MarketplaceDone } from '@/components/admin/MarketplaceDone';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
-import { requireStaff, staffDirectory } from '@/lib/admin/session';
-import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
-import { publicPhotoUrl } from '@/lib/repoMap';
-import { STATUS_LABEL, STATUS_TONE, daysAgoIso, daysSince, fmtDateTime, fmtVnd, furnLabel, type ListingStatusAll } from '@/lib/admin/labels';
+import { requireStaff } from '@/lib/admin/session';
+import { supabaseServer } from '@/lib/supabase/server';
+import { daysAgoIso, daysSince, fmtDateTime, missingOf, UT_LABEL } from '@/lib/admin/labels';
 import { LEAD_TYPE, consignLine, type LeadType } from '@/lib/admin/leadLabels';
-import { ApprovalActions } from '@/components/admin/ApprovalActions';
-import { QuickConfirm } from '@/components/admin/QuickConfirm';
 import styles from './dashboard.module.css';
 
 export const metadata: Metadata = { title: 'Hôm nay' };
 
-type Pending = {
-  id: string; rent: number; area: number; beds: number; furn: string; move_in: string; submitted_at: string | null;
-  units: { floor: number; unit_no: string; assigned_to: string | null; buildings: { name: string } };
-  photos: { path: string; thumb_path: string | null; visibility: string; is_cover: boolean; sort: number }[];
-};
-type Due = { id: string; code: string | null; building_name: string; floor: number; unit_no: string; verified_at: string | null };
-type NewLead = { id: string; name: string; phone: string; type: LeadType; created_at: string; payload: Record<string, string>; listings: { code: string | null } | null };
+type NewLead = { id: string; name: string; phone: string; type: LeadType; created_at: string; payload: Record<string, string>; unit_type_code: string | null; assigned_to: string | null };
+type TypeRow = { id: string; code: string; type: string; building_name: string; is_visible: boolean; price_from: number | null; area_min: number | null; photo_count: number; en_status: string };
 
-/** Today's work first (approve, confirm, call back); everything else folds into one summary row. RLS scopes the data. */
+/** Today's work: new leads, consign requests to hand out, unit types that still lack photos / price / EN. RLS scopes the data. */
 export default async function TodayPage() {
   const me = await requireStaff();
   const isAdmin = me.role === 'admin';
   const sb = await supabaseServer();
-  const { data: settings } = await sb.from('settings').select('*').maybeSingle();
-  const remind = settings?.verify_remind_days ?? 14;
-  const warnBackup = settings?.backup_warn_days ?? 7;
   const head = { count: 'exact' as const, head: true };
-  // posts: the 3 listings whose short links were clicked most in the last 7 days
-  const [{ data: postClicks }, { data: mkpRows }] = await Promise.all([
-    sb.from('post_clicks').select('code, source').gte('created_at', daysAgoIso(7)).limit(5000),
-    // Marketplace posts to take down (listing rented / hidden / deleted) or to renew
-    sb.rpc('marketplace_reminders'),
-  ]);
-  const mkpTodo = (mkpRows ?? []) as { id: string; code: string | null; kind: 'remove' | 'renew'; url: string | null; days: number }[];
-  const byCode = new Map<string, number>(), mkpByCode = new Map<string, number>();
-  for (const r of postClicks ?? []) { const m = r.source === 'mkp' ? mkpByCode : byCode; m.set(r.code, (m.get(r.code) ?? 0) + 1); }
-  const topMkp = [...mkpByCode].sort((x, y) => y[1] - x[1]).slice(0, 3);
-  const topPosts = [...byCode].sort((x, y) => y[1] - x[1]).slice(0, 3);
 
-  const [pendingRes, dueRes, dueCount, leadsRes, leadCount, trEn, all, missRes, dir, { data: buildings }, clicksRes] = await Promise.all([
-    isAdmin
-      ? sb.from('listings')
-          .select('id, rent, area, beds, furn, move_in, submitted_at, units(floor, unit_no, assigned_to, buildings(name)), photos(path, thumb_path, visibility, is_cover, sort)')
-          .eq('status', 'pending').order('submitted_at', { ascending: true }).limit(10)
-      : Promise.resolve({ data: [] }),
-    sb.from('admin_listings').select('id, code, building_name, floor, unit_no, verified_at')
-      .in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind)).order('verified_at', { ascending: true }).limit(6),
-    sb.from('admin_listings').select('id', head).in('status', ['available', 'reserved']).lt('verified_at', daysAgoIso(remind)),
-    sb.from('leads').select('id, name, phone, type, created_at, payload, listings(code)').eq('status', 'new').order('created_at', { ascending: false }).limit(6),
-    sb.from('leads').select('id', head).eq('status', 'new'),
-    // translation queue: listings whose Vietnamese text has no / an outdated English version, in queue order
-    sb.from('admin_listings').select('id', { count: 'exact' }).in('en_status', ['none', 'stale']).order('code', { ascending: true, nullsFirst: false }).order('created_at').limit(1),
-    sb.from('admin_listings').select('status'),
-    // unmet demand: searches that found nothing (admins only — RLS returns nothing to sales)
+  const [{ data: settings }, leadsRes, leadCount, consignRes, consignCount, typesRes, missRes, { data: buildings }, clicksRes, chatRes] = await Promise.all([
+    sb.from('settings').select('last_backup_at, backup_warn_days').maybeSingle(),
+    sb.from('leads').select('id, name, phone, type, created_at, payload, unit_type_code, assigned_to').eq('status', 'new').neq('type', 'consign').order('created_at', { ascending: false }).limit(8),
+    sb.from('leads').select('id', head).eq('status', 'new').neq('type', 'consign'),
+    sb.from('leads').select('id, name, phone, type, created_at, payload, unit_type_code, assigned_to').eq('status', 'new').eq('type', 'consign').order('created_at', { ascending: false }).limit(6),
+    sb.from('leads').select('id', head).eq('status', 'new').eq('type', 'consign'),
+    sb.from('admin_unit_types').select('id, code, type, building_name, is_visible, price_from, area_min, photo_count, en_status, building_visible').eq('building_visible', true).order('building_sort').order('sort'),
     isAdmin ? sb.rpc('search_miss_top', { p_days: 30, p_limit: 8 }) : Promise.resolve({ data: null }),
-    staffDirectory(),
     sb.from('buildings').select('id, name'),
     // consign-page contact clicks, 30 days (admins only — RLS)
     isAdmin ? sb.from('contact_clicks').select('channel').eq('page', 'ky-gui').gte('created_at', daysAgoIso(30)).limit(10000) : Promise.resolve({ data: null }),
+    // "Kiểm tra căn trống" chat taps, 7 days
+    sb.from('contact_intents').select('code').not('code', 'is', null).gte('created_at', daysAgoIso(7)).limit(5000),
   ]);
+  const leads = (leadsRes.data ?? []) as NewLead[];
+  const consign = (consignRes.data ?? []) as NewLead[];
+  const types = (typesRes.data ?? []) as TypeRow[];
+  // the visible buildings' types that still lack something: the shown ones first (they are live with a gap)
+  const missing = types.map((t) => ({ t, miss: missingOf(t) })).filter((x) => x.miss.length).sort((a, b) => Number(b.t.is_visible) - Number(a.t.is_visible));
+  const live = types.filter((t) => t.is_visible).length;
+  const top = (missRes.data ?? []) as { query_norm: string; n: number }[];
+  const bName = new Map((buildings ?? []).map((b) => [b.id, b.name]));
   const clicks = new Map<string, number>();
   ((clicksRes.data ?? []) as { channel: string }[]).forEach((r) => clicks.set(r.channel, (clicks.get(r.channel) ?? 0) + 1));
   const ck = (k: string) => clicks.get(k) ?? 0;
-  const pending = (pendingRes.data ?? []) as unknown as Pending[];
-  const due = (dueRes.data ?? []) as Due[];
-  const leads = (leadsRes.data ?? []) as unknown as NewLead[];
-  const top = (missRes.data ?? []) as { query_norm: string; n: number }[];
-  const byStatus = new Map<ListingStatusAll, number>();
-  (all.data ?? []).forEach((r) => byStatus.set(r.status, (byStatus.get(r.status) ?? 0) + 1));
+  const chats = new Map<string, number>();
+  ((chatRes.data ?? []) as { code: string }[]).forEach((r) => chats.set(r.code, (chats.get(r.code) ?? 0) + 1));
+  const topChats = [...chats].sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const warnBackup = settings?.backup_warn_days ?? 7;
   const backupDays = daysSince(settings?.last_backup_at);
   const backupLate = backupDays == null || backupDays > warnBackup;
-  const bName = new Map((buildings ?? []).map((b) => [b.id, b.name]));
   const { count: notifyFailed } = isAdmin
-    ? await sb.from('notifications_log').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', daysAgoIso(7))
+    ? await sb.from('notifications_log').select('id', head).eq('status', 'failed').gte('created_at', daysAgoIso(7))
     : { count: 0 };
-  const nothing = !pending.length && !due.length && !leads.length && !mkpTodo.length;
+  const nothing = !leads.length && !consign.length && !missing.length;
+  const leadRow = (r: NewLead) => (
+    <li key={r.id}>
+      <Link href={`/admin/khach-hang/${r.id}`} className="a-row">
+        <span className="a-row-main"><b>{r.name}</b><span className={`a-badge ${LEAD_TYPE[r.type].tone}`}>{LEAD_TYPE[r.type].label}</span>{!r.assigned_to && <span className="a-badge warn">Chưa giao</span>}</span>
+        <span className="a-row-sub">
+          {r.phone} · {fmtDateTime(r.created_at)}
+          {r.type === 'consign' ? ` · ${consignLine(r.payload, bName)}` : r.unit_type_code ? ` · ${r.unit_type_code}` : ''}
+        </span>
+      </Link>
+    </li>
+  );
 
   return (
     <div className="a-page">
       <div className="a-head">
         <div>
           <h1 className="a-h1">Hôm nay</h1>
-          <div className="a-sub">Chào {me.full_name || me.email} · {isAdmin ? 'toàn hệ thống' : 'các căn và khách bạn phụ trách'}</div>
+          <div className="a-sub">Chào {me.full_name || me.email} · {isAdmin ? 'toàn hệ thống' : 'khách bạn phụ trách'} · <b>{live}</b> loại căn đang hiển thị</div>
         </div>
-        <Link href="/admin/can-ho/moi" className="a-btn a-btn-primary"><Plus size={16} aria-hidden /> Thêm căn</Link>
+        <Link href="/admin/loai-can" className="a-btn a-btn-primary">Loại căn</Link>
       </div>
 
       {(notifyFailed ?? 0) > 0 && (
@@ -95,88 +80,13 @@ export default async function TodayPage() {
           <b>Thông báo lỗi: {notifyFailed}</b> — có thông báo khách mới không gửi được trong 7 ngày qua. Mở Cài đặt → Kiểm tra Telegram →
         </Link>
       )}
+      {isAdmin && backupLate && (
+        <Link href="/admin/cai-dat" className="a-alert warn" style={{ display: 'block', marginBottom: 12, textDecoration: 'none' }}>
+          Sao lưu: <b>{backupDays == null ? 'chưa có lần nào' : `${backupDays} ngày trước`}</b> — nên xuất dữ liệu (Cài đặt → Xuất dữ liệu).
+        </Link>
+      )}
 
       {nothing && <div className="a-card a-empty">Không có việc gì đang chờ. 🎉</div>}
-
-      {pending.length > 0 && (
-        <section className={styles.block} aria-labelledby="t-pending">
-          <h2 id="t-pending" className={styles.h2}>Chờ duyệt <span className="a-count">{pending.length}</span></h2>
-          {pending.map((r) => {
-            const pub = r.photos.filter((p) => p.visibility === 'public').sort((a, b) => Number(b.is_cover) - Number(a.is_cover) || a.sort - b.sort);
-            return (
-              <div key={r.id} className={`a-card ${styles.pending}`}>
-                <div style={{ minWidth: 0 }}>
-                  <Link href={`/admin/can-ho/${r.id}`} className={styles.title}>{r.units.buildings.name} · T{r.units.floor}{r.units.unit_no ? ` · ${r.units.unit_no}` : ''}</Link>
-                  <div className="a-small a-muted">gửi bởi <b>{r.units.assigned_to ? dir.get(r.units.assigned_to)?.name : '—'}</b> · {fmtDateTime(r.submitted_at)}</div>
-                  <div className={styles.facts}>
-                    <b style={{ color: 'var(--red-500)' }}>{fmtVnd(r.rent)} ₫</b> · {r.area} m² · {r.beds === 0 ? 'Studio' : `${r.beds} PN`} · {furnLabel(r.furn)} · dọn vào {r.move_in}
-                  </div>
-                  <div className={styles.thumbs}>
-                    {pub.slice(0, 4).map((p) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img key={p.path} src={publicPhotoUrl(SUPABASE_URL, p.thumb_path ?? p.path)} alt="" loading="lazy" />
-                    ))}
-                    {!pub.length && <span className="a-badge red">Chưa có ảnh công khai</span>}
-                  </div>
-                </div>
-                <ApprovalActions id={r.id} />
-              </div>
-            );
-          })}
-        </section>
-      )}
-
-      {mkpTodo.length > 0 && (
-        <section className={styles.block} aria-labelledby="t-mkp">
-          <h2 id="t-mkp" className={styles.h2}>Marketplace <span className="a-count">{mkpTodo.length}</span></h2>
-          <ul className="a-rows">
-            {mkpTodo.map((r) => (
-              <li key={r.id} className={styles.dueRow}>
-                <Link href={`/admin/can-ho/${r.id}`} className={styles.dueText}>
-                  <b>{r.kind === 'remove' ? 'Gỡ/đánh dấu đã cho thuê trên Marketplace' : 'Làm mới tin Marketplace'}: {r.code ?? '—'}</b>
-                  <span className="a-small a-muted">{r.kind === 'remove' ? 'Căn không còn cho thuê trên website' : `${r.days} ngày chưa làm mới`}</span>
-                </Link>
-                <span style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                  {r.url && <a className="a-btn a-btn-ghost a-btn-sm" href={r.url} target="_blank" rel="noopener noreferrer">Mở tin</a>}
-                  <MarketplaceDone id={r.id} action={r.kind === 'remove' ? 'removed' : 'renewed'} />
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {topMkp.length > 0 && (
-        <p className="a-small" style={{ margin: '0 0 14px' }}>
-          <b>Marketplace (7 ngày):</b> {topMkp.map(([code, n], i) => <span key={code}>{i > 0 && ' · '}{code} <b>{n}</b> lượt bấm</span>)}
-        </p>
-      )}
-
-      {topPosts.length > 0 && (
-        <p className="a-small" style={{ margin: '0 0 14px' }}>
-          <b>Bài đăng (7 ngày):</b> {topPosts.map(([code, n], i) => <span key={code}>{i > 0 && ' · '}{code} <b>{n}</b> lượt bấm</span>)}
-        </p>
-      )}
-
-      {due.length > 0 && (
-        <section className={styles.block} aria-labelledby="t-due">
-          <h2 id="t-due" className={styles.h2}>
-            Cần xác nhận còn trống <span className="a-count">{dueCount.count ?? due.length}</span>
-            <Link href="/admin/can-ho?v=due" className={styles.more}>Tất cả →</Link>
-          </h2>
-          <ul className="a-rows">
-            {due.map((r) => (
-              <li key={r.id} className={styles.dueRow}>
-                <Link href={`/admin/can-ho/${r.id}`} className={styles.dueText}>
-                  <b>{r.code ?? '—'}</b> <span className="a-muted">· {r.building_name} · T{r.floor}{r.unit_no ? ` · ${r.unit_no}` : ''}</span>
-                  <span className="a-small a-muted">{daysSince(r.verified_at)} ngày chưa xác nhận</span>
-                </Link>
-                <QuickConfirm id={r.id} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {leads.length > 0 && (
         <section className={styles.block} aria-labelledby="t-leads">
@@ -184,20 +94,43 @@ export default async function TodayPage() {
             Khách mới <span className="a-count">{leadCount.count ?? leads.length}</span>
             <Link href="/admin/khach-hang?status=new" className={styles.more}>Tất cả →</Link>
           </h2>
+          <ul className="a-rows">{leads.map(leadRow)}</ul>
+        </section>
+      )}
+
+      {consign.length > 0 && (
+        <section className={styles.block} aria-labelledby="t-consign">
+          <h2 id="t-consign" className={styles.h2}>
+            Yêu cầu ký gửi <span className="a-count">{consignCount.count ?? consign.length}</span>
+            <Link href="/admin/khach-hang?status=new&type=consign" className={styles.more}>Tất cả →</Link>
+          </h2>
+          <ul className="a-rows">{consign.map(leadRow)}</ul>
+        </section>
+      )}
+
+      {missing.length > 0 && (
+        <section className={styles.block} aria-labelledby="t-missing">
+          <h2 id="t-missing" className={styles.h2}>
+            Loại căn còn thiếu <span className="a-count">{missing.length}</span>
+            <Link href="/admin/loai-can?v=missing" className={styles.more}>Tất cả →</Link>
+          </h2>
           <ul className="a-rows">
-            {leads.map((r) => (
-              <li key={r.id}>
-                <Link href={`/admin/khach-hang/${r.id}`} className="a-row">
-                  <span className="a-row-main"><b>{r.name}</b><span className={`a-badge ${LEAD_TYPE[r.type].tone}`}>{LEAD_TYPE[r.type].label}</span></span>
-                  <span className="a-row-sub">
-                    {r.phone} · {fmtDateTime(r.created_at)}
-                    {r.type === 'consign' ? ` · ${consignLine(r.payload, bName)}` : r.listings?.code ? ` · ${r.listings.code}` : ''}
-                  </span>
+            {missing.slice(0, 8).map(({ t, miss }) => (
+              <li key={t.id} className={styles.dueRow}>
+                <Link href={`/admin/loai-can/${t.id}${miss.length === 1 && miss[0] === 'EN' ? '?queue=en' : ''}`} className={styles.dueText}>
+                  <b>{t.code}</b> <span className="a-muted">· {UT_LABEL[t.type]} · {t.building_name}</span>
+                  <span className="a-small">Thiếu: {miss.join(', ')}{t.is_visible ? ' · đang hiển thị' : ' · đang ẩn'}</span>
                 </Link>
               </li>
             ))}
           </ul>
         </section>
+      )}
+
+      {topChats.length > 0 && (
+        <p className="a-small" style={{ margin: '0 0 14px' }}>
+          <b>“Kiểm tra căn trống” (7 ngày):</b> {topChats.map(([code, n], i) => <span key={code}>{i > 0 && ' · '}{code} <b>{n}</b> lượt bấm</span>)} · <Link href="/admin/khach-hang?type=wa">Xem →</Link>
+        </p>
       )}
 
       {isAdmin && (
@@ -208,60 +141,22 @@ export default async function TodayPage() {
         </div>
       )}
 
-      {(trEn.count ?? 0) > 0 && trEn.data?.[0] && (
-        <Link href={`/admin/can-ho/${trEn.data[0].id}?queue=en`} className={`a-card ${styles.clicks}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-          <span><b>{trEn.count}</b> tin cần dịch EN</span>
-          <span style={{ marginLeft: 'auto', color: 'var(--blue-500)', fontWeight: 600 }}>Dịch lần lượt →</span>
-        </Link>
+      {isAdmin && (
+        <details className={`a-card ${styles.more2}`}>
+          <summary>
+            <span>Nhu cầu chưa đáp ứng</span>
+            <span className={styles.sumBits}><span><b>{top.length}</b> từ khoá (30 ngày)</span></span>
+          </summary>
+          <div className={styles.moreBody}>
+            <p className="a-small a-muted" style={{ margin: '8px 0' }}>Từ khoá khách tìm trên website mà không ra loại căn nào (ẩn danh). <Link href="/admin/nhu-cau">Xem tất cả →</Link></p>
+            {top.length ? (
+              <ol className={styles.demandList}>
+                {top.map((r) => <li key={r.query_norm}><span className={styles.demandQ}>{r.query_norm}</span><b>{r.n}</b></li>)}
+              </ol>
+            ) : <p className="a-small a-muted" style={{ margin: 0 }}>Chưa có lượt tìm nào không ra kết quả.</p>}
+          </div>
+        </details>
       )}
-
-      {/* secondary: one expandable summary row */}
-      <details className={`a-card ${styles.more2}`}>
-        <summary>
-          <span>Khác</span>
-          <span className={styles.sumBits}>
-            {isAdmin && <span>Nhu cầu chưa đáp ứng <b>{top.length}</b></span>}
-            <span>Cần dịch EN <b className={trEn.count ? styles.warnTxt : undefined}>{trEn.count ?? 0}</b></span>
-            {isAdmin && <span>Sao lưu <b className={backupLate ? styles.redTxt : undefined}>{backupDays == null ? 'chưa có' : backupDays === 0 ? 'hôm nay' : `${backupDays} ngày`}</b></span>}
-          </span>
-        </summary>
-        <div className={styles.moreBody}>
-          {isAdmin && (
-            <div>
-              <h3 className={styles.h3}>Nhu cầu chưa đáp ứng <Link href="/admin/nhu-cau" className={styles.more}>Xem tất cả →</Link></h3>
-              <p className="a-small a-muted" style={{ margin: '0 0 8px' }}>Từ khoá khách tìm trên website trong 30 ngày qua mà không ra căn nào (ẩn danh).</p>
-              {top.length ? (
-                <ol className={styles.demandList}>
-                  {top.map((r) => <li key={r.query_norm}><span className={styles.demandQ}>{r.query_norm}</span><b>{r.n}</b></li>)}
-                </ol>
-              ) : <p className="a-small a-muted" style={{ margin: 0 }}>Chưa có lượt tìm nào không ra kết quả.</p>}
-            </div>
-          )}
-          <div>
-            <h3 className={styles.h3}>Cần dịch EN</h3>
-            <p className="a-small" style={{ margin: 0 }}><Link href="/admin/can-ho?tr=en">{trEn.count ?? 0} tin chưa dịch / cần cập nhật bản tiếng Anh →</Link></p>
-          </div>
-          {isAdmin && (
-            <div>
-              <h3 className={styles.h3}>Sao lưu</h3>
-              <p className="a-small" style={{ margin: 0 }}>
-                {backupLate ? `Nên xuất dữ liệu (> ${warnBackup} ngày). ` : 'Ổn. '}<Link href="/admin/cai-dat">Cài đặt → Xuất dữ liệu</Link>
-              </p>
-            </div>
-          )}
-          <div>
-            <h3 className={styles.h3}>Căn hộ theo trạng thái</h3>
-            <div className={styles.status}>
-              {(Object.keys(STATUS_LABEL) as ListingStatusAll[]).map((s) => (
-                <Link key={s} href={`/admin/can-ho?status=${s}`} className={styles.statusItem}>
-                  <span className={`a-badge dot ${STATUS_TONE[s]}`}>{STATUS_LABEL[s]}</span>
-                  <b>{byStatus.get(s) ?? 0}</b>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </details>
     </div>
   );
 }

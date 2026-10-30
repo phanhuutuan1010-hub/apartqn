@@ -4,113 +4,39 @@ import { z } from 'zod';
 import { requireStaff } from '@/lib/admin/session';
 import { supabaseServer, SUPABASE_URL } from '@/lib/supabase/server';
 import { publicPhotoUrl } from '@/lib/repoMap';
-import { SITE_URL } from '@/data/site';
-import { effectiveBand } from '@/lib/floorBand';
-import type { PostData } from '@/lib/listing/post';
-import { revalidatePath } from 'next/cache';
 import { CANONICAL_URL } from '@/data/site';
-import { vnToday } from '@/lib/format';
-import { MKP_LANGS, mkpDescription, mkpFields, mkpReply, mkpSuggestLang, mkpTitle, type MkpData, type MkpField, type MkpLang } from '@/lib/listing/marketplace';
+import { FEATURES, isUnitTypeKind, type Feature, type UnitTypeKind } from '@/lib/unitTypes';
+import type { TypePost } from '@/lib/unitTypePost';
 
-const PUBLIC = ['available', 'reserved', 'rented'];
+type Row = { id: string; code: string; type: string; building_name: string; price_from: number | null; area_min: number | null; area_max: number | null; features: string[]; is_visible: boolean; building_visible: boolean };
+const COLS = 'id, code, type, building_name, price_from, area_min, area_max, features, is_visible, building_visible';
 
-/**
- * Inputs for "Tạo bài đăng": the listing's public fields + up to 6 PUBLIC photos (rendered files: watermarked when
- * the photo's watermark is on) + the site origin for the short link. No phone number. Read as the signed-in staff member (RLS). Never owner data.
- */
-export async function getPostData(id: string): Promise<{ data?: PostData; images?: string[]; origin?: string; error?: string }> {
-  await requireStaff();
-  if (!z.string().uuid().safeParse(id).success) return { error: 'Căn không hợp lệ.' };
-  const sb = await supabaseServer();
-  const [{ data: l }, { data: photos }] = await Promise.all([
-    sb.from('listings').select('code, status, beds, furn, view, rent, move_in, min_term, deposit, pets, floor_band, floor_band_manual, units(floor, buildings(name, total_floors, is_visible))').eq('id', id).maybeSingle(),
-    sb.from('photos').select('path, source, is_cover, sort').eq('listing_id', id).eq('visibility', 'public').order('is_cover', { ascending: false }).order('sort'),
-  ]);
-  if (!l) return { error: 'Không thấy căn (hoặc bạn không phụ trách căn này).' };
-  const num = (v: unknown) => (v == null ? null : Number(v));
-  const unit = l.units as unknown as { floor: number; buildings: { name: string; total_floors: number | null; is_visible: boolean } } | null;
-  const pub = photos ?? [];
-  return {
-    data: {
-      code: l.code, building: unit?.buildings.name ?? '', beds: num(l.beds), furn: l.furn, view: l.view,
-      floorBand: effectiveBand({ floor: unit?.floor, total: unit?.buildings.total_floors, band: l.floor_band, manual: l.floor_band_manual }),
-      rent: num(l.rent), moveIn: l.move_in, minTerm: num(l.min_term), deposit: num(l.deposit), pets: !!l.pets, photoCount: pub.length, ownPhotos: pub.length > 0 && pub.every((p) => p.source === 'own'),
-      // a post needs a page to send people to
-      published: !!l.code && PUBLIC.includes(l.status) && unit?.buildings.is_visible !== false,
-    },
-    // "Bài kèm ảnh": up to 6 public (rendered, watermarked where on) photos, cover first
-    images: pub.slice(0, 6).map((p) => publicPhotoUrl(SUPABASE_URL, p.path)),
-    origin: SITE_URL,
-  };
-}
-
-export type MarketplaceKit = {
-  code: string; fields: MkpField[];
-  /** main language: the stored choice, or the suggestion while `suggested` */
-  lang: MkpLang; suggested: boolean;
-  /** title + description for each main language (the browser switches without a round trip) */
-  text: Record<MkpLang, { title: string; description: string }>;
-  reply: Record<MkpLang, string>;
-  /** cover first, then the gallery order; rendered public files (watermarked where the photo's watermark is on) */
-  images: string[]; card: string;
-  posted: boolean; url: string | null; postedAt: string | null; renewedAt: string | null;
-};
+const toPost = (r: Row, photoCount: number): TypePost => ({
+  code: r.code, type: r.type as UnitTypeKind, building: r.building_name, priceFrom: Number(r.price_from ?? 0),
+  areaMin: r.area_min == null ? null : Number(r.area_min), areaMax: r.area_max == null ? null : Number(r.area_max),
+  features: (r.features ?? []).filter((f): f is Feature => (FEATURES as readonly string[]).includes(f)), photoCount,
+});
 
 /**
- * Everything for a manual Facebook Marketplace post, composed on the server (the browser only shows and copies it):
- * form fields, title + trilingual description per main language, Messenger replies (VI / EN / RU), up to 20 public photos and the brand card.
- * Published listings only. Read as the signed-in staff member (RLS). Never owner data, never the floor / unit number.
+ * Inputs for "Tạo bài đăng": the unit type's public fields + up to 6 public sample photos (rendered files, watermarked
+ * as set) + the same type in every visible building (the roundup). Only what the site shows; no phone number.
  */
-export async function getMarketplaceKit(id: string): Promise<{ kit?: MarketplaceKit; error?: string }> {
+export async function getPostData(id: string): Promise<{ data?: TypePost; live?: boolean; roundup?: TypePost[]; images?: string[]; origin?: string; error?: string }> {
   await requireStaff();
-  if (!z.string().uuid().safeParse(id).success) return { error: 'Căn không hợp lệ.' };
+  if (!z.string().uuid().safeParse(id).success) return { error: 'Loại căn không hợp lệ.' };
   const sb = await supabaseServer();
-  const [{ data: l }, { data: photos }] = await Promise.all([
-    sb.from('listings').select('code, status, beds, baths, area, furn, view, rent, move_in, min_term, deposit, pets, car_parking, floor_band, floor_band_manual, marketplace_posted, marketplace_url, marketplace_posted_at, marketplace_renewed_at, marketplace_lang, units(floor, buildings(name, street, total_floors, is_visible))').eq('id', id).maybeSingle(),
-    sb.from('photos').select('path, is_cover, sort').eq('listing_id', id).eq('visibility', 'public').order('is_cover', { ascending: false }).order('sort'),
+  const [{ data: r }, { data: photos }] = await Promise.all([
+    sb.from('admin_unit_types').select(COLS).eq('id', id).maybeSingle(),
+    sb.from('photos').select('path').eq('unit_type_id', id).eq('visibility', 'public').is('deleted_at', null).order('is_cover', { ascending: false }).order('sort').limit(6),
   ]);
-  if (!l) return { error: 'Không thấy căn (hoặc bạn không phụ trách căn này).' };
-  const unit = l.units as unknown as { floor: number; buildings: { name: string; street: string; total_floors: number | null; is_visible: boolean } } | null;
-  if (!l.code || !PUBLIC.includes(l.status) || unit?.buildings.is_visible === false) return { error: 'Đăng căn lên website trước — bộ Marketplace dẫn người xem về trang căn hộ.' };
-  const d: MkpData = {
-    code: l.code, building: unit?.buildings.name ?? '', street: unit?.buildings.street ?? '', beds: Number(l.beds), baths: Number(l.baths), area: Number(l.area), rent: Number(l.rent),
-    moveIn: l.move_in, furn: l.furn, pets: !!l.pets, carParking: l.car_parking ?? null, view: l.view,
-    minTerm: l.min_term == null ? null : Number(l.min_term), deposit: l.deposit == null ? null : Number(l.deposit),
-    floorBand: effectiveBand({ floor: unit?.floor, total: unit?.buildings.total_floors, band: l.floor_band, manual: l.floor_band_manual }),
-  };
-  const today = vnToday();
+  if (!r || !isUnitTypeKind((r as Row).type)) return { error: 'Không thấy loại căn.' };
+  const row = r as Row;
+  const { data: same } = await sb.from('admin_unit_types').select(COLS).eq('type', row.type).eq('is_visible', true).eq('building_visible', true).order('price_from');
   return {
-    kit: {
-      code: l.code, fields: mkpFields(d, today),
-      lang: (l.marketplace_lang as MkpLang | null) ?? mkpSuggestLang(d), suggested: l.marketplace_lang == null,
-      text: Object.fromEntries(MKP_LANGS.map((x) => [x, { title: mkpTitle(d, x), description: mkpDescription(d, x, today) }])) as MarketplaceKit['text'],
-      reply: Object.fromEntries(MKP_LANGS.map((x) => [x, mkpReply(l.code, CANONICAL_URL, x)])) as MarketplaceKit['reply'],
-      images: (photos ?? []).slice(0, 19).map((p) => publicPhotoUrl(SUPABASE_URL, p.path)),
-      card: `/og/marketplace/${l.code.toLowerCase()}`,
-      posted: l.marketplace_posted, url: l.marketplace_url, postedAt: l.marketplace_posted_at, renewedAt: l.marketplace_renewed_at,
-    },
+    data: toPost(row, (photos ?? []).length),
+    live: row.is_visible && row.building_visible && row.price_from != null,
+    roundup: ((same ?? []) as Row[]).filter((x) => x.price_from != null).map((x) => toPost(x, 1)),
+    images: (photos ?? []).map((p) => publicPhotoUrl(SUPABASE_URL, p.path)),
+    origin: CANONICAL_URL,
   };
-}
-
-/** "Đánh dấu đã đăng" (with the post's URL, optional) · "Đã làm mới" · "Đã gỡ" — one rpc; admins, or the listing's own sales person. */
-export async function setMarketplace(id: string, action: 'posted' | 'renewed' | 'removed', url?: string): Promise<{ ok?: true; error?: string }> {
-  await requireStaff();
-  if (!z.string().uuid().safeParse(id).success) return { error: 'Căn không hợp lệ.' };
-  const u = (url ?? '').trim();
-  if (u && (!/^https:\/\//.test(u) || u.length > 500)) return { error: 'Link phải bắt đầu bằng https:// (dán link tin trên Marketplace).' };
-  const sb = await supabaseServer();
-  const { error } = await sb.rpc('set_marketplace', { p_id: id, p_action: action, p_url: u || null });
-  if (error) return { error: /not allowed/.test(error.message) ? 'Bạn không phụ trách căn này.' : 'Lỗi: ' + error.message };
-  revalidatePath('/admin', 'layout');
-  return { ok: true };
-}
-
-/** "Ngôn ngữ chính" of the Marketplace title / description, saved per listing — admins, or the listing's own sales person. */
-export async function setMarketplaceLang(id: string, lang: MkpLang): Promise<{ ok?: true; error?: string }> {
-  await requireStaff();
-  if (!z.string().uuid().safeParse(id).success || !MKP_LANGS.includes(lang)) return { error: 'Dữ liệu không hợp lệ.' };
-  const sb = await supabaseServer();
-  const { error } = await sb.rpc('set_marketplace_lang', { p_id: id, p_lang: lang });
-  if (error) return { error: /not allowed/.test(error.message) ? 'Bạn không phụ trách căn này.' : 'Lỗi: ' + error.message };
-  return { ok: true };
 }

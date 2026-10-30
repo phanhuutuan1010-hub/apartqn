@@ -21,7 +21,7 @@ export function GET() {
         { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ],
       shortcuts: [
-        { name: 'Thêm căn', url: '/admin/can-ho/moi' },
+        { name: 'Loại căn', url: '/admin/loai-can' },
         { name: 'Khách', url: '/admin/khach-hang' },
       ],
     },

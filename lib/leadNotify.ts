@@ -39,17 +39,18 @@ export async function deliverLead(sb: Sb, o: { leadId: string | null; targets: (
 /** Send the notification of an existing lead again (after Telegram was fixed / connected). Built from the stored row. */
 export async function resendLead(sb: Sb, leadId: string): Promise<{ ok: boolean; tg: boolean; mail: boolean; error?: string }> {
   const { data: l } = await sb.from('leads')
-    .select('id, type, name, phone, locale, preferred_date, duration_months, message, page, assigned_to, listings(code, units(buildings(name)))').eq('id', leadId).maybeSingle();
+    .select('id, type, name, phone, locale, preferred_date, duration_months, message, page, assigned_to, unit_type_code, unit_types(code, buildings(name))').eq('id', leadId).maybeSingle();
   if (!l) return { ok: false, tg: false, mail: false, error: 'lead not found' };
-  const li = l.listings as unknown as { code: string | null; units: { buildings: { name: string } } | null } | null;
+  const ut = l.unit_types as unknown as { code: string; buildings: { name: string } | null } | null;
+  const code = ut?.code ?? l.unit_type_code;
   const [{ data: admins }, { data: assignee }] = await Promise.all([
     sb.from('profiles').select('telegram_chat_id').eq('role', 'admin').eq('active', true),
     l.assigned_to ? sb.from('profiles').select('full_name, email, telegram_chat_id').eq('id', l.assigned_to).eq('active', true).maybeSingle() : Promise.resolve({ data: null }),
   ]);
-  const title = l.type === 'rent' ? `Đặt lịch xem ${li?.code ?? ''}`.trim() : l.type === 'search' ? 'Nhờ tìm căn giúp' : 'Ký gửi căn hộ';
+  const title = l.type === 'rent' ? `Kiểm tra căn trống ${code ?? ''}`.trim() : l.type === 'search' ? 'Nhờ tìm căn giúp' : 'Ký gửi căn hộ';
   const rows = ([
-    ['Mã căn', li?.code], ['Toà nhà', li?.units?.buildings.name], ['Họ tên', l.name], ['Điện thoại', l.phone],
-    ['Ngày muốn xem', l.preferred_date], ['Thời gian thuê', l.duration_months], ['Nội dung', l.message], ['Ngôn ngữ khách', l.locale?.toUpperCase()],
+    ['Loại căn', code], ['Toà nhà', ut?.buildings?.name], ['Họ tên', l.name], ['Liên hệ', l.phone],
+    ['Ngày dọn vào', l.preferred_date], ['Thời gian thuê', l.duration_months], ['Nội dung', l.message], ['Ngôn ngữ khách', l.locale?.toUpperCase()],
     ['Phụ trách', assignee ? assignee.full_name || assignee.email : null],
     ['Mở trong quản trị', adminUrl(`/admin/khach-hang/${l.id}`)], ['Trang', l.page],
   ] as [string, string | null | undefined][]).filter((r): r is [string, string] => !!r[1]);

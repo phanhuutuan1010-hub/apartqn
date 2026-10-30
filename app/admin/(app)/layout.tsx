@@ -5,16 +5,14 @@ import { AdminNav, type NavItem } from '@/components/admin/AdminNav';
 export default async function AdminAppLayout({ children }: { children: React.ReactNode }) {
   const me = await requireStaff();
   const isAdmin = me.role === 'admin';
-  let pending = 0;
-  if (isAdmin) {
-    const sb = await supabaseServer();
-    const { count } = await sb.from('listings').select('id', { count: 'exact', head: true }).eq('status', 'pending');
-    pending = count ?? 0;
-  }
+  // the badge on Hôm nay: new leads (RLS: admins all, sales their own)
+  const sb = await supabaseServer();
+  const { count } = await sb.from('leads').select('id', { count: 'exact', head: true }).eq('status', 'new');
+  const fresh = count ?? 0;
   // 5 tabs for everyone; what sits behind "Thêm" depends on the role
   const items: NavItem[] = [
-    { href: '/admin', label: 'Hôm nay', icon: 'today', count: pending },
-    { href: '/admin/can-ho', label: 'Căn hộ', icon: 'listings' },
+    { href: '/admin', label: 'Hôm nay', icon: 'today', count: fresh },
+    { href: '/admin/loai-can', label: 'Loại căn', icon: 'listings' },
     { href: '/admin/khach-hang', label: 'Khách', icon: 'leads' },
     { href: '/admin/tra-loi-nhanh', label: 'Trả lời nhanh', icon: 'replies' },
     { href: '/admin/them', label: 'Thêm', icon: 'more' },
@@ -26,6 +24,7 @@ export default async function AdminAppLayout({ children }: { children: React.Rea
         { href: '/admin/cai-dat', label: 'Cài đặt', icon: 'settings' },
         { href: '/admin/nhu-cau', label: 'Nhu cầu chưa đáp ứng', icon: 'demand' },
         { href: '/admin/thung-rac', label: 'Thùng rác', icon: 'trash' },
+        { href: '/admin/luu-tru', label: 'Lưu trữ căn hộ cũ', icon: 'archive' },
       ]
     : [];
   return (

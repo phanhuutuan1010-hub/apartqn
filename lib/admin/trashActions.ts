@@ -1,11 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin, requireStaff } from '@/lib/admin/session';
+import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
 import { supabaseSecret } from '@/lib/supabase/secret';
-import { revalidatePublic } from '@/lib/revalidate';
-import { publicRef } from '@/lib/admin/refresh';
+import { refreshBuilding } from '@/lib/admin/buildingActions';
+import { purgeUnitType, restoreUnitType } from '@/lib/admin/unitTypeActions';
 import { removeObjects, type StorageObject } from '@/lib/admin/purge';
 import { refreshOwner } from '@/lib/admin/photoPipeline';
 
@@ -22,44 +22,16 @@ const adminPaths = () => {
   revalidatePath('/admin', 'layout');
 };
 
-// ───────────── listings ─────────────
-
-/** "Xoá tin" → thùng rác. Admin: any listing. Sales: own listing never published (checked again in the rpc). */
-export async function trashListing(id: string): Promise<Res> {
-  await requireStaff();
-  if (!isUuid(id)) return { error: 'Dữ liệu không hợp lệ.' };
-  const ref = await publicRef(id);
-  const sb = await supabaseServer();
-  const { error } = await sb.rpc('trash_listing', { p_listing: id });
-  if (error) return { error: vn(error.message) };
-  if (ref?.code) revalidatePublic({ code: ref.code, building: ref.building_slug });
-  adminPaths();
-  return { ok: `Đã chuyển ${ref?.code ?? 'tin nháp'} vào thùng rác.` };
-}
-
-export async function restoreListing(id: string): Promise<Res> {
-  await requireStaff();
-  if (!isUuid(id)) return { error: 'Dữ liệu không hợp lệ.' };
-  const sb = await supabaseServer();
-  const { error } = await sb.rpc('restore_listing', { p_listing: id });
-  if (error) return { error: vn(error.message) };
-  const ref = await publicRef(id);
-  if (ref?.code) revalidatePublic({ code: ref.code, building: ref.building_slug });
-  adminPaths();
-  return { ok: 'Đã khôi phục.' };
-}
-
 // ───────────── buildings ─────────────
 
-/** How many units / listings still point at a building (trashed ones included) — the delete dialog shows this. */
-export async function buildingRefs(id: string): Promise<{ units: number; listings: number }> {
+/** How many unit types of a building are on the website — the delete dialog asks to hide them first. */
+export async function buildingRefs(id: string): Promise<{ visible: number }> {
   await requireAdmin();
-  const { data } = await supabaseSecret().from('units').select('id, listings(id)').eq('building_id', id);
-  const rows = (data ?? []) as { listings: { id: string }[] | { id: string } | null }[];
-  return { units: rows.length, listings: rows.filter((r) => (Array.isArray(r.listings) ? r.listings.length : r.listings)).length };
+  const { count } = await supabaseSecret().from('unit_types').select('id', { count: 'exact', head: true }).eq('building_id', id).eq('is_visible', true).is('deleted_at', null);
+  return { visible: count ?? 0 };
 }
 
-/** Typed-name confirmation; refused while anything references the building. */
+/** Typed-name confirmation; refused while one of its unit types is on the website. */
 export async function trashBuilding(id: string, typedName: string): Promise<Res> {
   await requireAdmin();
   if (!isUuid(id)) return { error: 'Dữ liệu không hợp lệ.' };
@@ -68,8 +40,8 @@ export async function trashBuilding(id: string, typedName: string): Promise<Res>
   if (!b) return { error: 'Không tìm thấy toà nhà.' };
   if (typedName.trim() !== b.name.trim()) return { error: 'Tên nhập chưa khớp tên toà nhà.' };
   const { error } = await sb.rpc('trash_building', { p_building: id });
-  if (error) return { error: /còn \d+ căn/.test(error.message) ? `Không xoá được: ${error.message.replace(/^.*?(toà nhà còn)/, '$1')}.` : vn(error.message) };
-  revalidatePublic({ building: b.slug });
+  if (error) return { error: /đang hiển thị/.test(error.message) ? `Không xoá được: ${error.message}.` : vn(error.message) };
+  await refreshBuilding(id);
   adminPaths();
   return { ok: `Đã chuyển ${b.name} vào thùng rác.` };
 }
@@ -113,10 +85,10 @@ export async function purgeLeadNow(id: string, typedName: string): Promise<Res> 
 
 // ───────────── trash page ─────────────
 
-export type TrashKind = 'listing' | 'building' | 'lead' | 'photo';
+export type TrashKind = 'unit_type' | 'building' | 'lead' | 'photo';
 
 export async function restoreItem(kind: TrashKind, id: string): Promise<Res> {
-  if (kind === 'listing') return restoreListing(id);
+  if (kind === 'unit_type') return restoreUnitType(id);
   if (kind === 'lead') return restoreLeads([id]);
   await requireAdmin();
   const sb = await supabaseServer();
@@ -124,27 +96,27 @@ export async function restoreItem(kind: TrashKind, id: string): Promise<Res> {
     // `id` stands for the whole batch deleted together
     const { data, error } = await sb.rpc('restore_photos', { p_ids: [id], p_batch: true });
     if (error) return { error: vn(error.message) };
-    const { data: p } = await sb.from('photos').select('listing_id, building_id').eq('id', id).maybeSingle();
-    if (p) await refreshOwner(sb, p.listing_id ? { kind: 'listing', id: p.listing_id } : { kind: 'building', id: p.building_id });
+    const { data: p } = await sb.from('photos').select('unit_type_id, building_id').eq('id', id).maybeSingle();
+    if (p) await refreshOwner(sb, p.unit_type_id ? { kind: 'unit_type', id: p.unit_type_id } : { kind: 'building', id: p.building_id });
     adminPaths();
     return { ok: `Đã khôi phục ${data} ảnh.` };
   }
   const { error } = await sb.rpc('restore_building', { p_building: id });
   if (error) return { error: vn(error.message) };
-  const { data: b } = await sb.from('buildings').select('slug').eq('id', id).maybeSingle();
-  if (b) revalidatePublic({ building: b.slug });
+  await refreshBuilding(id);
   adminPaths();
   return { ok: 'Đã khôi phục toà nhà.' };
 }
 
 /** "Xoá vĩnh viễn" from the trash: rows go now, then their photos / uploads in storage. */
 export async function purgeItem(kind: TrashKind, id: string): Promise<Res> {
+  if (kind === 'unit_type') return purgeUnitType(id);
   await requireAdmin();
   if (!isUuid(id)) return { error: 'Dữ liệu không hợp lệ.' };
   const sb = await supabaseServer();
-  const fn = kind === 'photo' ? sb.rpc('purge_photos', { p_ids: [id], p_batch: true }) : kind === 'listing' ? sb.rpc('purge_listing', { p_listing: id }) : kind === 'building' ? sb.rpc('purge_building', { p_building: id }) : sb.rpc('purge_lead', { p_lead: id });
+  const fn = kind === 'photo' ? sb.rpc('purge_photos', { p_ids: [id], p_batch: true }) : kind === 'building' ? sb.rpc('purge_building', { p_building: id }) : sb.rpc('purge_lead', { p_lead: id });
   const { data, error } = await fn;
-  if (error) return { error: /still has units/.test(error.message) ? 'Toà nhà vẫn còn căn — xoá vĩnh viễn các căn trước.' : vn(error.message) };
+  if (error) return { error: /archived units/.test(error.message) ? 'Toà nhà còn dữ liệu căn hộ lưu trữ (trước khi chuyển sang loại căn) — không xoá vĩnh viễn được, chỉ giữ trong Thùng rác.' : vn(error.message) };
   const failed = await removeObjects(sb, data as StorageObject[]);
   revalidatePath('/admin/thung-rac');
   return { ok: `Đã xoá vĩnh viễn${failed ? ` (${failed} tệp ảnh chưa xoá được, sẽ thử lại khi dọn dẹp)` : ''}.` };

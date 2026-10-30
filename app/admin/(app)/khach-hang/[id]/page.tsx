@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireStaff, staffDirectory } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
-import { daysSince, fmtDateTime } from '@/lib/admin/labels';
+import { CHANNEL_VI, daysSince, fmtDateTime, UT_LABEL } from '@/lib/admin/labels';
 import { LeadDeleteMenu } from '@/components/admin/LeadDeleteMenu';
 import { CHANNEL_LABEL, LEAD_STATUS, LEAD_TYPE, consignLine, type LeadStatus, type LeadType } from '@/lib/admin/leadLabels';
 import { LeadControls } from '@/components/admin/LeadPanel';
@@ -19,7 +19,7 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const me = await requireStaff();
   const sb = await supabaseServer();
   const [{ data: l }, dir, { data: buildings }] = await Promise.all([
-    sb.from('leads').select('*, listings(id, code)').eq('id', id).maybeSingle(),
+    sb.from('leads').select('*, unit_types(id, code, type), listings(code)').eq('id', id).maybeSingle(),
     staffDirectory(),
     sb.from('buildings').select('id, name').order('sort'),
   ]);
@@ -36,7 +36,9 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
     (s ?? []).forEach((x) => x.path && x.signedUrl && signed.set(x.path, x.signedUrl));
   }
   const backupDays = isAdmin ? daysSince((await sb.from('settings').select('last_backup_at').maybeSingle()).data?.last_backup_at) : null;
-  const canAssign = isAdmin && type === 'consign' && status === 'new' && !l.listing_id && !l.assigned_to;
+  const canAssign = isAdmin && type === 'consign' && status === 'new' && !l.assigned_to;
+  const ut = l.unit_types as { id: string; code: string; type: string } | null;
+  const oldCode = (l.listings as { code: string | null } | null)?.code ?? l.listing_code;
   const notes = ([...(l.notes as Note[])]).reverse();
 
   return (
@@ -73,21 +75,21 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
               </div>
               <div style={{ marginTop: 12 }}>
                 {canAssign && (
-                  <ConsignActions id={id} buildingId={payload.building_id ?? null} floor={payload.floor ?? null}
+                  <ConsignActions id={id} buildingId={payload.building_id ?? null}
                     staff={[...dir.values()].filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
                     buildings={(buildings ?? []).map((b) => ({ value: b.id, label: b.name }))} />
                 )}
-                {l.listings?.id && <Link className="a-btn a-btn-outline" href={`/admin/can-ho/${l.listings.id}`}>Mở căn nháp →</Link>}
               </div>
             </div>
           )}
           <div className="a-card">
             <div className="a-grid">
-              <div className="a-field">Điện thoại<span style={{ fontSize: 16, fontWeight: 700 }}><a href={`tel:${l.phone}`}>{l.phone}</a></span></div>
-              {type !== 'consign' && <div className="a-field">Căn quan tâm
-                <span style={{ fontSize: 16, fontWeight: 700 }}>{l.listings?.code ? <Link href={`/admin/can-ho/${l.listings.id}`}>{l.listings.code}</Link> : l.listing_code ? <span title="Tin đã bị xoá">{l.listing_code} <span className="a-badge outline">đã xoá</span></span> : l.search ? <span className="a-badge blue">Nhờ tìm giúp</span> : '—'}</span>
+              <div className="a-field">Liên hệ{payload.preferred_channel && <span className="hint">qua {CHANNEL_VI[payload.preferred_channel] ?? payload.preferred_channel}</span>}<span style={{ fontSize: 16, fontWeight: 700 }}><a href={`tel:${l.phone}`}>{l.phone}</a></span></div>
+              {type !== 'consign' && <div className="a-field">Loại căn quan tâm
+                <span style={{ fontSize: 16, fontWeight: 700 }}>{ut ? <Link href={`/admin/loai-can/${ut.id}`}>{ut.code} · {UT_LABEL[ut.type]}</Link> : l.unit_type_code ? <span title="Loại căn đã bị xoá">{l.unit_type_code} <span className="a-badge outline">đã xoá</span></span> : oldCode ? <span title="Tin đăng cũ (lưu trữ)">{oldCode} <span className="a-badge outline">lưu trữ</span></span> : l.search ? <span className="a-badge blue">Nhờ tìm giúp</span> : '—'}</span>
               </div>}
-              <div className="a-field">Ngày muốn xem<span style={{ fontSize: 15 }}>{l.preferred_date ?? '—'}</span></div>
+              {payload.budget && <div className="a-field">Ngân sách<span style={{ fontSize: 15 }}>{payload.budget}</span></div>}
+              <div className="a-field">{type === 'rent' ? 'Ngày dọn vào' : 'Ngày muốn xem'}<span style={{ fontSize: 15 }}>{l.preferred_date ?? '—'}</span></div>
               <div className="a-field">Thời gian thuê<span style={{ fontSize: 15 }}>{l.duration_months ?? '—'}</span></div>
               {l.message && <div className="a-field span4">Lời nhắn<span style={{ fontSize: 15, fontWeight: 400, whiteSpace: 'pre-line' }}>{l.message}</span></div>}
               {l.page && <div className="a-field span4">Trang gửi<span className="a-mono" style={{ fontWeight: 400, overflowWrap: 'anywhere' }}>{l.page}</span></div>}

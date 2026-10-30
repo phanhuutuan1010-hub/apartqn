@@ -3,7 +3,10 @@ import pg from 'pg';
 export type Who = { id: string } | 'anon' | 'service';
 
 let pool: pg.Pool | undefined;
-export const db = () => (pool ??= new pg.Pool({ connectionString: process.env.TEST_DB_URL, max: 4 }));
+let url = () => process.env.TEST_DB_URL;
+/** rls.test.ts: run against the listings-era schema (migrations ≤ 40) instead of the current one */
+export const selectLegacySchema = () => { url = () => process.env.TEST_LEGACY_DB_URL; };
+export const db = () => (pool ??= new pg.Pool({ connectionString: url(), max: 4 }));
 
 /** Run `fn` as a Supabase API caller (role + JWT claims), always rolled back. */
 export async function as<T>(who: Who, fn: (q: (sql: string, params?: unknown[]) => Promise<pg.QueryResult>) => Promise<T>): Promise<T> {

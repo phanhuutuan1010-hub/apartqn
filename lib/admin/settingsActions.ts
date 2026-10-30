@@ -8,16 +8,13 @@ import { supabaseServer } from '@/lib/supabase/server';
 type Res = { ok?: string; error?: string };
 
 const Thresholds = z.object({
-  verify_remind_days: z.coerce.number().int().min(1).max(365),
-  verify_hide_days: z.coerce.number().int().min(2).max(365),
   backup_warn_days: z.coerce.number().int().min(1).max(365),
-  marketplace_renew_days: z.coerce.number().int().min(1).max(90).default(7),
-}).refine((v) => v.verify_hide_days > v.verify_remind_days, 'Số ngày tự ẩn phải lớn hơn số ngày nhắc.');
+});
 
 export async function saveThresholds(_: Res, fd: FormData): Promise<Res> {
   await requireAdmin();
   const p = Thresholds.safeParse(Object.fromEntries(fd));
-  if (!p.success) return { error: p.error.issues[0].message.startsWith('Số') ? p.error.issues[0].message : 'Nhập số ngày từ 1 đến 365.' };
+  if (!p.success) return { error: 'Nhập số ngày từ 1 đến 365.' };
   const sb = await supabaseServer();
   const { error } = await sb.from('settings').update(p.data).eq('id', 1);
   if (error) return { error: 'Lỗi: ' + error.message };

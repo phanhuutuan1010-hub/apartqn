@@ -48,8 +48,8 @@ export function TrashList({ rows, backupDays }: { rows: TrashRow[]; backupDays: 
           setPurge(null);
           done(r);
         })}>
-        <b>{purge?.label}</b> {purge?.kind === 'listing' ? 'cùng mọi ảnh (công khai, nội bộ, bản gốc) và thông tin căn/chủ nhà' : purge?.kind === 'lead' ? 'cùng ghi chú và ảnh gửi kèm' : purge?.kind === 'photo' ? `(${purge.detail}, kể cả bản gốc)` : 'cùng ảnh toà nhà'} sẽ bị xoá hẳn, không khôi phục được.
-        {purge?.kind === 'listing' && ' Khách liên quan vẫn giữ mã căn để tra cứu.'}
+        <b>{purge?.label}</b> {purge?.kind === 'unit_type' ? 'cùng mọi ảnh căn mẫu (kể cả bản gốc)' : purge?.kind === 'lead' ? 'cùng ghi chú và ảnh gửi kèm' : purge?.kind === 'photo' ? `(${purge.detail}, kể cả bản gốc)` : 'cùng ảnh toà nhà'} sẽ bị xoá hẳn, không khôi phục được.
+        {purge?.kind === 'unit_type' && ' Khách liên quan vẫn giữ mã loại căn để tra cứu.'}
       </ConfirmDialog>
     </>
   );

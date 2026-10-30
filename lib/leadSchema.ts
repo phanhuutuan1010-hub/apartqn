@@ -1,8 +1,10 @@
 import { z } from 'zod';
+import { LOCALES, type Locale } from '@/i18n/locales';
+import { CONTACT_CHANNELS, FEATURES, UNIT_TYPE_KINDS } from '@/lib/unitTypes';
 
 export const MAX_PHOTOS = 10;
 
-const locale = z.enum(['vi', 'en']);
+const locale = z.enum(LOCALES as [Locale, ...Locale[]]);
 const phone = z.string().trim().min(6).max(30).regex(/^[0-9+()\-.\s]+$/);
 const name = z.string().trim().min(1).max(120);
 const page = z.string().trim().max(500).optional().default('');
@@ -10,13 +12,21 @@ const small = z.string().trim().max(12).regex(/^[0-9.,\s]*$/).optional().default
 /** Honeypot — must stay empty */
 const website = z.string().max(200).optional().default('');
 
-export const viewingSchema = z.object({
-  type: z.literal('viewing'),
-  code: z.string().trim().regex(/^[A-Z]{3}-\d{3,5}$/i),
-  name,
-  phone,
-  date: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional().default(''),
+/** "Kiểm tra căn trống" on a unit type page: what the visitor wants + how to reach them (no unit is ever named) */
+export const availabilitySchema = z.object({
+  type: z.literal('availability'),
+  /** the page's unit type */
+  code: z.string().trim().regex(/^[A-Z]{3}-(STUDIO|1PN|2PN|3PN)$/i),
+  /** the type picked in the form (another type of the same building is fine) */
+  unitType: z.enum(UNIT_TYPE_KINDS),
+  moveIn: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional().default(''),
   duration: z.number().int().min(0).max(2),
+  /** VND / month, digits as typed ("12.000.000", "12tr") */
+  budget: z.string().trim().max(30).optional().default(''),
+  name: z.string().trim().max(120).optional().default(''),
+  /** phone number, or a Telegram / WhatsApp handle */
+  contact: z.string().trim().min(3).max(60),
+  channel: z.enum(CONTACT_CHANNELS),
   locale,
   page,
   website,
@@ -51,17 +61,10 @@ const mil = z.string().regex(/^(\d{1,4}(\.\d)?)?$/).optional();
 /** results-page filters at the time of the request (lib/filters.ts names) */
 export const searchCriteria = z.object({
   b: z.string().regex(/^[a-z0-9-]{0,40}$/).optional(),
-  beds: z.enum(['', '0', '1', '2', '3', '01']).optional(),
-  rent: z.enum(['', 'r0', 'r1', 'r2', 'r3']).optional(),
-  furn: z.enum(['', 'full', 'basic', 'empty']).optional(),
-  pmin: mil,
+  t: z.enum(['', ...UNIT_TYPE_KINDS, '01']).optional(),
   pmax: mil,
-  vw: z.enum(['', 'sea', 'city', 'river', 'lagoon']).optional(),
-  fl: z.enum(['', 'low', 'mid', 'high']).optional(),
+  ft: z.array(z.enum(FEATURES)).max(FEATURES.length).optional(),
   near: z.enum(['', 'sea']).optional(),
-  pets: z.boolean().optional(),
-  car: z.boolean().optional(),
-  date: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]).optional(),
   q: z.string().trim().max(80).optional(),
 }).strip();
 
@@ -89,5 +92,5 @@ export const searchIntentSchema = z.object({
 });
 export type SearchCriteria = z.infer<typeof searchCriteria>;
 
-export const leadSchema = z.discriminatedUnion('type', [viewingSchema, consignSchema, searchRequestSchema]);
+export const leadSchema = z.discriminatedUnion('type', [availabilitySchema, consignSchema, searchRequestSchema]);
 export type Lead = z.infer<typeof leadSchema>;

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "db:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/db-migrate.mts",
+    "db:backup": "node --env-file-if-exists=.env.local --import tsx scripts/backup.mts",
     "db:seed": "node --env-file-if-exists=.env.local --import tsx scripts/seed.mts",
     "admin:create": "node --env-file-if-exists=.env.local --import tsx scripts/create-admin.mts",
     "photos:watermark": "node --env-file-if-exists=.env.local --import tsx scripts/photos-watermark.mts"

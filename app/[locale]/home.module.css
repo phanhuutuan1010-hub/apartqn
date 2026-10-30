@@ -39,3 +39,13 @@
 .ctaTitle { color: var(--ink-heading); text-wrap: balance; }
 .ctaSub { margin: 0; font-size: 16px; line-height: 1.6; color: var(--gray-700); max-width: 68ch; text-wrap: balance; }
 .ctaBtn { margin-top: 6px; padding: 0 24px; white-space: normal; text-align: center; }
+
+/* browse by type: four tiles → the results page filtered by type */
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
+@media (min-width: 768px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.tile { display: flex; flex-direction: column; gap: 4px; min-height: 92px; padding: 16px; border: 1px solid var(--gray-200); border-radius: var(--r-card); background: var(--white); color: var(--ink-900); text-decoration: none; }
+.tile:hover { border-color: var(--blue-500); box-shadow: var(--sh-card); }
+.tile:focus-visible { outline: 3px solid var(--blue-200); outline-offset: 2px; }
+.tileT { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.tileS { font-size: 13px; color: var(--gray-500); }
+.tileP { margin-top: auto; font-size: 14px; font-weight: 700; color: var(--red-500); }

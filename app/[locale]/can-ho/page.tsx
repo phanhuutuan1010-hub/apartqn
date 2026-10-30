@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import type { Locale } from '@/i18n/routing';
-import { getBuildings, getListings, getContact } from '@/lib/repo';
+import type { Locale } from '@/i18n/locales';
+import { getBuildings, getUnitTypes, getContact } from '@/lib/repo';
 import { alternates, OG_LOCALE } from '@/lib/seo';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -25,7 +25,7 @@ export default async function ResultsPage({ params }: PageProps<'/[locale]/can-h
   const { locale } = (await params) as { locale: Locale };
   setRequestLocale(locale);
   const t = await getTranslations();
-  const [listings, buildings, contact] = await Promise.all([getListings(), getBuildings(), getContact()]);
+  const [types, buildings, contact] = await Promise.all([getUnitTypes(), getBuildings(), getContact()]);
 
   return (
     <>
@@ -35,7 +35,7 @@ export default async function ResultsPage({ params }: PageProps<'/[locale]/can-h
           <h1 style={{ fontSize: 'clamp(26px, 3.4vw, 40px)', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.02em', textWrap: 'balance', color: 'var(--ink-heading)' }}>{t('results')}</h1>
         </div>
         {/* Static prerender shows the unfiltered list; the URL filters apply on the client, in place. */}
-        <ResultsFromUrl listings={listings} buildings={buildings} contact={contact} />
+        <ResultsFromUrl types={types} buildings={buildings} contact={contact} />
       </main>
       <Footer />
     </>

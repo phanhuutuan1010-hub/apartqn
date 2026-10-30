@@ -23,11 +23,14 @@ export async function removeObjects(sb: Sb, objects: StorageObject[] | null | un
   return failed;
 }
 
-/** Daily cron (service role): hard-delete everything trashed more than 30 days ago, then its files. */
+/**
+ * Daily cron (service role): hard-delete everything trashed more than 30 days ago, then its files. Archived listings /
+ * units and their photos are never purged (migration 41: the rpcs refuse them too).
+ */
 export async function purgeExpired(sb: Sb) {
   const before = new Date(Date.now() - TRASH_DAYS * DAY).toISOString();
-  const out = { listings: 0, leads: 0, buildings: 0, photos: 0, filesFailed: 0, errors: [] as string[] };
-  const run = async (table: 'listings' | 'leads' | 'buildings', rpc: string, arg: string) => {
+  const out = { unit_types: 0, leads: 0, buildings: 0, photos: 0, filesFailed: 0, errors: [] as string[] };
+  const run = async (table: 'unit_types' | 'leads' | 'buildings', rpc: string, arg: string) => {
     const { data } = await sb.from(table).select('id').lt('deleted_at', before).limit(200);
     for (const r of (data ?? []) as { id: string }[]) {
       const { data: files, error } = await sb.rpc(rpc, { [arg]: r.id });
@@ -36,8 +39,7 @@ export async function purgeExpired(sb: Sb) {
       out.filesFailed += await removeObjects(sb, files as StorageObject[]);
     }
   };
-  // listings first: a trashed building can only be purged once nothing points at it
-  await run('listings', 'purge_listing', 'p_listing');
+  await run('unit_types', 'purge_unit_type', 'p_id');
   await run('leads', 'purge_lead', 'p_lead');
   await run('buildings', 'purge_building', 'p_building');
   // photos deleted on their own (grid "Xoá"): rows first, then public + thumb + master files

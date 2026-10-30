@@ -6,25 +6,27 @@ import { norm, words } from './normalize';
 import { matchWords, MIN_SCORE, splitWords } from './fuzzy';
 import { parseSearch, type Parsed } from './parse';
 import { qWords, textMatches } from './text';
+import { parsedFeatures } from './url';
+import { typeOfBeds, unitTypeCode } from '@/lib/unitTypes';
+import type { IndexBuilding, IndexUnitType, SearchIndex } from './types';
 
 export { textMatches };
-import type { IndexBuilding, IndexListing, SearchIndex } from './types';
 
 export type Ranges = [number, number][];
 export type BuildingSug = { b: IndexBuilding; hl: Ranges };
-export type AreaSug = { label: string; hl: Ranges; available: number };
-export type ListingSug = { x: IndexListing; building?: IndexBuilding };
+export type AreaSug = { label: string; hl: Ranges; types: number };
+export type TypeSug = { x: IndexUnitType; building?: IndexBuilding };
 export type Suggestions = {
   parsed: Parsed;
   buildings: BuildingSug[];
   areas: AreaSug[];
-  codes: ListingSug[];
-  listings: ListingSug[];
+  /** "alt" / "ALT-2PN" / "altara 2pn": that building's types, the named one first */
+  codes: TypeSug[];
+  /** best-fitting types elsewhere */
+  types: TypeSug[];
 };
 
-const MAX_BUILDINGS = 5, MAX_AREAS = 4, MAX_CODES = 5, MAX_LISTINGS = 3;
-
-const ts = (v: string | null) => (v ? Date.parse(v) : 0);
+const MAX_BUILDINGS = 5, MAX_AREAS = 4, MAX_CODES = 4, MAX_TYPES = 4;
 
 /** Best match of query words against a display string; null when no word matches. */
 function hit(qs: string[], src: string) {
@@ -32,8 +34,8 @@ function hit(qs: string[], src: string) {
   return h.ranges.length ? h : null;
 }
 
-/** Criteria a listing satisfies, out of how many were asked (text words count one each). */
-export function criteriaScore(x: IndexListing, p: Parsed, b: IndexBuilding | undefined) {
+/** Criteria a unit type satisfies, out of how many were asked (text words count one each). */
+export function criteriaScore(x: IndexUnitType, p: Parsed, b: IndexBuilding | undefined) {
   let n = 0, of = 0;
   const check = (asked: boolean, ok: () => boolean) => {
     if (!asked) return;
@@ -41,20 +43,23 @@ export function criteriaScore(x: IndexListing, p: Parsed, b: IndexBuilding | und
     if (ok()) n++;
   };
   check(p.building != null, () => x.building_slug === p.building);
-  check(p.beds != null, () => (p.bedsOrStudio ? x.beds <= 1 : p.beds! >= 3 ? x.beds >= 3 : x.beds === p.beds));
-  check(p.furniture != null, () => x.furniture === p.furniture);
-  check(p.priceMin != null || p.priceMax != null, () => x.rent >= (p.priceMin ?? 0) && x.rent <= (p.priceMax ?? Infinity));
-  check(!!p.pets, () => x.pets);
-  check(!!p.parking, () => x.car_parking === true);
-  check(p.view != null, () => x.view === p.view);
-  check(p.floorBand != null, () => x.floor_band === p.floorBand);
+  check(p.beds != null, () => (p.bedsOrStudio ? x.type === 'studio' || x.type === '1pn' : x.type === typeOfBeds(p.beds!)));
+  check(p.priceMax != null, () => x.price_from <= p.priceMax!);
+  for (const f of parsedFeatures(p)) check(true, () => x.features.includes(f));
   for (const w of words(p.text)) check(true, () => textMatches(w, b));
   return { n, of };
 }
 
+/** The unit type a query names directly: "altara 2pn" / "ALT-2PN" (building + bedrooms, both understood). */
+export function resolveType(p: Parsed, idx: SearchIndex): IndexUnitType | undefined {
+  if (!p.building || p.beds == null || p.bedsOrStudio) return undefined;
+  const b = idx.buildings.find((x) => x.slug === p.building);
+  return b ? idx.types.find((x) => x.code === unitTypeCode(b.prefix, typeOfBeds(p.beds!))) : undefined;
+}
+
 export function suggest(raw: string, idx: SearchIndex): Suggestions {
   const parsed = parseSearch(raw, idx.buildings);
-  const out: Suggestions = { parsed, buildings: [], areas: [], codes: [], listings: [] };
+  const out: Suggestions = { parsed, buildings: [], areas: [], codes: [], types: [] };
   const q = norm(raw);
   if (!q) return out;
   const bySlug = new Map(idx.buildings.map((b) => [b.slug, b]));
@@ -73,75 +78,59 @@ export function suggest(raw: string, idx: SearchIndex): Suggestions {
     const best = [b.name, ...b.aliases].map((n) => matchWords(textQs, splitWords(n.normalize('NFC')))).sort((a, c) => c.score - a.score)[0];
     if (best && best.per.some((s) => s >= 0.7)) scored.push({ b, s: best.score, hl: hit(textQs, b.name)?.ranges ?? [] });
   }
-  out.buildings = scored.sort((a, c) => c.s - a.s || c.b.available_count - a.b.available_count).slice(0, MAX_BUILDINGS).map(({ b, hl }) => ({ b, hl }));
+  out.buildings = scored.sort((a, c) => c.s - a.s || c.b.type_count - a.b.type_count).slice(0, MAX_BUILDINGS).map(({ b, hl }) => ({ b, hl }));
 
   // Đường / khu vực: unique streets and wards
   if (textQs.length) {
-    const areas = new Map<string, { label: string; s: number; hl: Ranges; available: number }>();
+    const areas = new Map<string, { label: string; s: number; hl: Ranges; types: number }>();
     for (const b of idx.buildings) {
       for (const label of [b.street, b.ward_new, b.ward_old]) {
         if (!label) continue;
         const h = matchWords(textQs, splitWords(label.normalize('NFC')));
         if (!h.per.every((s) => s >= MIN_SCORE)) continue;
         const key = norm(label);
-        const a = areas.get(key) ?? { label, s: h.score, hl: h.ranges, available: 0 };
-        a.available += b.available_count;
+        const a = areas.get(key) ?? { label, s: h.score, hl: h.ranges, types: 0 };
+        a.types += b.type_count;
         areas.set(key, a);
       }
     }
-    out.areas = [...areas.values()].sort((a, c) => c.s - a.s || c.available - a.available).slice(0, MAX_AREAS).map(({ s, ...a }) => (void s, a));
+    out.areas = [...areas.values()].sort((a, c) => c.s - a.s || c.types - a.types).slice(0, MAX_AREAS).map(({ s, ...a }) => (void s, a));
   }
 
-  // Mã căn: "alt", "alt-0", "alt12", "012", old "qn-01"
-  const compact = q.replace(/\s+/g, '');
-  const m = /^(?:([a-z]{3})-?|(qn)-?)?(\d{1,4})?$/.exec(compact);
-  const prefix = m?.[1] && idx.buildings.some((b) => b.prefix.toLowerCase() === m[1]) ? m[1].toUpperCase() : undefined;
-  const legacy = !!m?.[2];
-  const exact = (x: IndexListing) => (!!parsed.code && x.code === parsed.code) || (!!parsed.legacyCode && x.legacy_code === parsed.legacyCode);
-  if (parsed.code || parsed.legacyCode || (m && (prefix || legacy || m[3]))) {
-    // typed digits are a prefix ("alt-01" → ALT-01x) and, zero-padded, an exact code (ALT-001)
-    const digits = m?.[3] ?? '';
-    const nz = digits.replace(/^0+/, '');
-    const num = (c: string) => c.slice(c.indexOf('-') + 1);
-    const numOk = (c: string) => !digits || num(c).startsWith(digits) || (!!nz && num(c).replace(/^0+/, '').startsWith(nz));
-    out.codes = idx.listings
-      .filter((x) => exact(x) || (!!m && (
-        prefix ? x.code.startsWith(prefix + '-') && numOk(x.code)
-          : legacy ? !!x.legacy_code && numOk(x.legacy_code)
-            : !!digits && numOk(x.code))))
-      .sort((a, c) => Number(exact(c)) - Number(exact(a)) || a.code.localeCompare(c.code))
+  // Mã: "alt", "alt-", "alt2pn", "altara 2pn" → that building's types, the named one first
+  const direct = resolveType(parsed, idx);
+  const pre = /^([a-z]{3})-?(?:studio|[0-3](?:pn)?)?$/.exec(q.replace(/\s+/g, ''))?.[1]?.toUpperCase();
+  const prefixB = pre ? idx.buildings.find((b) => b.prefix === pre) : undefined;
+  const slug = direct?.building_slug ?? prefixB?.slug;
+  if (slug) {
+    out.codes = idx.types.filter((x) => x.building_slug === slug)
+      .sort((a, c) => Number(c.code === direct?.code) - Number(a.code === direct?.code))
       .slice(0, MAX_CODES)
       .map((x) => ({ x, building: bySlug.get(x.building_slug) }));
   }
 
-  // Căn phù hợp: available only; at least half of what was asked; most criteria → newest confirmation → newest
-  if (!parsed.code && !parsed.legacyCode) {
-    out.listings = idx.listings
-      .filter((x) => x.status === 'available')
-      .map((x) => ({ x, b: bySlug.get(x.building_slug), ...criteriaScore(x, parsed, bySlug.get(x.building_slug)) }))
-      .filter((r) => r.of > 0 && r.n > 0 && r.n * 2 >= r.of)
-      .sort((a, c) => c.n - a.n || ts(c.x.verified_at) - ts(a.x.verified_at) || ts(c.x.published_at) - ts(a.x.published_at))
-      .slice(0, MAX_LISTINGS)
-      .map((r) => ({ x: r.x, building: r.b }));
-  }
+  // Loại căn phù hợp: at least half of what was asked; most criteria → cheapest
+  const shown = new Set(out.codes.map((c) => c.x.code));
+  out.types = idx.types
+    .filter((x) => !shown.has(x.code))
+    .map((x) => ({ x, b: bySlug.get(x.building_slug), ...criteriaScore(x, parsed, bySlug.get(x.building_slug)) }))
+    .filter((r) => r.of > 0 && r.n > 0 && r.n * 2 >= r.of)
+    .sort((a, c) => c.n - a.n || a.x.price_from - c.x.price_from)
+    .slice(0, MAX_TYPES)
+    .map((r) => ({ x: r.x, building: r.b }));
   return out;
 }
 
-/** Buildings for the empty-focus list: most available first, then name. */
+/** Buildings for the empty-focus list: most unit types first, then name. */
 export const buildingList = (idx: SearchIndex) =>
-  [...idx.buildings].sort((a, b) => b.available_count - a.available_count || a.name.localeCompare(b.name));
+  [...idx.buildings].sort((a, b) => b.type_count - a.type_count || a.name.localeCompare(b.name));
 
-/** How many listings the results page would show for this query (same rules: rented hidden, every criterion met). */
+/** How many unit types the results page would show for this query (every hard criterion met; free text only ranks). */
 export function countResults(p: Parsed, idx: SearchIndex): number {
-  if (p.code || p.legacyCode) return resolveCode(p, idx) ? 1 : 0;
+  const hard = { ...p, text: '' };
   const bySlug = new Map(idx.buildings.map((b) => [b.slug, b]));
-  return idx.listings.filter((x) => {
-    if (x.status === 'rented') return false;
-    const { n, of } = criteriaScore(x, p, bySlug.get(x.building_slug));
+  return idx.types.filter((x) => {
+    const { n, of } = criteriaScore(x, hard, bySlug.get(x.building_slug));
     return n === of; // nothing asked → everything matches, like the unfiltered results page
   }).length;
 }
-
-/** The listing a parsed code points to (new code, or an old QN-### through legacy_code). */
-export const resolveCode = (p: Parsed, idx: SearchIndex) =>
-  idx.listings.find((x) => (!!p.code && x.code === p.code) || (!!p.legacyCode && x.legacy_code === p.legacyCode));

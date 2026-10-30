@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_FEES, effectiveFees, mgmtFormula, mgmtMonthly, monthlyEstimate, type BuildingFees } from '@/lib/fees';
-import { total } from '@/lib/format';
+import { estimateFrom } from '@/lib/unitTypes';
 
 const ALT: BuildingFees = { ...EMPTY_FEES, mgmt_fee_per_m2: 12100, motorbike_fee: 60000, car_fee: 900000, car_parking: 'paid' };
 const FLC: BuildingFees = { ...EMPTY_FEES, mgmt_fee_per_m2: 16500, mgmt_fee_vat_pct: 10, motorbike_fee: 60000, car_fee: 900000, car_parking: 'paid' };
@@ -29,6 +29,11 @@ describe('fees', () => {
   it('estimate = rent + management (tenant pays) + 1 motorbike', () => {
     const e = effectiveFees(FLC, 68, {});
     expect(monthlyEstimate({ rent: 13_500_000, mgmt: e.mgmt!, moto: e.moto! })).toBe(14_794_200);
-    expect(total({ rent: 13_500_000, mgmt: 822_800, moto: 60_000, mgmtPaidBy: 'owner' })).toBe(13_560_000);
+    expect(monthlyEstimate({ rent: 13_500_000, mgmt: 822_800, moto: 60_000, mgmtPaidBy: 'owner' })).toBe(13_560_000);
+  });
+  it('unit type "chi phí ước tính từ": from-price + mgmt × smallest area (+ VAT) + 1 motorbike; unknown fee → none', () => {
+    expect(estimateFrom(13_500_000, 68, FLC)).toEqual({ rent: 13_500_000, mgmt: 1_234_200, moto: 60_000, total: 14_794_200 });
+    expect(estimateFrom(13_500_000, 68, { ...FLC, motorbike_fee: null })).toBeNull();
+    expect(estimateFrom(13_500_000, 68, { ...FLC, mgmt_fee_per_m2: null })).toBeNull();
   });
 });

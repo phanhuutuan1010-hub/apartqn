@@ -42,12 +42,12 @@ async function put(bucket: string, path: string, data: Buffer) {
   if (error) throw new Error(`upload ${bucket}/${path}: ${error.message}`);
 }
 
-type Row = { id: string; listing_id: string | null; building_id: string | null; path: string; thumb_path: string | null;
+type Row = { id: string; unit_type_id: string | null; building_id: string | null; path: string; thumb_path: string | null;
   variants: { w: number; h: number; path: string }[] | null;
-  master_path: string | null; watermark: boolean; wm_version: number | null; listings: { code: string | null } | null; buildings: { slug: string } | null };
+  master_path: string | null; watermark: boolean; wm_version: number | null; unit_types: { code: string } | null; buildings: { code_prefix: string } | null };
 
-/** Public page that shows this photo (for revalidation + the cleanup check). */
-const pageOf = (r: Row) => (r.listings?.code ? `/${r.listings.code.toUpperCase()}` : r.buildings ? `/toa-nha/${r.buildings.slug}` : '');
+/** Public page that shows this photo (for revalidation + the cleanup check): /{PREFIX}-{TYPE} or /{PREFIX}. */
+const pageOf = (r: Row) => (r.unit_types?.code ? `/${r.unit_types.code}` : r.buildings ? `/${r.buildings.code_prefix}` : '');
 
 async function revalidate(pages: string[]) {
   const secret = process.env.CRON_SECRET;
@@ -59,8 +59,9 @@ async function revalidate(pages: string[]) {
 
 async function backfill() {
   const { data, error } = await sb.from('photos')
-    .select('id, listing_id, building_id, path, thumb_path, variants, master_path, watermark, wm_version, listings(code), buildings(slug)')
-    .eq('visibility', 'public').order('created_at');
+    .select('id, unit_type_id, building_id, path, thumb_path, variants, master_path, watermark, wm_version, unit_types(code), buildings(code_prefix)')
+    // archived listing photos are never re-rendered (migration 41)
+    .eq('visibility', 'public').is('listing_id', null).order('created_at');
   if (error) throw error;
   const rows = (data ?? []) as unknown as Row[];
   const n = { total: rows.length, masters: 0, rendered: 0, skipped: 0, failed: 0, bytes: 0 };

@@ -7,8 +7,7 @@ import { requireAdmin } from '@/lib/admin/session';
 import { supabaseServer } from '@/lib/supabase/server';
 import { revalidatePublic } from '@/lib/revalidate';
 import { parseVnd, AMENITIES } from '@/lib/admin/labels';
-import { FEE_FIELDS, toBuildingFees, type BuildingFees } from '@/lib/fees';
-import { syncListingFees } from '@/lib/admin/feeSync';
+import { FEE_FIELDS, type BuildingFees } from '@/lib/fees';
 import { normaliseYoutube, YOUTUBE_RE } from '@/lib/youtube';
 import { viHash } from '@/lib/enStatus';
 import { mismatchText } from '@/lib/translate';
@@ -26,7 +25,7 @@ const date = z.preprocess((v) => (v ? v : null), z.string().regex(/^\d{4}-\d{2}-
 const Schema = z.object({
   name: z.string().trim().min(1, 'Nhập tên toà nhà').max(120),
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{2,40}$/, 'Chỉ a-z, 0-9, dấu gạch; 2–40 ký tự').optional(),
-  // absent when frozen (the building already has coded listings)
+  // absent when frozen (the building has a public page /PREFIX: a visible unit type, or a listing code from before)
   code_prefix: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Đúng 3 chữ cái A–Z, vd. ALT').optional(),
   street: z.string().trim().max(200),
   maps_url: z.preprocess((v) => (typeof v === 'string' && v.trim() ? v.trim() : null),
@@ -43,8 +42,6 @@ const Schema = z.object({
   fee_verified: z.preprocess((v) => v === 'on', z.boolean()),
   desc_vi: txt(8000), desc_en: txt(8000),
   sort: z.coerce.number().int().min(0).max(999),
-  // '' = unknown (never guessed); drives the public floor band of every listing in the building
-  total_floors: z.preprocess((v) => (v === '' || v == null ? null : Number(v)), z.number().int().min(1).max(150).nullable()),
   is_demo: z.preprocess((v) => v === 'on', z.boolean()),
 }).refine((v) => (v.lat == null) === (v.lng == null), { message: 'Nhập đủ cả vĩ độ và kinh độ, hoặc để trống cả hai', path: ['lat'] });
 
@@ -81,19 +78,22 @@ export async function readMapsLink(url: string): Promise<{ lat?: number; lng?: n
   return c ?? { error: 'Link này không chứa vị trí — mở Google Maps, bấm vào toà nhà → Chia sẻ → Sao chép đường liên kết.' };
 }
 
-/** Public pages showing this building: its page, home, results, and every listing detail in it. */
-async function refreshBuilding(buildingId: string, slug: string) {
+/** Public pages showing this building: its page, home, results, and every unit type page in it (fees, photos, map). */
+export async function refreshBuilding(buildingId: string) {
   const sb = await supabaseServer();
-  const { data } = await sb.from('admin_listings').select('code').eq('building_id', buildingId).not('code', 'is', null);
-  revalidatePublic({ building: slug });
-  (data ?? []).forEach((r) => revalidatePublic({ code: r.code }));
+  const [{ data: b }, { data: types }] = await Promise.all([
+    sb.from('buildings').select('code_prefix').eq('id', buildingId).maybeSingle(),
+    sb.from('unit_types').select('code').eq('building_id', buildingId),
+  ]);
+  revalidatePublic({ building: b?.code_prefix, codes: (types ?? []).map((t) => t.code) });
   revalidatePath('/admin/toa-nha');
+  revalidatePath('/admin/loai-can');
 }
 
 function dbError(e: { code?: string; message: string }): BuildingResult {
   if (e.code === '23505' && e.message.includes('code_prefix')) return { error: 'Tiền tố mã đã được toà khác dùng.', fieldErrors: { code_prefix: 'Đã có toà dùng tiền tố này' } };
   if (e.code === '23505') return { error: 'Slug này đã được dùng.', fieldErrors: { slug: 'Đã được dùng' } };
-  if (e.message.includes('tiền tố')) return { error: 'Toà nhà đã có căn mang mã, không đổi được tiền tố.', fieldErrors: { code_prefix: 'Không đổi được' } };
+  if (e.message.includes('tiền tố')) return { error: 'Toà nhà đã có trang công khai, không đổi được tiền tố.', fieldErrors: { code_prefix: 'Không đổi được' } };
   return { error: 'Lỗi: ' + e.message };
 }
 
@@ -115,7 +115,7 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, v[k]])) as BuildingFees;
   const row = {
     name: v.name, aliases, ...(v.code_prefix ? { code_prefix: v.code_prefix } : {}), street: v.street, video_url: v.video_url,
-    amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo, total_floors: v.total_floors,
+    amenities, default_fees, ...fees, desc_vi: v.desc_vi, desc_en: v.desc_en, sort: v.sort, is_demo: v.is_demo,
     // "Bản EN vẫn đúng": the English now counts as written from the current Vietnamese
     ...(fd.get('en_confirm') === 'on' && v.desc_en ? { desc_en_vi_hash: viHash(v.desc_vi) } : {}),
   };
@@ -134,42 +134,33 @@ export async function saveBuilding(id: string | null, _: BuildingResult, fd: For
   if (!id) {
     if (!v.slug) return { error: 'Nhập đường dẫn (slug).', fieldErrors: { slug: 'Bắt buộc' } };
     if (!v.code_prefix) return { error: 'Nhập tiền tố mã căn.', fieldErrors: { code_prefix: 'Bắt buộc, 3 chữ cái' } };
+    // the insert trigger also creates the four hidden unit type drafts
     const { data, error } = await sb.from('buildings').insert({ ...row, slug: v.slug }).select('id').single();
     if (error) return dbError(error);
-    revalidatePublic({ building: v.slug });
-    revalidatePath('/admin/toa-nha');
+    await refreshBuilding(data.id);
     redirect(`/admin/toa-nha/${data.id}?created=1`);
   }
-  const { data, error } = await sb.from('buildings').update(row).eq('id', id).select('slug').single();
+  const { error } = await sb.from('buildings').update(row).eq('id', id).select('id').single();
   if (error) return dbError(error);
-  let synced = 0;
-  if (fd.get('propagate') === '1') {
-    try {
-      synced = (await syncListingFees(sb, id, fees, true)).count;
-    } catch (e) {
-      return { error: 'Đã lưu toà nhà, nhưng chưa cập nhật được phí các căn: ' + (e as Error).message };
-    }
-  }
-  await refreshBuilding(id, data.slug);
+  await refreshBuilding(id);
   revalidatePath(`/admin/toa-nha/${id}`);
-  revalidatePath('/admin/can-ho');
   const warning = v.desc_en ? mismatchText(v.desc_vi ?? '', v.desc_en) || undefined : undefined;
-  return { ok: synced ? `Đã lưu và cập nhật phí ${synced} căn. Website cập nhật ngay.` : 'Đã lưu. Website cập nhật ngay.', warning };
+  return { ok: 'Đã lưu. Website cập nhật ngay (trang toà nhà và các loại căn trong toà).', warning };
 }
 
 /**
- * "Hiển thị" switch. Hidden = the building and its listings leave the public views (list, home, search index, sitemap,
- * filters); listing rows are not touched. Admin only (requireAdmin + buildings_admin_update RLS).
+ * "Hiển thị" switch. Hidden = the building and its unit types leave the public views (list, home, search index, sitemap,
+ * filters); unit type rows are not touched. Admin only (requireAdmin + buildings_admin_update RLS).
  */
 export async function setBuildingVisible(id: string, visible: boolean): Promise<{ ok?: true; error?: string }> {
   await requireAdmin();
   if (!z.string().uuid().safeParse(id).success || typeof visible !== 'boolean') return { error: 'Toà nhà không hợp lệ.' };
   const sb = await supabaseServer();
-  const { data, error } = await sb.from('buildings').update({ is_visible: visible }).eq('id', id).select('slug').maybeSingle();
+  const { data, error } = await sb.from('buildings').update({ is_visible: visible }).eq('id', id).select('id').maybeSingle();
   if (error) return { error: 'Lỗi: ' + error.message };
   if (!data) return { error: 'Không thấy toà nhà.' };
   // sitemap + search index, then every public page: cards, filters and "other buildings" appear all over the site
-  revalidatePublic({ building: data.slug });
+  await refreshBuilding(id);
   revalidatePath('/[locale]', 'layout');
   revalidatePath('/admin/toa-nha');
   revalidatePath(`/admin/toa-nha/${id}`);
@@ -181,23 +172,10 @@ export async function clearBuildingsDemo(ids: string[]): Promise<{ ok?: string; 
   await requireAdmin();
   if (!z.array(z.string().uuid()).min(1).max(100).safeParse(ids).success) return { error: 'Không có toà nhà nào.' };
   const sb = await supabaseServer();
-  const { data, error } = await sb.from('buildings').update({ is_demo: false }).in('id', ids).eq('is_demo', true).select('slug');
+  const { data, error } = await sb.from('buildings').update({ is_demo: false }).in('id', ids).eq('is_demo', true).select('id');
   if (error) return { error: 'Lỗi: ' + error.message };
-  (data ?? []).forEach((b) => revalidatePublic({ building: b.slug }));
+  for (const b of data ?? []) await refreshBuilding(b.id);
   revalidatePath('/[locale]', 'layout');
   revalidatePath('/admin/toa-nha');
   return { ok: `Đã bỏ nhãn demo ${data?.length ?? 0} toà nhà.` };
-}
-
-/** How many listings would take new fees from this form (before saving): drives the "Cập nhật N căn" dialog. */
-export async function previewFeeSync(id: string, fd: FormData): Promise<{ count: number; error?: string }> {
-  await requireAdmin();
-  const p = Schema.safeParse(Object.fromEntries(fd));
-  if (!p.success) return { count: 0 };
-  const fees = Object.fromEntries(FEE_FIELDS.map((k) => [k, p.data[k]])) as BuildingFees;
-  try {
-    return { count: (await syncListingFees(await supabaseServer(), id, toBuildingFees(fees), false)).count };
-  } catch (e) {
-    return { count: 0, error: (e as Error).message };
-  }
 }

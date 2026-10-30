@@ -5,7 +5,7 @@ import { clearBuildingsDemo, setBuildingVisible } from '@/lib/admin/buildingActi
 
 /**
  * "Hiển thị" switch (Toà nhà table + building form header). Optimistic: flips at once, rolls back on error.
- * `live` = listings of the building currently on the website (they are hidden with it, never changed).
+ * `live` = unit types of the building currently on the website (they are hidden with it, never changed).
  */
 export function BuildingVisibility({ id, visible, live, label = false }: { id: string; visible: boolean; live: number; label?: boolean }) {
   const [on, setOn] = useState(visible);
@@ -13,7 +13,7 @@ export function BuildingVisibility({ id, visible, live, label = false }: { id: s
   const [, start] = useTransition();
   const toggle = () => {
     const next = !on;
-    if (!next && !confirm(`Ẩn toà này? ${live} căn của toà cũng sẽ tạm ẩn trên website.`)) return;
+    if (!next && !confirm(`Ẩn toà này? ${live} loại căn của toà cũng sẽ tạm ẩn trên website.`)) return;
     setOn(next);
     setFailed(false);
     start(async () => {

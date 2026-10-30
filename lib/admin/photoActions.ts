@@ -4,32 +4,23 @@ import { z } from 'zod';
 import { supabaseServer } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/admin/session';
 import { vnError } from '@/lib/admin/errors';
-import { BUCKET, movePhoto, originalPath, refreshOwner, type PhotoOwner, type PhotoRow } from '@/lib/admin/photoPipeline';
+import { BUCKET, originalPath, refreshOwner, type PhotoOwner } from '@/lib/admin/photoPipeline';
 
-/** Whose photos: a listing (public + internal) or a building (public only, admin). */
+/** Whose photos: a unit type (sample unit, staff) or a building (admin). Both public only. */
 export type { PhotoOwner };
 type Res = { ok?: boolean; error?: string };
 
 const Owner = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('listing'), id: z.string().uuid() }),
+  z.object({ kind: z.literal('unit_type'), id: z.string().uuid() }),
   z.object({ kind: z.literal('building'), id: z.string().uuid() }),
 ]);
-// internal photos only: public ones are rendered server-side (POST /admin/photos/process) so they always carry the watermark rules
-const Uploaded = z.array(z.object({
-  bucket: z.literal('listing-internal'),
-  path: z.string().max(300),
-  thumb_path: z.string().max(300),
-  width: z.number().int().positive().max(10000),
-  height: z.number().int().positive().max(10000),
-})).max(40);
-
-const col = (o: PhotoOwner) => (o.kind === 'listing' ? 'listing_id' : 'building_id');
+const col = (o: PhotoOwner) => (o.kind === 'unit_type' ? 'unit_type_id' : 'building_id');
 
 /** Storage folder for an owner — the browser uploads there. */
 export async function photoPrefix(owner: PhotoOwner): Promise<string | null> {
   const o = Owner.safeParse(owner);
   if (!o.success) return null;
-  if (o.data.kind === 'listing') return `listings/${o.data.id}/`;
+  if (o.data.kind === 'unit_type') return `unit-types/${o.data.id}/`;
   const sb = await supabaseServer();
   const { data } = await sb.from('buildings').select('slug').eq('id', o.data.id).maybeSingle();
   return data ? `buildings/${data.slug}/` : null;
@@ -50,29 +41,7 @@ export async function prepareMasterUpload(owner: PhotoOwner): Promise<{ photoId?
   return { photoId, path, token: data.token };
 }
 
-/** Internal (never public, never watermarked) listing photos uploaded straight to listing-internal. */
-export async function registerPhotos(owner: PhotoOwner, items: z.infer<typeof Uploaded>): Promise<Res> {
-  await requireStaff();
-  const o = Owner.safeParse(owner), parsed = Uploaded.safeParse(items);
-  if (!o.success || !parsed.success) return { error: 'Dữ liệu ảnh không hợp lệ.' };
-  const prefix = await photoPrefix(o.data);
-  if (!prefix || parsed.data.some((p) => !p.path.startsWith(prefix) || !p.thumb_path.startsWith(prefix))) return { error: 'Đường dẫn ảnh không hợp lệ.' };
-  if (o.data.kind === 'building') return { error: 'Ảnh toà nhà luôn công khai.' };
-  const sb = await supabaseServer();
-  const { data: existing } = await sb.from('photos').select('sort').eq(col(o.data), o.data.id);
-  const start = Math.max(-1, ...(existing ?? []).map((p) => p.sort)) + 1;
-  const rows = parsed.data.map((p, i) => ({
-    [col(o.data)]: o.data.id, bucket: p.bucket, path: p.path, thumb_path: p.thumb_path, width: p.width, height: p.height,
-    visibility: 'internal', watermark: false,
-    sort: start + i,
-  }));
-  const { error } = await sb.from('photos').insert(rows);
-  if (error) return { error: vnError(error) };
-  await after(o.data);
-  return { ok: true };
-}
-
-/** New order of the grid. The photo dropped on position 1 becomes the cover when it is public (internal photos never are). */
+/** New order of the grid. The photo dropped on position 1 becomes the cover. */
 export async function reorderPhotos(owner: PhotoOwner, ids: string[]): Promise<Res> {
   await requireStaff();
   const sb = await supabaseServer();
@@ -94,7 +63,7 @@ export async function reorderPhotos(owner: PhotoOwner, ids: string[]): Promise<R
 const coverError = (e: { message: string; code?: string }) =>
   /internal photo/.test(e.message) ? 'Ảnh nội bộ không thể làm bìa.' : /photo not found/.test(e.message) ? 'Không tìm thấy ảnh.' : /not allowed/.test(e.message) ? 'Bạn không có quyền sửa ảnh này.' : vnError(e);
 
-/** One rpc: the photo is the only cover of its listing / building and moves to position 1. Public pages, cards, the search index and the social card refresh. */
+/** One rpc: the photo is the only cover of its unit type / building and moves to position 1. Public pages, cards, the search index and the social card refresh. */
 export async function setCover(owner: PhotoOwner, photoId: string): Promise<Res> {
   await requireStaff();
   const sb = await supabaseServer();
@@ -102,23 +71,6 @@ export async function setCover(owner: PhotoOwner, photoId: string): Promise<Res>
   if (!p) return { error: 'Không tìm thấy ảnh.' };
   const { error } = await sb.rpc('set_photo_cover', { p_id: photoId });
   if (error) return { error: coverError(error) };
-  await after(owner);
-  return { ok: true };
-}
-
-/** Listing photos only: public ↔ internal (public = clean master + rendered files; internal = clean files only). */
-export async function setVisibility(owner: PhotoOwner, photoId: string, visibility: 'public' | 'internal'): Promise<Res> {
-  await requireStaff();
-  if (owner.kind !== 'listing') return { error: 'Ảnh toà nhà luôn công khai.' };
-  const sb = await supabaseServer();
-  const { data: p } = await sb.from('photos').select('*').eq('id', photoId).eq('listing_id', owner.id).maybeSingle();
-  if (!p) return { error: 'Không tìm thấy ảnh.' };
-  if (p.visibility === visibility) return { ok: true };
-  try {
-    await movePhoto(sb, p as PhotoRow, visibility);
-  } catch (e) {
-    return { error: 'Không chuyển được ảnh: ' + (e as Error).message };
-  }
   await after(owner);
   return { ok: true };
 }
@@ -132,8 +84,7 @@ const Ids = z.array(z.string().uuid()).min(1).max(200);
 const rpcError = (m: string) =>
   /not allowed|admin only/.test(m) ? 'Bạn không có quyền với (một số) ảnh này.'
     : /other building/.test(m) ? 'Chỉ chuyển được ảnh trong cùng một toà nhà.'
-      : /internal photo/.test(m) ? 'Ảnh nội bộ không chuyển sang toà nhà được — chuyển sang công khai trước.'
-        : /target not found/.test(m) ? 'Không tìm thấy nơi chuyển đến.'
+      : /target not found/.test(m) ? 'Không tìm thấy nơi chuyển đến.'
           : 'Lỗi: ' + m;
 
 /** "Xoá" (one or many): one rpc, soft delete → Thùng rác for 30 days. A deleted cover hands over to the next photo. */
@@ -160,30 +111,29 @@ export async function restorePhotos(owner: PhotoOwner, ids: string[]): Promise<R
   return { ok: true };
 }
 
-export type MoveTarget = { kind: 'listing' | 'building'; id: string; label: string };
+export type MoveTarget = { kind: 'unit_type' | 'building'; id: string; label: string };
 
-/** Where this owner's photos may go: the other listings of the same building (yours, for sales) and, for admins, the building. */
+/** Where this owner's photos may go: the other unit types of the same building and, for admins, the building itself. */
 export async function moveTargets(owner: PhotoOwner): Promise<MoveTarget[]> {
   const me = await requireStaff();
   const o = Owner.safeParse(owner);
   if (!o.success) return [];
   const sb = await supabaseServer();
   let building = o.data.kind === 'building' ? o.data.id : null;
-  if (!building) building = (await sb.from('admin_listings').select('building_id').eq('id', o.data.id).maybeSingle()).data?.building_id ?? null;
+  if (!building) building = (await sb.from('unit_types').select('building_id').eq('id', o.data.id).maybeSingle()).data?.building_id ?? null;
   if (!building) return [];
-  const [{ data: ls }, { data: b }] = await Promise.all([
-    sb.from('admin_listings').select('id, code, floor, unit_no').eq('building_id', building).order('code'),
+  const [{ data: ts }, { data: b }] = await Promise.all([
+    sb.from('unit_types').select('id, code, sort').eq('building_id', building).order('sort'),
     sb.from('buildings').select('name').eq('id', building).maybeSingle(),
   ]);
-  const out: MoveTarget[] = (ls ?? []).filter((l) => l.id !== o.data.id)
-    .map((l) => ({ kind: 'listing', id: l.id, label: `${l.code ?? 'Nháp'} · tầng ${l.floor}${l.unit_no ? ` · căn ${l.unit_no}` : ''}` }));
-  if (o.data.kind === 'listing' && me.role === 'admin' && b) out.unshift({ kind: 'building', id: building, label: `Toà nhà ${b.name}` });
+  const out: MoveTarget[] = (ts ?? []).filter((t) => t.id !== o.data.id).map((t) => ({ kind: 'unit_type', id: t.id, label: t.code }));
+  if (o.data.kind === 'unit_type' && me.role === 'admin' && b) out.unshift({ kind: 'building', id: building, label: `Toà nhà ${b.name}` });
   return out;
 }
 
 /**
- * "Chuyển sang căn hộ…" / "Chuyển sang toà nhà": one rpc reassigns the rows (same building only; files stay in place).
- * `needWatermark` = moved public photos that a listing shows watermarked — the grid re-renders them through its queue.
+ * "Chuyển sang loại căn…" / "Chuyển sang toà nhà": one rpc reassigns the rows (same building only; files stay in place).
+ * `needWatermark` = moved photos a unit type shows watermarked — the grid re-renders them through its queue.
  */
 export async function movePhotos(owner: PhotoOwner, ids: string[], target: PhotoOwner): Promise<Res & { moved?: number; needWatermark?: string[] }> {
   await requireStaff();
@@ -199,7 +149,7 @@ export async function movePhotos(owner: PhotoOwner, ids: string[], target: Photo
 }
 
 /**
- * Bulk "Gắn nhãn" / "Nguồn": one update (RLS: admins; sales on their own listings). Watermarked photos can't become
+ * Bulk "Gắn nhãn" / "Nguồn": one update (RLS: building photos admins; unit type photos staff). Watermarked photos can't become
  * reference photos in SQL — they come back in `needClean` and the grid's queue strips the watermark first.
  */
 export async function bulkPhotoMeta(owner: PhotoOwner, ids: string[], patch: z.infer<typeof Meta>): Promise<Res & { n?: number; needClean?: string[] }> {

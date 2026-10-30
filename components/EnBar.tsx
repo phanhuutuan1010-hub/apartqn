@@ -1,34 +1,27 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
+import type { Locale } from '@/i18n/locales';
 import { Link } from '@/i18n/navigation';
 import type { SiteContact } from '@/lib/repo';
-import { BAR_BUTTONS, contactLinks } from '@/lib/contacts';
+import { EN_BAR, contactLinks } from '@/lib/contacts';
 import { EMPTY, type Filters } from '@/lib/filters';
 import { money } from '@/lib/format';
-import { IconRequest, IconTelegram, IconWhatsApp } from './ChannelIcons';
-import { WaBookLink } from './WaBookLink';
+import { IconTelegram, IconWhatsApp } from './ChannelIcons';
 import { SearchRequestForm } from './SearchRequestForm';
 import { FindHelpChat } from './FindHelpChat';
-import bar from './ContactBox.module.css';
+import bar from './ContactBar.module.css';
 import styles from './EnBar.module.css';
 
 export type EnBarProps = {
   contact: SiteContact;
   /** prefilled Telegram / WhatsApp message */
   message: string;
-  /** rent shown on the small line; null → no price line and the action becomes "Help me find" */
+  /** lowest "from" price in scope, on the small line; null → no price line and the action becomes "Help me find" */
   price: number | null;
-  /** "From 13,500,000 VND/month" (lowest of several) vs the listing's own rent */
-  from?: boolean;
-  /** viewing → #viewing · units → #units · browse → /en/apartments · help → the "find it for me" form */
-  cta: 'viewing' | 'units' | 'browse' | 'help';
-  /**
-   * Listing pages: the red block opens this WhatsApp chat ("Book a viewing", message already typed) and the left side
-   * becomes Telegram + "Request" (the viewing form) — no second WhatsApp button.
-   */
-  book?: { href: string; code: string };
+  /** units → #units · browse → /en/apartments · help → the "find it for me" form */
+  cta: 'units' | 'browse' | 'help';
   /** ids of the page's own form / target section: the bar steps aside while one is on screen */
   hideIds?: string[];
   /** results page: what the visitor searched for, sent with the "find it for me" request */
@@ -41,8 +34,9 @@ export type EnBarProps = {
  * English pages, phones (< 768 px): Telegram · WhatsApp · red action block, pinned to the bottom.
  * Hidden while the keyboard is open (a field is focused) and while the page's own form / target section is in view.
  */
-export function EnBar({ contact, message, price, from, cta, book, hideIds, query = '', criteria = EMPTY, buildingName }: EnBarProps) {
+export function EnBar({ contact, message, price, cta, hideIds, query = '', criteria = EMPTY, buildingName }: EnBarProps) {
   const t = useTranslations();
+  const locale = useLocale() as Locale;
   const [hide, setHide] = useState(false);
   const [open, setOpen] = useState(false);
   const dlg = useRef<HTMLDialogElement>(null);
@@ -86,13 +80,13 @@ export function EnBar({ contact, message, price, from, cta, book, hideIds, query
   }, [open]);
 
   const all = contactLinks(contact, '', message);
-  const btns = (book ? (['telegram'] as const) : BAR_BUTTONS.en).flatMap((k) => all[k] ?? []);
-  const cols = btns.length + (book ? 1 : 0);
+  const btns = EN_BAR.flatMap((k) => all[k] ?? []);
+  const cols = btns.length;
   const action = price == null ? 'help' : cta;
-  const label = t(action === 'viewing' ? 'vrShort' : action === 'units' ? 'ebUnits' : action === 'browse' ? 'ebBrowse' : 'ebHelp');
+  const label = t(action === 'units' ? 'ebUnits' : action === 'browse' ? 'ebBrowse' : 'ebHelp');
   const inner = (
     <>
-      {price != null && <span className={bar.ctaPrice}>{from ? `${t('from')} ` : ''}{money(price, 'en')}{t('perMonth')}</span>}
+      {price != null && <span className={bar.ctaPrice}>{t('priceFrom', { price: money(price, locale) })}{t('perMonth')}</span>}
       <span className={`${bar.ctaLabel} ${styles.label}`}>{label}</span>
     </>
   );
@@ -108,19 +102,11 @@ export function EnBar({ contact, message, price, from, cta, book, hideIds, query
               <span>{c.label}</span>
             </a>
           ))}
-          {book && (
-            <a href="#viewing" className={bar.icoBtn} tabIndex={hide ? -1 : undefined}>
-              <IconRequest size={26} />
-              <span>{t('ebRequest')}</span>
-            </a>
-          )}
-          {book
-            ? <WaBookLink href={book.href} code={book.code} className={bar.cta} tabIndex={hide ? -1 : undefined}>{inner}</WaBookLink>
-            : action === 'help'
+          {action === 'help'
             ? <button type="button" className={`${bar.cta} ${styles.btn}`} onClick={() => setOpen(true)} aria-haspopup="dialog" tabIndex={hide ? -1 : undefined}>{inner}</button>
             : action === 'browse'
               ? <Link href="/can-ho" className={bar.cta} tabIndex={hide ? -1 : undefined}>{inner}</Link>
-              : <a href={action === 'viewing' ? '#viewing' : '#units'} className={bar.cta} tabIndex={hide ? -1 : undefined}>{inner}</a>}
+              : <a href="#units" className={bar.cta} tabIndex={hide ? -1 : undefined}>{inner}</a>}
         </div>
       </nav>
       {open && (

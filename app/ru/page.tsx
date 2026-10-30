@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { getBuildings, getContact, getListings, getPricesFrom } from '@/lib/repo';
+import { getBuildings, getContact, getPricesFrom, getUnitTypes } from '@/lib/repo';
 import { contactLinks } from '@/lib/contacts';
 import { telHref, toLocal } from '@/lib/phone';
-import { RU_FLOOR, ruAlternates, ruType, rub } from '@/lib/ruPage';
+import { ruAlternates, ruType, rub } from '@/lib/ruPage';
+import { bedsOfType, type UnitTypeKind } from '@/lib/unitTypes';
 import { ratioOf } from '@/lib/types';
 import { Logo } from '@/components/Logo';
 import { Photo } from '@/components/Photo';
@@ -33,15 +34,21 @@ const intl = (p: string) => {
 };
 
 /**
- * Russian landing page for people moving from Nha Trang: one server-rendered page (not a locale). The available
- * listings come right after a compact hero (cheapest first, floor band only — never the floor or unit number); prices
- * "from" come from Cài đặt; the chat links are the English Telegram / WhatsApp links, logged with origin 'ru-page'.
+ * Russian landing page for people moving from Nha Trang: one server-rendered page (not a locale). The apartment types
+ * (sample units, "from" prices) come right after a compact hero, cheapest first — never availability or a single unit;
+ * the "from" prices per type come from those types (Cài đặt as the fallback); the chat links are the English Telegram /
+ * WhatsApp links, logged with origin 'ru-page'.
  */
 export default async function RuPage() {
-  const [contact, prices, all, buildings] = await Promise.all([getContact(), getPricesFrom(), getListings(), getBuildings()]);
+  const [contact, settingsPrices, all, buildings] = await Promise.all([getContact(), getPricesFrom(), getUnitTypes(), getBuildings()]);
   const links = contactLinks(contact, '', MESSAGE);
   const tg = links.telegram?.href, wa = links.whatsapp?.href;
-  const available = all.filter((x) => x.status === 'available').sort((a, b) => a.rent - b.rent);
+  const types = [...all].sort((a, b) => a.priceFrom - b.priceFrom);
+  const from = (k: UnitTypeKind, d: number) => {
+    const ps = types.filter((x) => x.type === k).map((x) => x.priceFrom);
+    return ps.length ? Math.min(...ps) : d;
+  };
+  const prices = { studio: from('studio', settingsPrices.studio), br1: from('1pn', settingsPrices.br1), br2: from('2pn', settingsPrices.br2) };
   const bName = new Map(buildings.map((b) => [b.id, b.name]));
   const phone = contact.whatsapp ?? contact.hotline;
 
@@ -69,7 +76,7 @@ export default async function RuPage() {
             <h1 className={s.h1}>Куиньон — море, тишина и своя квартира</h1>
             <p className={s.lead}>Переезжаете из Нячанга? Поможем найти квартиру в центре Куиньона на срок от 6 месяцев. Все квартиры полностью меблированы — можно заезжать сразу.</p>
             <div className={s.heroCta}>
-              <a href="#kvartiry" className={`btn btn-primary ${s.seeBtn}`}>Смотреть свободные квартиры</a>
+              <a href="#kvartiry" className={`btn btn-primary ${s.seeBtn}`}>Смотреть квартиры</a>
               {chatSmall}
             </div>
           </div>
@@ -77,13 +84,14 @@ export default async function RuPage() {
 
         <div className={`container ${s.body}`}>
           <section className={s.sec} id="kvartiry">
-            <h2 className={s.h2}>Свободные квартиры</h2>
-            {available.length === 0 ? (
-              <p className={s.empty}>Сейчас свободных квартир нет. Напишите нам — сообщим, как только появятся.</p>
+            <h2 className={s.h2}>Квартиры по типам</h2>
+            <p className={s.pTop}>Фото — образец квартиры этого типа. Какие квартиры свободны сейчас, уточните у нас.</p>
+            {types.length === 0 ? (
+              <p className={s.empty}>Варианты скоро появятся. Напишите нам — подберём квартиру по вашему запросу.</p>
             ) : (
               <ul className={s.grid}>
-                {available.map((x, i) => {
-                  const type = ruType(x.beds);
+                {types.map((x, i) => {
+                  const type = ruType(bedsOfType(x.type));
                   const building = bName.get(x.buildingId);
                   return (
                     <li key={x.code} className={s.card}>
@@ -93,9 +101,8 @@ export default async function RuPage() {
                       </div>
                       <div className={s.cardBody}>
                         <span className={s.code}>{x.code}{building && <> · {building}</>}</span>
-                        <span className={s.type}>{type}{x.area > 0 && <> · {x.area} м²</>}</span>
-                        <span className={s.rent}>{rub(x.rent)} VND/месяц</span>
-                        {x.floorBand && <span className={s.floor}>{RU_FLOOR[x.floorBand]}</span>}
+                        <span className={s.type}>{type} · {x.areaMax > x.areaMin ? `${x.areaMin}–${x.areaMax}` : x.areaMin} м²</span>
+                        <span className={s.rent}>от {rub(x.priceFrom)} VND/месяц</span>
                         <a href={`/en/${x.code}`} className={`btn btn-secondary ${s.more}`} hrefLang="en">Подробнее (на английском)</a>
                       </div>
                     </li>
@@ -195,7 +202,7 @@ export default async function RuPage() {
               <details><summary>Минимальный срок аренды?</summary><p>6 месяцев.</p></details>
               <details><summary>Квартиры с мебелью?</summary><p>Да, все квартиры полностью меблированы.</p></details>
               <details><summary>Можно с домашними животными?</summary><p>Зависит от квартиры, цена может отличаться. Напишите нам.</p></details>
-              <details><summary>Какие дополнительные расходы?</summary><p>Электричество, вода, интернет, обслуживание. Ориентировочные суммы указаны на странице каждой квартиры.</p></details>
+              <details><summary>Какие дополнительные расходы?</summary><p>Электричество, вода, интернет, обслуживание. Ориентировочные суммы указаны на странице каждого типа квартиры.</p></details>
             </div>
           </section>
         </div>

@@ -10,7 +10,7 @@ export const maxDuration = 60;
 
 const Body = z.object({
   owner: z.discriminatedUnion('kind', [
-    z.object({ kind: z.literal('listing'), id: z.string().uuid() }),
+    z.object({ kind: z.literal('unit_type'), id: z.string().uuid() }),
     z.object({ kind: z.literal('building'), id: z.string().uuid() }),
   ]),
   photoId: z.string().uuid(),
@@ -19,7 +19,7 @@ const fail = (status: number, error: string) => NextResponse.json({ ok: false, e
 
 /**
  * ONE uploaded original (listing-master/<prefix>orig-<photoId>, put there untouched through a signed URL) → public
- * variants 640 / 1200 / 1920 px rendered straight from it (one encode per file), watermarked by default for listing
+ * variants 640 / 1200 / 1920 px rendered straight from it (one encode per file), watermarked by default for unit type
  * photos (lib/watermark.ts), + the clean master for later re-renders (≤ 2400 px WebP q90; the original is then deleted),
  * + the photos row. Runs as the signed-in staff member:
  * storage and table RLS decide what they may touch.
@@ -40,16 +40,17 @@ export async function POST(req: NextRequest) {
   if (owner.kind === 'building' && me.role !== 'admin') return fail(403, 'Chỉ quản trị viên sửa ảnh toà nhà.');
 
   let prefix: string;
-  if (owner.kind === 'listing') {
-    const { data } = await sb.from('listings').select('id').eq('id', owner.id).maybeSingle(); // RLS: own listings only
-    if (!data) return fail(404, 'Không tìm thấy căn.');
-    prefix = `listings/${owner.id}/`;
+  if (owner.kind === 'unit_type') {
+    const { data } = await sb.from('unit_types').select('id').eq('id', owner.id).maybeSingle(); // RLS: staff, not trashed
+    if (!data) return fail(404, 'Không tìm thấy loại căn.');
+    prefix = `unit-types/${owner.id}/`;
   } else {
     const { data } = await sb.from('buildings').select('slug').eq('id', owner.id).maybeSingle();
     if (!data) return fail(404, 'Không tìm thấy toà nhà.');
     prefix = `buildings/${data.slug}/`;
   }
-  const watermark = owner.kind === 'listing';
+  // sample-unit photos are ours: watermarked by default; building photos not (often third-party)
+  const watermark = owner.kind === 'unit_type';
 
   let out: Awaited<ReturnType<typeof renderVariants>>;
   let master_path: string;

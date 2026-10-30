@@ -4,33 +4,32 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import type { Building, Listing } from '@/lib/types';
-import { apply, EMPTY, parseQuery, toQuery, type Filters, type Sort } from '@/lib/filters';
-import { dFull, F, mil } from '@/lib/format';
+import { DEFAULT_LOCALE, LOCALE_CONFIG, type Locale } from '@/i18n/locales';
+import type { Building, UnitType } from '@/lib/types';
+import { apply, EMPTY, minPrice, parseQuery, toQuery, type Filters, type Sort } from '@/lib/filters';
 import { textMatches } from '@/lib/search/text';
-import { similarListings } from '@/lib/search/similar';
+import { similarTypes } from '@/lib/search/similar';
 import { logSearchMiss } from '@/lib/search/miss';
 import { SearchRequestForm } from './SearchRequestForm';
 import { FindHelpChat } from './FindHelpChat';
 import { EnBar } from './EnBar';
-import { minRent } from '@/lib/minRent';
 import type { SiteContact } from '@/lib/repo';
 import { FilterPanel } from './FilterPanel';
 import { SmartSearch } from './SmartSearch';
-import { ListingCard } from './ListingCard';
+import { UnitTypeCard } from './UnitTypeCard';
 import styles from './ResultsView.module.css';
 
 const FilterSheet = dynamic(() => import('./FilterSheet'), { ssr: false });
 
-type Props = { listings: Listing[]; buildings: Building[]; /** numbers for "Nhờ tìm giúp" by message and the en phone bottom bar */ contact?: SiteContact };
+type Props = { types: UnitType[]; buildings: Building[]; /** numbers for "Nhờ tìm giúp" by message and the en phone bottom bar */ contact?: SiteContact };
 
-/** Reports the URL query (?b=&beds=&rent=&furn=&pets=1&date=&rented=1&sort=) upwards; renders nothing. */
+/** Reports the URL query (?b=&t=&pmax=&ft=&q=&near=&sort=) upwards; renders nothing. */
 function QuerySync({ onQuery }: { onQuery: (q: string) => void }) {
   const q = useSearchParams().toString();
   useEffect(() => onQuery(q), [q, onQuery]);
   // a filtered / searched list is not a page of its own: noindex, follow (the canonical is the plain list)
   useEffect(() => {
-    const tracking = /^(utm_|fbclid|gclid)/;
+    const tracking = /^(utm_|fbclid|gclid|src$)/;
     const filtered = [...new URLSearchParams(q).keys()].some((k) => !tracking.test(k));
     let m = document.querySelector<HTMLMetaElement>('meta[name="robots"][data-results]');
     if (filtered && !m) {
@@ -46,8 +45,7 @@ function QuerySync({ onQuery }: { onQuery: (q: string) => void }) {
 
 /**
  * The results list, filtered by the URL. The list itself is in the static HTML and is hydrated in place — only the tiny
- * URL reader sits behind Suspense. (Swapping a Suspense fallback for the list re-created every card, so the first photo,
- * the page's largest paint, was painted a second time after hydration.)
+ * URL reader sits behind Suspense (swapping a fallback for the list would paint the first photo twice).
  */
 export function ResultsFromUrl(props: Props) {
   const [query, setQuery] = useState('');
@@ -60,15 +58,16 @@ export function ResultsFromUrl(props: Props) {
 }
 
 /** Static fallback (prerender): default filters. */
-export function ResultsView({ listings, buildings, contact, query = '' }: Props & { query?: string }) {
+export function ResultsView({ types, buildings, contact, query = '' }: Props & { query?: string }) {
   const t = useTranslations();
-  const l = useLocale();
+  const l = useLocale() as Locale;
   const { f, sort } = useMemo(() => parseQuery(new URLSearchParams(query)), [query]);
   /** what the visitor typed in the search box (only on arrival; dropped once filters change) */
   const typed = useMemo(() => (new URLSearchParams(query).get('s') ?? '').trim().slice(0, 80), [query]);
   const [ask, setAsk] = useState(false);
   const [sheet, setSheet] = useState(false);
   const bById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
+  const bList = useMemo(() => buildings.filter((b) => types.some((x) => x.buildingId === b.id)), [buildings, types]);
 
   // All filter state lives in the URL; Next keeps useSearchParams in sync with history.replaceState.
   const sync = useCallback((nf: Filters, ns: Sort) => {
@@ -79,56 +78,44 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
 
   const textOk = useMemo(() => {
     const ok = new Map(buildings.map((b) => [b.id, textMatches(f.q, { name: b.name, aliases: b.aliases, street: b.street, ward_new: b.ward ?? null, ward_old: b.wardOld ?? null })]));
-    return (x: Listing) => ok.get(x.buildingId) ?? false;
+    return (x: UnitType) => ok.get(x.buildingId) ?? false;
   }, [buildings, f.q]);
-  const matched = useMemo(() => apply(listings, f, sort, textOk), [listings, f, sort, textOk]);
+  const matched = useMemo(() => apply(types, f, sort, textOk), [types, f, sort, textOk]);
   // free text that fits nothing is set aside (it never empties the list): say so
   const qIgnored = !!f.q && matched.length > 0 && !matched.some(textOk);
-  const similar = useMemo(() => (matched.length ? [] : similarListings(listings, f)), [matched.length, listings, f]);
+  const similar = useMemo(() => (matched.length ? [] : similarTypes(types, f)), [matched.length, types, f]);
 
   // a typed search with no match → anonymous demand log (once per query per session)
   useEffect(() => {
-    if (typed && matched.length === 0) {
-      const { rented, ...criteria } = f;
-      void rented;
-      logSearchMiss(typed, l, criteria);
-    }
+    if (typed && matched.length === 0) logSearchMiss(typed, l, { ...f, ft: f.ft.join(',') });
   }, [typed, matched.length, f, l]);
 
-  const drawerN = (['beds', 'furn', 'fl', 'pets', 'car', 'date'] as const).filter((k) => f[k]).length;
-  const bedsLabel = (v: string) => t('sBeds') + ': ' + (v === '0' ? t('studio') : v === '3' ? '3+' : v === '01' ? `${t('studio')} / 1` : v);
+  const dec = LOCALE_CONFIG[l].decimal;
+  const drawerN = [f.t, f.pmax, f.b].filter(Boolean).length + f.ft.length;
   const pills: { label: string; clear: Partial<Filters> }[] = [];
   if (f.b && bById.get(f.b)) pills.push({ label: bById.get(f.b)!.name, clear: { b: '' } });
   if (f.q) pills.push({ label: `“${f.q}”`, clear: { q: '' } });
   if (f.near) pills.push({ label: t('nearSea'), clear: { near: '' } });
-  if (f.rent) pills.push({ label: t(`rent${f.rent.slice(1)}` as 'rent0'), clear: { rent: '' } });
-  if (f.pmin && f.pmax) pills.push({ label: `${mil(+f.pmin * 1e6, l).replace(/ (đ|VND)$/, '')} – ${mil(+f.pmax * 1e6, l)}`, clear: { pmin: '', pmax: '' } });
-  else if (f.pmax) pills.push({ label: '≤ ' + mil(+f.pmax * 1e6, l), clear: { pmax: '' } });
-  else if (f.pmin) pills.push({ label: '≥ ' + mil(+f.pmin * 1e6, l), clear: { pmin: '' } });
-  if (f.vw) pills.push({ label: t(`v_${f.vw}` as 'v_sea'), clear: { vw: '' } });
-  if (f.fl) pills.push({ label: F.floorBand(f.fl as 'low', l), clear: { fl: '' } });
-  if (f.beds) pills.push({ label: bedsLabel(f.beds), clear: { beds: '' } });
-  if (f.furn) pills.push({ label: t(`furn_${f.furn}` as 'furn_full'), clear: { furn: '' } });
-  if (f.pets) pills.push({ label: t('pets'), clear: { pets: false } });
-  if (f.car) pills.push({ label: t('carPark'), clear: { car: false } });
-  if (f.date) pills.push({ label: t('moveIn') + ': ' + dFull(f.date, l), clear: { date: '' } });
-  const clearAll = () => sync({ ...EMPTY, rented: f.rented }, sort);
+  if (f.t) pills.push({ label: t(`crType_${f.t as '01'}`), clear: { t: '' } });
+  if (f.pmax) pills.push({ label: t('fBudgetN', { n: f.pmax.replace('.', dec) }), clear: { pmax: '' } });
+  f.ft.forEach((k) => pills.push({ label: t(`f_${k}`), clear: { ft: f.ft.filter((x) => x !== k) } }));
+  const clearAll = () => sync({ ...EMPTY }, sort);
 
   const bName = f.b ? bById.get(f.b)?.name : undefined;
   const chat = contact && matched.length === 0 ? <FindHelpChat contact={contact} query={typed} criteria={f} buildingName={bName} /> : null;
 
-  const rentSelect = (
+  const typeSelect = (
     <label className={`${styles.selWrap} ${styles.mdOnly}`}>
-      <select aria-label={t('sRent')} className={`${styles.sel} ${f.rent ? styles.selOn : ''}`} value={f.rent} onChange={(e) => setF({ rent: e.target.value })}>
-        <option value="">{t('sRent')}: {t('sAny')}</option>
-        {[0, 1, 2, 3].map((i) => <option key={i} value={'r' + i}>{t(`rent${i}` as 'rent0')}</option>)}
+      <select aria-label={t('fType')} className={`${styles.sel} ${f.t ? styles.selOn : ''}`} value={f.t} onChange={(e) => setF({ t: e.target.value })}>
+        <option value="">{t('fType')}: {t('sAny')}</option>
+        {(['studio', '1pn', '2pn', '3pn'] as const).map((k) => <option key={k} value={k}>{t(`utShort_${k}`)}</option>)}
       </select>
     </label>
   );
   const sortSelect = (
     <label className={styles.selWrap}>
       <select aria-label={t('sort')} className={styles.sel} value={sort} onChange={(e) => sync(f, e.target.value as Sort)}>
-        {(['new', 'low', 'high', 'move'] as const).map((k) => <option key={k} value={k}>{t(`sort_${k}`)}</option>)}
+        {(['low', 'high', 'big'] as const).map((k) => <option key={k} value={k}>{t(`sort_${k}`)}</option>)}
       </select>
     </label>
   );
@@ -145,11 +132,11 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
               {t('filters')}
               {drawerN > 0 && <span className={styles.fCount}>{drawerN}</span>}
             </button>
-            {rentSelect}
+            {typeSelect}
             {sortSelect}
           </div>
           <div className={styles.pillRow}>
-            <span className={styles.found} aria-live="polite">{F.found(matched.length, l)}</span>
+            <span className={styles.found} aria-live="polite">{t('nTypes', { n: matched.length })}</span>
             {pills.map((p) => (
               <button key={p.label} type="button" className={styles.pill} onClick={() => setF(p.clear)} aria-label={`${p.label} ×`}>
                 {p.label}<span aria-hidden className={styles.pillX}>×</span>
@@ -157,17 +144,13 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
             ))}
             {pills.length > 0 && <button type="button" className={styles.clear} onClick={clearAll}>{t('clearAll')}</button>}
             {qIgnored && <span className={styles.qNote} role="status">{t('qIgnored', { q: f.q })}</span>}
-            <button type="button" role="checkbox" aria-checked={f.rented} className={styles.rented} onClick={() => setF({ rented: !f.rented })}>
-              <span className={`${styles.box} ${f.rented ? styles.boxOn : ''}`} aria-hidden>{f.rented ? '✓' : ''}</span>
-              {t('showRented')}
-            </button>
           </div>
         </div>
       </div>
 
       <div className={`container ${styles.body}`}>
         <aside className={styles.side}>
-          <FilterPanel variant="sidebar" value={f} listings={listings} onApply={(nf) => setF(nf)} />
+          <FilterPanel variant="sidebar" value={f} types={types} buildings={bList} onApply={(nf) => setF(nf)} />
         </aside>
         <div className={styles.content}>
           {matched.length === 0 ? (
@@ -194,25 +177,26 @@ export function ResultsView({ listings, buildings, contact, query = '' }: Props 
                 <section aria-labelledby="sim-title">
                   <h2 id="sim-title" className={styles.simT}>{t('similar')}</h2>
                   <div className={styles.grid}>
-                    {similar.map((x) => <ListingCard key={x.code} x={x} building={bById.get(x.buildingId)} slider />)}
+                    {similar.map((x) => <UnitTypeCard key={x.code} x={x} building={bById.get(x.buildingId)} slider />)}
                   </div>
                 </section>
               )}
             </div>
           ) : (
             <div className={styles.grid}>
-              {matched.map((x, i) => <ListingCard key={x.code} x={x} building={bById.get(x.buildingId)} slider priority={i === 0} />)}
+              {matched.map((x, i) => <UnitTypeCard key={x.code} x={x} building={bById.get(x.buildingId)} slider priority={i === 0} />)}
             </div>
           )}
         </div>
       </div>
 
-      {/* en phones: "From {lowest rent of these results}" + "Help me find" (steps aside while the inline request form is open) */}
-      {contact && l === 'en' && <EnBar contact={contact} message={F.msgG('en')} price={minRent(matched)} from cta="help" hideIds={['sr-title']} query={typed} criteria={f} buildingName={bName} />}
+      {/* phones, other languages: "From {lowest of these results}" + "Help me find" (steps aside while the inline form is open) */}
+      {contact && l !== DEFAULT_LOCALE && <EnBar contact={contact} message={t('msgGeneral')} price={minPrice(matched)} cta="help" hideIds={['sr-title']} query={typed} criteria={f} buildingName={bName} />}
       {sheet && (
         <FilterSheet
           value={f}
-          listings={listings}
+          types={types}
+          buildings={bList}
           onClose={() => setSheet(false)}
           onApply={(nf) => { setSheet(false); setF(nf); }}
         />

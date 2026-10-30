@@ -2,10 +2,10 @@
 
 import { useTransition } from 'react';
 import { useParams, useRouter as useNextRouter } from 'next/navigation';
-import { listingPath } from '@/lib/listingUrl';
+import { matchEntryPath } from '@/lib/entry';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from '@/i18n/navigation';
-import { LOCALES, type Locale } from '@/i18n/routing';
+import { LOCALES, localePrefix, type Locale } from '@/i18n/locales';
 import { rememberLocale } from '@/lib/localeDetect';
 import styles from './LangSwitcher.module.css';
 
@@ -23,10 +23,10 @@ export function LangSwitcher() {
     // remembered for a year: wins over the browser language on later visits to "/"
     rememberLocale(l);
     if (l === locale) return;
-    // listings (/{CODE} · /en/{CODE}) are outside the localized pathnames: switch by URL
-    const listing = /^\/(?:en\/)?([A-Za-z]{3}-\d{3,6})\/?$/.exec(window.location.pathname);
-    if (listing) {
-      startTransition(() => nextRouter.replace(listingPath(listing[1], l) + window.location.search + window.location.hash, { scroll: false }));
+    // buildings (/{PREFIX}) and unit types (/{PREFIX}-{TYPE}) are outside the localized pathnames: switch by URL
+    const page = matchEntryPath(window.location.pathname);
+    if (page) {
+      startTransition(() => nextRouter.replace(`${localePrefix(l)}/${page[2].toUpperCase()}` + window.location.search + window.location.hash, { scroll: false }));
       return;
     }
     // Read the live query (Results keeps filters in the URL via history.replaceState)

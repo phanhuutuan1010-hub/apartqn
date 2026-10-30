@@ -1,13 +1,15 @@
 import { EnBarAuto } from '@/components/EnBarAuto';
 import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { getPathname, Link } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
-import { getBuilding, getBuildings, getContact, getListings, isBuildingHidden, staticParams } from '@/lib/repo';
-import { F, money } from '@/lib/format';
+import type { Locale } from '@/i18n/locales';
+import { getBuildingByPrefix, getBuildings, getContact, getUnitTypes, isBuildingHidden, staticParams } from '@/lib/repo';
+import { money } from '@/lib/format';
 import { contacts } from '@/lib/contacts';
-import { alternates, OG_LOCALE } from '@/lib/seo';
+import { minPrice } from '@/lib/filters';
+import { alternatesOf, OG_LOCALE } from '@/lib/seo';
+import { buildingPath, buildingUrl } from '@/lib/unitTypes';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { DemoBadge } from '@/components/Badges';
@@ -15,72 +17,59 @@ import { Gallery } from '@/components/Gallery';
 import { YouTubeLite } from '@/components/YouTubeLite';
 import { galleryLabels } from '@/lib/galleryLabels';
 import { youtubeId } from '@/lib/youtube';
-import { ListingCard } from '@/components/ListingCard';
+import { UnitTypeCard } from '@/components/UnitTypeCard';
 import { BuildingCard } from '@/components/BuildingCard';
+import { BuildingFees } from '@/components/BuildingFees';
 import { LocationBlock } from '@/components/LocationBlock';
 import styles from './building.module.css';
 
+/** id = the building's code prefix (ALT): apartqn.com/ALT is rewritten here by proxy.ts (lib/entry.ts) */
 type Params = { locale: Locale; id: string };
 
 export async function generateStaticParams() {
-  return (await staticParams(getBuildings)).map((b) => ({ id: b.id }));
+  return (await staticParams(getBuildings)).map((b) => ({ id: b.prefix }));
 }
-// New codes/buildings render on demand; admin changes call revalidatePath (hourly fallback).
+// New / changed buildings render on demand; admin changes call revalidatePath (hourly fallback).
 export const dynamicParams = true;
 export const revalidate = 3600;
 
-const rng = (arr: number[], fmt: (n: number) => string) => {
-  if (!arr.length) return '—';
-  const lo = Math.min(...arr), hi = Math.max(...arr);
-  return lo === hi ? fmt(lo) : fmt(lo) + ' – ' + fmt(hi);
-};
-
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { locale, id } = await params;
-  const b = await getBuilding(id);
+  const b = await getBuildingByPrefix(id);
   if (!b) return { robots: { index: false, follow: false } };
   const t = await getTranslations({ locale });
-  const avail = (await getListings()).filter((x) => x.buildingId === b.id && x.status !== 'rented');
-  const title = `${b.name} – ${F.units(avail.length, locale)} | ApartQN`;
-  const description = `${b.name}, ${b.street}, ${t('city')}. ${b.amenities.map((k) => t(`b_${k}`)).join(', ')}. ${t('fAbout')}`;
+  const types = (await getUnitTypes()).filter((x) => x.buildingId === b.id);
+  const min = minPrice(types);
+  const title = `${b.name}${min != null ? ` – ${t('priceFrom', { price: money(min, locale) })}${t('perMonth')}` : ''} | ApartQN`;
+  const description = [`${b.name}, ${[b.street, t('city')].filter(Boolean).join(', ')}.`, types.length ? `${t('nTypes', { n: types.length })}: ${types.map((x) => t(`ut_${x.type}`)).join(', ')}.` : '', b.amenities.map((k) => t(`b_${k}`)).join(', '), t('fAbout')].filter(Boolean).join(' ');
   return {
     title: { absolute: title },
     description,
-    alternates: alternates(locale, { pathname: '/toa-nha/[id]', params: { id: b.id } }),
-    openGraph: { title, description, locale: OG_LOCALE[locale], type: 'website', siteName: 'ApartQN', ...(b.photos[0] ? { images: [b.photos[0]] } : {}) },
+    alternates: alternatesOf(locale, (l) => buildingUrl(b.prefix, l)),
+    openGraph: { title, description, url: buildingUrl(b.prefix, locale), locale: OG_LOCALE[locale], type: 'website', siteName: 'ApartQN', ...(b.photos[0] ? { images: [b.photos[0]] } : {}) },
   };
 }
 
 export default async function BuildingPage({ params }: { params: Promise<Params> }) {
   const { locale: l, id } = await params;
   setRequestLocale(l);
-  const b = await getBuilding(id);
-  // hidden in admin: temporary redirect to the building list (it comes back when the building is shown again)
-  if (!b && (await isBuildingHidden(id))) redirect(getPathname({ locale: l, href: '/' }) + '#buildings');
-  if (!b) notFound();
-  const [listings, buildings, contact] = await Promise.all([getListings(), getBuildings(), getContact()]);
+  const b = await getBuildingByPrefix(id);
+  if (!b) {
+    // an old slug that reached the folder directly (/vi/toa-nha/altara) → its URL
+    const bySlug = (await getBuildings()).find((x) => x.id === id.toLowerCase());
+    if (bySlug) permanentRedirect(buildingPath(bySlug.prefix, l));
+    // hidden in admin: temporary redirect to the building list (it comes back when the building is shown again)
+    if (await isBuildingHidden(id.toLowerCase())) redirect(getPathname({ locale: l, href: '/' }) + '#buildings');
+    notFound();
+  }
+  const [all, buildings, contact] = await Promise.all([getUnitTypes(), getBuildings(), getContact()]);
   const t = await getTranslations();
-  const all = listings.filter((x) => x.buildingId === b.id);
-  const avail = all.filter((x) => x.status !== 'rented').sort((p, q) => p.rent - q.rent);
-  const r1k = (n: number) => Math.round(n / 1000) * 1000;
-  const msg = F.msgB(b.name, l);
-  const cs = contacts(contact, l, t('call'), { message: msg });
+  const types = all.filter((x) => x.buildingId === b.id);
+  const min = minPrice(types);
+  const msg = t('msgBuilding', { building: b.name });
+  const cs = contacts(contact, l, t('call'), msg);
   const fullAddr = [b.street, t('city')].filter(Boolean).join(', ');
-  const fees: [string, string][] = [
-    [t('mgmtRate'), rng(all.map((x) => r1k(x.mgmt / x.area)), (n) => F.perM2(n, l))],
-    [t('motoParkFee'), all.length ? rng(all.map((x) => x.moto), (n) => money(n, l)) + t('perMonth') : '—'],
-    [t('carParkFee'), all.length ? rng(all.map((x) => x.car), (n) => money(n, l)) + t('perMonth') : '—'],
-  ];
   const videoId = youtubeId(b.videoUrl);
-  const free = all.filter((x) => x.status === 'available').length;
-  // quick facts: only what the building record actually says (null → not shown)
-  const fz = b.fees;
-  const qf: [string, string][] = [];
-  if (fz.mgmt_fee_per_m2 != null) qf.push([t('qfMgmt'), F.perM2(fz.mgmt_fee_per_m2, l) + (fz.mgmt_fee_vat_pct ? ` + VAT ${String(fz.mgmt_fee_vat_pct).replace('.', l === 'vi' ? ',' : '.')}%` : '')]);
-  if (fz.motorbike_fee != null) qf.push([t('qfMoto'), money(fz.motorbike_fee, l) + t('perMonth')]);
-  if (fz.car_parking === 'paid' && fz.car_fee != null) qf.push([t('qfCar'), money(fz.car_fee, l) + t('perMonth')]);
-  else if (fz.car_parking === 'free') qf.push([t('qfCar'), t('qfCarFree')]);
-  else if (fz.car_parking === 'none') qf.push([t('qfCar'), t('qfCarNone')]);
   const keyAm = b.amenities.slice(0, 4);
   const others = buildings.filter((x) => x.id !== b.id).slice(0, 4);
 
@@ -95,25 +84,23 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
         </nav>
         <Gallery photos={b.photos} srcsets={b.srcsets} meta={b.photoMeta} alt={b.name} tone="building" videoHref={videoId ? '#video' : undefined}
           labels={galleryLabels(t as unknown as Parameters<typeof galleryLabels>[0])} />
-        {(qf.length > 0 || keyAm.length > 0 || free > 0) && (
+        {(keyAm.length > 0 || types.length > 0) && (
           <div className={styles.qf}>
-            {qf.map(([k, v]) => <span key={k} className={styles.qfItem}><span className={styles.qfK}>{k}</span> <b>{v}</b></span>)}
             {keyAm.map((k) => <span key={k} className={styles.qfItem}>{t(`b_${k}`)}</span>)}
-            {free > 0 && <a href="#units" className={`btn btn-blue ${styles.qfBtn}`}>{t('qfAvail', { n: free })}</a>}
+            {types.length > 0 && <a href="#units" className={`btn btn-blue ${styles.qfBtn}`}>{t('qfTypes', { n: types.length })}</a>}
           </div>
         )}
 
         <div className={styles.head}>
           <div className={styles.badges}>
-            <span className={styles.unitsBadge}>{F.units(avail.length, l)}</span>
+            {types.length > 0 && <span className={styles.unitsBadge}>{t('nTypes', { n: types.length })}</span>}
             {b.demo && <DemoBadge height={26} />}
           </div>
           <h1 className="h1">{b.name}</h1>
           <div className={styles.addr}>{fullAddr}</div>
-          {free > 0 && (
+          {min != null && (
             <div className={styles.range}>
-              <span className={styles.rangeLabel}>{t('from')}</span>
-              <span className={styles.rangeVal}>{money(Math.min(...all.filter((x) => x.status === 'available').map((x) => x.rent)), l)}</span>
+              <span className={styles.rangeVal}>{t('priceFrom', { price: money(min, l) })}</span>
               <span className={styles.rangePer}>{t('perMonth')}</span>
             </div>
           )}
@@ -121,6 +108,16 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
 
         <div className={styles.body}>
           <main className={styles.main}>
+            <section className={styles.sec} id="units" style={{ paddingTop: 24, paddingBottom: 32, scrollMarginTop: 'calc(var(--hdr) + 16px)' }}>
+              <h2 className={styles.h2} style={{ marginBottom: 20 }}>{t('bldTypes', { building: b.name })}</h2>
+              {types.length ? (
+                <div className={styles.units}>
+                  {types.map((x, i) => <UnitTypeCard key={x.code} x={x} building={b} slider priority={i === 0 && !b.photos.length} />)}
+                </div>
+              ) : (
+                <div className={styles.empty}>{t('bldNoTypes')}</div>
+              )}
+            </section>
             {b.desc[l] && (
               <section className={styles.sec}>
                 <h2 className={styles.h2}>{t('bldDescTitle')}</h2>
@@ -133,28 +130,17 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
                 <YouTubeLite id={videoId} title={b.name} playLabel={t('video')} />
               </section>
             )}
-            <section className={styles.sec} id="units" style={{ paddingTop: 24, paddingBottom: 32, scrollMarginTop: 'calc(var(--hdr) + 16px)' }}>
-              <h2 className={styles.h2} style={{ marginBottom: 20 }}>{t('bldUnits')}</h2>
-              {avail.length ? (
-                <div className={styles.units}>
-                  {avail.map((x) => <ListingCard key={x.code} x={x} building={b} slider />)}
-                </div>
-              ) : (
-                <div className={styles.empty}>{t('noUnits')}</div>
-              )}
-            </section>
-            <section className={styles.sec}>
-              <h2 className={styles.h2}>{t('bldAm')}</h2>
-              <ul className={styles.am}>
-                {b.amenities.map((k) => <li key={k}><span className={styles.dot} aria-hidden />{t(`b_${k}`)}</li>)}
-              </ul>
-            </section>
+            {b.amenities.length > 0 && (
+              <section className={styles.sec}>
+                <h2 className={styles.h2}>{t('bldAm')}</h2>
+                <ul className={styles.am}>
+                  {b.amenities.map((k) => <li key={k}><span className={styles.dot} aria-hidden />{t(`b_${k}`)}</li>)}
+                </ul>
+              </section>
+            )}
             <section className={styles.sec}>
               <h2 className={styles.h2} style={{ marginBottom: 8 }}>{t('bldFees')}</h2>
-              <dl className={styles.fees}>
-                {fees.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
-              </dl>
-              <p className={styles.note}>{t('feeNote')}</p>
+              <BuildingFees b={b} />
             </section>
             <section className={styles.sec} style={{ paddingBottom: 40 }}>
               <h2 className={styles.h2}>{t('location')}</h2>
@@ -182,7 +168,7 @@ export default async function BuildingPage({ params }: { params: Promise<Params>
         <section className={styles.others}>
           <h2 className="h2" style={{ marginBottom: 24 }}>{t('otherBlds')}</h2>
           <div className={styles.blds}>
-            {others.map((o) => <BuildingCard key={o.id} b={o} listings={listings} />)}
+            {others.map((o) => <BuildingCard key={o.id} b={o} types={all} />)}
           </div>
         </section>
       </div>

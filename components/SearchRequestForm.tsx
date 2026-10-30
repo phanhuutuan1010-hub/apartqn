@@ -18,7 +18,7 @@ export function SearchRequestForm({ query, criteria, onDone }: { query: string; 
     e.preventDefault();
     if (state === 'busy') return;
     const hp = (new FormData(e.currentTarget).get('website') ?? '').toString();
-    const c = Object.fromEntries(Object.entries(criteria).filter(([k, v]) => k !== 'rented' && v !== '' && v !== false));
+    const c = Object.fromEntries(Object.entries(criteria).filter(([, v]) => v !== '' && !(Array.isArray(v) && !v.length)));
     setState('busy');
     try {
       const r = await fetch('/api/lead', {

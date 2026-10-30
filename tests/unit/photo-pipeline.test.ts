@@ -57,7 +57,7 @@ describe('photo pipeline', () => {
     // legacy: clean public file, no master
     f.files.set('listing-public/buildings/b/old.webp', await jpeg());
     f.files.set('listing-public/buildings/b/thumbs/old.webp', await jpeg());
-    const row: Row = { id: 'p2', listing_id: null, building_id: 'B', bucket: 'listing-public', path: 'buildings/b/old.webp', thumb_path: 'buildings/b/thumbs/old.webp', master_path: null, watermark: false, wm_version: null, visibility: 'public', is_cover: false };
+    const row: Row = { id: 'p2', building_id: 'B', bucket: 'listing-public', path: 'buildings/b/old.webp', thumb_path: 'buildings/b/thumbs/old.webp', master_path: null, watermark: false, wm_version: null, visibility: 'public', is_cover: false };
     f.rows.set('p2', row);
     await setPhotoWatermark(f.sb, row, true);
     expect(f.rows.get('p2')).toMatchObject({ watermark: true, wm_version: 4, path: 'buildings/b/p2-wm4-1920.webp', thumb_path: 'buildings/b/p2-wm4-640.webp', master_path: 'buildings/b/p2.webp' });
@@ -70,7 +70,7 @@ describe('photo pipeline', () => {
   it('public → internal keeps a clean copy only; internal → public renders again', async () => {
     f.files.set('listing-master/listings/L1/p3.webp', await jpeg());
     const out = await renderVariants(f.sb, 'listings/L1/', 'p3', await jpeg(), true);
-    const row: Row = { id: 'p3', listing_id: 'L1', building_id: null, bucket: 'listing-public', path: out.path, thumb_path: out.thumb_path, variants: out.variants, master_path: 'listings/L1/p3.webp', watermark: true, wm_version: 4, visibility: 'public', is_cover: true };
+    const row: Row = { id: 'p3', unit_type_id: 'T1', building_id: null, bucket: 'listing-public', path: out.path, thumb_path: out.thumb_path, variants: out.variants, master_path: 'listings/L1/p3.webp', watermark: true, wm_version: 4, visibility: 'public', is_cover: true };
     f.rows.set('p3', row);
     await movePhoto(f.sb, row, 'internal');
     expect(f.rows.get('p3')).toMatchObject({ bucket: 'listing-internal', visibility: 'internal', master_path: null, is_cover: false, variants: null });

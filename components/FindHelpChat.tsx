@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import type { Locale } from '@/i18n/routing';
+import { LOCALE_CONFIG, type Locale } from '@/i18n/locales';
 import type { SiteContact } from '@/lib/repo';
 import type { Filters } from '@/lib/filters';
 import { tgHref, waHref, zaloHref } from '@/lib/phone';
@@ -11,18 +11,19 @@ import { IconTelegram, IconWhatsApp, IconZalo } from './ChannelIcons';
 import styles from './FindHelpChat.module.css';
 
 type Channel = 'zalo' | 'whatsapp' | 'telegram';
-const ORDER: Record<Locale, Channel[]> = { vi: ['zalo', 'whatsapp', 'telegram'], en: ['whatsapp', 'telegram', 'zalo'] };
+/** the language's own chat app first (i18n/locales.ts), then the others */
+const order = (l: Locale): Channel[] => [LOCALE_CONFIG[l].chat, ...(['zalo', 'whatsapp', 'telegram'] as const).filter((k) => k !== LOCALE_CONFIG[l].chat)];
 const LABEL: Record<Channel, string> = { zalo: 'Zalo', whatsapp: 'WhatsApp', telegram: 'Telegram' };
 const ICON: Record<Channel, typeof IconZalo> = { zalo: IconZalo, whatsapp: IconWhatsApp, telegram: IconTelegram };
 
-/** what describes the search (lib/filters.ts names, empty ones left out); the move-in date and "rented" are not sent */
+/** what describes the search (lib/filters.ts names, empty ones left out); free text goes as the query */
 const criteriaOf = (f: Filters) => {
-  const { b, beds, rent, pmin, pmax, fl, furn, vw, near, pets, car } = f;
-  return Object.fromEntries(Object.entries({ b, beds, rent, pmin, pmax, fl, furn, vw, near, pets, car }).filter(([, v]) => v !== '' && v !== false));
+  const { b, t, pmax, ft, near } = f;
+  return Object.fromEntries(Object.entries({ b, t, pmax, ft, near }).filter(([, v]) => v !== '' && !(Array.isArray(v) && !v.length)));
 };
 
 /**
- * "Nhờ tìm giúp" by message: Zalo · WhatsApp · Telegram (en: WhatsApp · Telegram · Zalo), numbers from admin Cài đặt.
+ * "Nhờ tìm giúp" by message: the language's chat app first (vi Zalo, en WhatsApp), numbers from admin Cài đặt.
  * The message = the search text + the parsed criteria. WhatsApp gets it typed in (wa.me ?text=); Zalo and Telegram can't
  * prefill, so it is copied first and a toast says to paste it. Each tap is reported with sendBeacon (channel, criteria,
  * language — nothing about the visitor); the app opens at once either way.
@@ -38,14 +39,15 @@ export function FindHelpChat({ contact, query, criteria, buildingName }: { conta
   }, [toast]);
 
   const q = (query || criteria.q).trim().slice(0, 80);
-  const message = findHelpMessage(l, q, criteriaParts(criteria, l, buildingName));
+  const tt = t as unknown as Parameters<typeof criteriaParts>[1];
+  const message = findHelpMessage(tt, q, criteriaParts(criteria, tt, LOCALE_CONFIG[l].decimal, buildingName));
   const wa = contact.whatsapp ? waHref(contact.whatsapp) : null;
   const href: Record<Channel, string | null> = {
     zalo: contact.zalo ? zaloHref(contact.zalo) : null,
     whatsapp: wa && `${wa}?text=${encodeURIComponent(message)}`,
     telegram: tgHref(contact.telegramPhone, contact.telegramUsername),
   };
-  const btns = ORDER[l].filter((k) => href[k]);
+  const btns = order(l).filter((k) => href[k]);
   if (!btns.length) return null;
 
   const tap = (k: Channel) => {

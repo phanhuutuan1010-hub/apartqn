@@ -2,32 +2,24 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Download, Share2, X } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { getPostData } from '@/lib/admin/postActions';
 import { canShareFiles as shareable, downloadZip, toJpeg } from '@/lib/admin/photoFiles';
-
-// the Marketplace kit loads when its tab is opened
-const MarketplaceTab = dynamic(() => import('./MarketplaceTab'), { ssr: false, loading: () => <p className="a-muted">Đang tải…</p> });
-import { buildPost, hooksFor, type PostChannel, type PostData, type PostHook, type PostMode, type PostPair } from '@/lib/listing/post';
-
-const MODES: [PostMode, string][] = [['img', 'Bài kèm ảnh'], ['link', 'Bài chỉ có link'], ['comment', 'Link ở bình luận']];
-const HOOK_LABEL: Record<PostHook, string> = { price: 'giá trước', feature: 'điểm nổi bật trước', move: 'ngày dọn vào trước' };
+import { buildRoundup, buildTypePost, type PostChannel, type PostPair, type TypePost } from '@/lib/unitTypePost';
+import { UT_SHORT } from '@/lib/admin/labels';
 
 /**
- * "Tạo bài đăng" v2: a short post whose link (/c/{code}, counted) brings people to the listing page.
- * Facebook: VI/EN or RU/EN · with photos / link only / link in the first comment. Zalo: Vietnamese, 2 lines.
- * No phone number. Phones: Web Share (text + photos). Elsewhere: copy the text, download the photos as a .zip.
+ * "Tạo bài đăng" of a unit type (evergreen: no availability, no unit). "Loại căn này": FB / Zalo / Telegram, VI/EN or
+ * RU/EN, "Ảnh căn mẫu", "Từ {price}", link apartqn.com/{PREFIX}-{TYPE}. "Tổng hợp theo loại": the same type in every
+ * visible building. Phones: Web Share (text + photos). Elsewhere: copy the text, download the photos as a .zip.
  */
 export default function PostDialog({ id, onClose }: { id: string; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [src, setSrc] = useState<{ data?: PostData; images?: string[]; origin?: string; error?: string } | null>(null);
+  const [src, setSrc] = useState<{ data?: TypePost; live?: boolean; roundup?: TypePost[]; images?: string[]; origin?: string; error?: string } | null>(null);
+  const [tab, setTab] = useState<'one' | 'all'>('one');
   const [channel, setChannel] = useState<PostChannel>('facebook');
   const [pair, setPair] = useState<PostPair>('vi-en');
-  const [mode, setMode] = useState<PostMode>('img');
-  const [hookI, setHookI] = useState(0);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<'post' | 'mkp'>('post');
 
   useEffect(() => {
     ref.current?.showModal();
@@ -37,13 +29,12 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
   }, [id]);
 
   const d = src?.data;
-  const hooks = useMemo(() => (d ? hooksFor(d) : []), [d]);
-  const hook = hooks[hookI % Math.max(1, hooks.length)];
-  const post = useMemo(() => (d?.published ? buildPost(d, { channel, pair, mode, hook, origin: src?.origin ?? '' }) : null), [d, channel, pair, mode, hook, src]);
-  const text = post?.text ?? '';
-  const withPhotos = channel === 'facebook' && mode === 'img';
-  const images = withPhotos ? src?.images ?? [] : [];
-  const base = (d?.code ?? 'can-ho').toLowerCase();
+  const opts = { channel, pair, origin: src?.origin ?? '' };
+  const text = useMemo(() => (!d ? '' : tab === 'one' ? buildTypePost(d, opts) : buildRoundup(d.type, src?.roundup ?? [], opts)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [d, tab, channel, pair, src]);
+  const images = tab === 'one' && channel !== 'zalo' ? src?.images ?? [] : [];
+  const base = (d?.code ?? 'loai-can').toLowerCase();
   const canShareFiles = shareable();
 
   const copy = async (what: string, done: string) => {
@@ -60,8 +51,7 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
     setStatus('Đang chuẩn bị ảnh…');
     try {
       await navigator.clipboard.writeText(text).catch(() => {}); // many apps drop the text when images are attached
-      const f = await files();
-      await navigator.share({ text, files: f });
+      await navigator.share({ text, files: await files() });
       setStatus('Đã chia sẻ. Nội dung cũng đã được sao chép — dán vào bài nếu ứng dụng bỏ mất chữ.');
     } catch (e) {
       setStatus((e as Error).name === 'AbortError' ? '' : 'Không chia sẻ được: ' + (e as Error).message);
@@ -74,7 +64,7 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
     setStatus('Đang nén ảnh…');
     try {
       const f = await files();
-      await downloadZip(f, `${base}-anh.zip`);
+      await downloadZip(f, `${base}-anh-can-mau.zip`);
       setStatus(`Đã tải ${f.length} ảnh.`);
     } catch (e) {
       setStatus('Không tải được ảnh: ' + (e as Error).message);
@@ -82,9 +72,9 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
       setBusy(false);
     }
   };
-  const seg = <T extends string>(label: string, value: T, opts: readonly (readonly [T, string])[], set: (v: T) => void) => (
+  const seg = <T extends string>(label: string, value: T, list: readonly (readonly [T, string])[], set: (v: T) => void) => (
     <div className="a-seg" role="group" aria-label={label}>
-      {opts.map(([k, text]) => <button key={k} type="button" className={value === k ? 'on' : undefined} aria-pressed={value === k} onClick={() => set(k)}>{text}</button>)}
+      {list.map(([k, t]) => <button key={k} type="button" className={value === k ? 'on' : undefined} aria-pressed={value === k} onClick={() => set(k)}>{t}</button>)}
     </div>
   );
 
@@ -96,44 +86,30 @@ export default function PostDialog({ id, onClose }: { id: string; onClose: () =>
       </div>
       {!src && <p className="a-muted">Đang tải…</p>}
       {src?.error && <div className="a-alert error">{src.error}</div>}
-      {d && !d.published && <div className="a-alert warn">Đăng căn để có link — bài đăng dẫn người xem về trang căn hộ trên website, nên chỉ tạo được khi căn đã đăng.</div>}
-      {d?.published && (
-        <div className="a-seg" role="tablist" aria-label="Loại nội dung" style={{ marginBottom: 12 }}>
-          <button type="button" role="tab" aria-selected={tab === 'post'} className={tab === 'post' ? 'on' : undefined} onClick={() => setTab('post')}>Bài đăng</button>
-          <button type="button" role="tab" aria-selected={tab === 'mkp'} className={tab === 'mkp' ? 'on' : undefined} onClick={() => setTab('mkp')}>Marketplace</button>
-        </div>
-      )}
-      {d?.published && tab === 'mkp' && <MarketplaceTab id={id} />}
-      {d && post && tab === 'post' && (
+      {d && !src?.live && <div className="a-alert warn">Loại căn đang ẩn — bài đăng dẫn về trang trên website, nên hãy bật hiển thị trước khi đăng.</div>}
+      {d && (
         <>
+          <div className="a-seg" role="tablist" aria-label="Loại bài" style={{ marginBottom: 12 }}>
+            <button type="button" role="tab" aria-selected={tab === 'one'} className={tab === 'one' ? 'on' : undefined} onClick={() => setTab('one')}>Loại căn này</button>
+            <button type="button" role="tab" aria-selected={tab === 'all'} className={tab === 'all' ? 'on' : undefined} onClick={() => setTab('all')}>Tổng hợp {UT_SHORT[d.type]} ({src?.roundup?.length ?? 0} toà)</button>
+          </div>
           <div className="a-post-opts">
-            {seg('Kênh', channel, [['facebook', 'Facebook'], ['zalo', 'Zalo (2 dòng)']] as const, setChannel)}
-            {channel === 'facebook' && seg('Ngôn ngữ', pair, [['vi-en', 'VI / EN'], ['ru-en', 'RU / EN']] as const, setPair)}
+            {seg('Kênh', channel, [['facebook', 'Facebook'], ['zalo', 'Zalo'], ['telegram', 'Telegram']] as const, setChannel)}
+            {channel !== 'zalo' && seg('Ngôn ngữ', pair, [['vi-en', 'VI / EN'], ['ru-en', 'RU / EN']] as const, setPair)}
           </div>
-          {channel === 'facebook' && <div className="a-post-opts">{seg('Kiểu bài Facebook', mode, MODES, setMode)}</div>}
-          <div className="a-post-opts" style={{ alignItems: 'center' }}>
-            <button type="button" className="a-btn a-btn-ghost a-btn-sm" disabled={hooks.length < 2} onClick={() => setHookI((i) => i + 1)}>Đổi kiểu mở đầu</button>
-            <span className="a-small a-muted">Đang dùng: {hook ? HOOK_LABEL[hook] : '—'}</span>
-          </div>
-          <textarea className="input a-post-text" readOnly value={text} rows={channel === 'facebook' ? 12 : 3} aria-label="Nội dung bài đăng" />
-          {post.comment && (
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-              <input className="input" readOnly value={post.comment} aria-label="Bình luận đầu tiên (link)" />
-              <button type="button" className="a-btn a-btn-outline a-btn-sm" onClick={() => copy(post.comment!, 'Đã sao chép link cho bình luận.')}><Copy size={14} aria-hidden /> Sao chép</button>
-            </div>
-          )}
+          <textarea className="input a-post-text" readOnly value={text} rows={channel === 'zalo' ? 6 : 12} aria-label="Nội dung bài đăng" />
           <p className="a-small a-muted" style={{ margin: '6px 0 10px' }}>
-            Chỉ dùng thông tin công khai của căn; không có số điện thoại, số tầng hay số căn. Link ngắn đếm lượt bấm theo kênh.
-            {pair === 'ru-en' && channel === 'facebook' && ' Phần tiếng Nga là mẫu tự động — nên nhờ người bản ngữ xem qua.'}
-            {withPhotos && (images.length ? ` Kèm ${images.length} ảnh công khai (ảnh bìa trước).` : ' Căn chưa có ảnh công khai.')}
-            {post.comment && ' Đăng bài trước, rồi dán link vào bình luận đầu tiên.'}
+            Chỉ dùng thông tin công khai của loại căn (giá “từ”, diện tích, đặc điểm); không có số điện thoại, không nói “còn trống”.
+            {pair === 'ru-en' && channel !== 'zalo' && ' Phần tiếng Nga là mẫu tự động — nên nhờ người bản ngữ xem qua.'}
+            {tab === 'all' && !(src?.roundup?.length) && ' Chưa có toà nào hiển thị loại căn này.'}
+            {images.length > 0 && ` Kèm ${images.length} ảnh căn mẫu (ảnh bìa trước).`}
           </p>
           <div className="a-post-actions">
-            {withPhotos && canShareFiles && images.length > 0 && (
+            {canShareFiles && images.length > 0 && (
               <button type="button" className="a-btn a-btn-blue" disabled={busy} onClick={share}><Share2 size={16} aria-hidden /> Chia sẻ (chữ + ảnh)</button>
             )}
-            <button type="button" className="a-btn a-btn-outline" disabled={busy} onClick={() => copy(text, 'Đã sao chép nội dung.')}><Copy size={16} aria-hidden /> Sao chép nội dung</button>
-            {withPhotos && images.length > 0 && <button type="button" className="a-btn a-btn-ghost" disabled={busy} onClick={zip}><Download size={16} aria-hidden /> Tải ảnh (.zip)</button>}
+            <button type="button" className="a-btn a-btn-outline" disabled={busy || !text} onClick={() => copy(text, 'Đã sao chép nội dung.')}><Copy size={16} aria-hidden /> Sao chép nội dung</button>
+            {images.length > 0 && <button type="button" className="a-btn a-btn-ghost" disabled={busy} onClick={zip}><Download size={16} aria-hidden /> Tải ảnh (.zip)</button>}
           </div>
           {status && <p className="a-small" role="status" style={{ margin: '10px 0 0' }}>{status}</p>}
         </>

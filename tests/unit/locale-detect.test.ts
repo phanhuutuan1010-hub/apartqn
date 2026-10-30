@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { enPath, firstLanguage, visitorLocale } from '@/lib/localeDetect';
+import { firstLanguage, localizedPath, visitorLocale } from '@/lib/localeDetect';
+const enPath = (p: string) => localizedPath(p, 'en');
 
 const CHROME = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
 
@@ -32,8 +33,7 @@ describe('home page language', () => {
   it('English twin of a Vietnamese path', () => {
     expect(enPath('/')).toBe('/en');
     expect(enPath('/can-ho')).toBe('/en/apartments');
-    expect(enPath('/can-ho/alt-001')).toBe('/en/apartments/alt-001');
-    expect(enPath('/toa-nha/altara')).toBe('/en/buildings/altara');
+    expect(enPath('/can-ho/alt-001')).toBe('/en');
     expect(enPath('/ky-gui')).toBe('/en/list-your-apartment');
     expect(enPath('/khong-co-trang-nay')).toBe('/en');
     expect(enPath('/can-ho/a/b')).toBe('/en');

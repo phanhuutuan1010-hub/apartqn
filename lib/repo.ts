@@ -1,15 +1,16 @@
 /**
  * Data access for the public site. Reads ONLY the Supabase public views (publishable key → anon role):
- * public_listings (available | reserved | rented, public columns) and public_buildings.
+ * public_buildings, public_unit_types (visible types of visible buildings) and public_contact.
  * Pages never talk to Supabase directly — keep it that way.
  */
 import { cache } from 'react';
 import { connection } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { publicPhotoUrl, toBuilding, toListing, type PublicBuildingRow, type PublicListingRow } from './repoMap';
-import type { Building, Listing } from './types';
+import { publicPhotoUrl, toBuilding, toUnitType, type PublicBuildingRow, type PublicUnitTypeRow } from './repoMap';
+import type { Building, UnitType } from './types';
+import { parseUnitTypeCode, PREFIX_RE, UNIT_TYPE_KINDS } from './unitTypes';
 
-export type { Building, Listing };
+export type { Building, UnitType };
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? '';
@@ -54,19 +55,20 @@ export async function staticParams<T>(load: () => Promise<T[]>): Promise<T[]> {
   }
 }
 
-export const getListings = cache(async (): Promise<Listing[]> => {
-  const { data, error } = await client().from('public_listings').select('*').order('code');
-  if (error) await fail('public_listings', error);
-  return (data as PublicListingRow[]).map((r) => toListing(r, SUPABASE_URL));
+/** Visible unit types: building order, then studio → 3PN. */
+export const getUnitTypes = cache(async (): Promise<UnitType[]> => {
+  const { data, error } = await client().from('public_unit_types').select('*');
+  if (error) await fail('public_unit_types', error);
+  const order = new Map((await getBuildings()).map((b, i) => [b.id, i]));
+  return (data as PublicUnitTypeRow[]).map((r) => toUnitType(r, SUPABASE_URL)).filter((x): x is UnitType => !!x)
+    .sort((a, b) => (order.get(a.buildingId) ?? 99) - (order.get(b.buildingId) ?? 99) || UNIT_TYPE_KINDS.indexOf(a.type) - UNIT_TYPE_KINDS.indexOf(b.type) || a.sort - b.sort);
 });
 
-/** Accepts the code in any case (ALT-001 or alt-001). */
-export const getListing = cache(async (code: string): Promise<Listing | null> => {
-  const c = code.toUpperCase();
-  if (!/^[A-Z]{3}-\d{3,}$/.test(c)) return null;
-  const { data, error } = await client().from('public_listings').select('*').eq('code', c).maybeSingle();
-  if (error) await fail('public_listings', error);
-  return data ? toListing(data as PublicListingRow, SUPABASE_URL) : null;
+/** Accepts the code in any case (ALT-2PN or alt-2pn). */
+export const getUnitType = cache(async (code: string): Promise<UnitType | null> => {
+  const p = parseUnitTypeCode(code);
+  if (!p) return null;
+  return (await getUnitTypes()).find((x) => x.code === p.code) ?? null;
 });
 
 export const getBuildings = cache(async (): Promise<Building[]> => {
@@ -80,6 +82,23 @@ export const getBuilding = cache(async (slug: string): Promise<Building | null> 
   const { data, error } = await client().from('public_buildings').select('*').eq('slug', slug).maybeSingle();
   if (error) await fail('public_buildings', error);
   return data ? toBuilding(data as PublicBuildingRow, SUPABASE_URL) : null;
+});
+
+/** By URL prefix (ALT), any case. */
+export const getBuildingByPrefix = cache(async (prefix: string): Promise<Building | null> => {
+  if (!PREFIX_RE.test(prefix)) return null;
+  return (await getBuildings()).find((b) => b.prefix === prefix.toUpperCase()) ?? null;
+});
+
+/** A unit type that is hidden (or not filled in yet): the prefix of its visible building — its page redirects there. */
+export const hiddenUnitTypeBuilding = cache(async (code: string): Promise<string | null> => {
+  if (!parseUnitTypeCode(code)) return null;
+  const { data, error } = await client().rpc('unit_type_building', { p_code: code });
+  if (error) {
+    console.error('[repo] unit_type_building', error.message);
+    return null;
+  }
+  return typeof data === 'string' ? data : null;
 });
 
 /** A building switched off in admin ("Hiển thị"): its page redirects to the building list instead of 404. */
@@ -117,7 +136,7 @@ export const getContact = cache(async (): Promise<SiteContact> => {
 
 export type PricesFrom = { studio: number; br1: number; br2: number };
 
-/** "From" rents in admin Cài đặt (settings.price_from_*, public_contact view) — the Russian landing page; defaults if unset. */
+/** "From" rents in admin Cài đặt (settings.price_from_*, public_contact view) — quick replies and the Russian page's fallback. */
 export const getPricesFrom = cache(async (): Promise<PricesFrom> => {
   const { data, error } = await client().from('public_contact').select('price_from_studio, price_from_1br, price_from_2br').maybeSingle();
   if (error) console.error('[repo] public_contact prices', error.message);

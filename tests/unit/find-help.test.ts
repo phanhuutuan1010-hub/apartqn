@@ -1,27 +1,31 @@
 import { describe, expect, it } from 'vitest';
+import en from '@/i18n/en.json';
 import { criteriaLine, criteriaParts, findHelpMessage } from '@/lib/search/criteriaLine';
+import { plainT, tVi } from '@/lib/i18nPlain';
+
+const tEn = plainT(en as Record<string, unknown>);
 
 describe('find-help message', () => {
-  const c = { b: 'altara', beds: '2', pmin: '8', pmax: '12', fl: 'high', furn: 'full', vw: 'sea', pets: true };
+  const c = { b: 'altara', t: '2pn', pmax: '12.5', ft: ['sea_view', 'pets_ok'] };
 
   it('vi: query + criteria, nothing else', () => {
-    expect(findHelpMessage('vi', 'gần biển', criteriaParts(c, 'vi', 'Altara'))).toBe(
-      'Chào ApartQN, tôi cần tìm căn hộ: “gần biển” · Altara · 2 PN · 8–12 triệu · Tầng cao · Nội thất đầy đủ · View biển · Cho nuôi thú cưng. Nhờ tìm giúp tôi.',
+    expect(findHelpMessage(tVi, 'gần biển', criteriaParts(c, tVi, ',', 'Altara'))).toBe(
+      'Chào ApartQN, tôi cần tìm căn hộ: “gần biển” · Altara · 2PN · ≤ 12,5 triệu · View biển · Cho nuôi thú cưng. Nhờ tìm giúp tôi.',
     );
   });
 
-  it('en wording and order', () => {
-    expect(findHelpMessage('en', '', criteriaParts({ beds: '1', rent: 'r1', near: 'sea', car: true }, 'en'))).toBe(
-      "Hi ApartQN, I'm looking for an apartment: 1 bedroom · 8–12 million VND · near the sea · car parking. Could you help me find one?",
+  it('en wording and order; "near the sea" unless sea view is already asked', () => {
+    expect(findHelpMessage(tEn, '', criteriaParts({ t: '01', pmax: '10', near: 'sea' }, tEn, '.'))).toBe(
+      "Hi ApartQN, I'm looking for an apartment: studio / 1 bedroom · ≤ 10 million VND · near the sea. Could you help me find one?",
     );
+    expect(criteriaParts({ near: 'sea', ft: ['sea_view'] }, tEn, '.')).toEqual(['Sea view']);
   });
 
   it('empty search → generic message', () => {
-    expect(findHelpMessage('vi', ' ', [])).toBe('Chào ApartQN, tôi cần tìm căn hộ. Nhờ tìm giúp tôi.');
+    expect(findHelpMessage(tVi, ' ', [])).toBe('Chào ApartQN, tôi cần tìm căn hộ. Nhờ tìm giúp tôi.');
   });
 
-  it('move-in date only on the staff line', () => {
-    expect(criteriaParts({ date: '2026-11-05' }, 'vi')).toEqual([]);
-    expect(criteriaLine({ beds: '0', date: '2026-11-05', q: 'chợ' })).toBe('Studio · dọn vào trước 05/11/2026 · “chợ”');
+  it('staff line (Vietnamese) keeps the free text', () => {
+    expect(criteriaLine({ t: 'studio', q: 'chợ' }, tVi)).toBe('Studio · “chợ”');
   });
 });

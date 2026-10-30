@@ -16,4 +16,3 @@ export const ruType = (beds: number) => {
   return `${beds} ${m10 === 1 && m100 !== 11 ? 'спальня' : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'спальни' : 'спален'}`;
 };
 
-export const RU_FLOOR = { low: 'низкий этаж', mid: 'средний этаж', high: 'высокий этаж' } as const;

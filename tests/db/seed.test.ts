@@ -1,14 +1,13 @@
 /**
  * Runs scripts/seed.mts against an empty migrated database (twice — must be idempotent), then reads the
- * public views as anon through the same mapper the site uses and compares with the handoff data.
+ * public views as anon through the same mapper the site uses and compares with the handoff buildings.
  */
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { BUILDINGS } from '@/data/buildings';
-import { LISTINGS } from '@/data/listings';
-import { toBuilding, toListing, type PublicBuildingRow, type PublicListingRow } from '@/lib/repoMap';
+import { toBuilding, type PublicBuildingRow } from '@/lib/repoMap';
 
 const SB = 'https://example.supabase.co';
 let c: pg.Client;
@@ -31,7 +30,7 @@ async function asAnon<T>(sql: string): Promise<T[]> {
 beforeAll(async () => {
   const out1 = runSeed();
   const out2 = runSeed();
-  expect(out1).toContain('+ listing QN-001 → ALT-001');
+  expect(out1).toContain('+ building altara');
   expect(out2).not.toMatch(/^\+ /m); // second run changes nothing
   c = new pg.Client({ connectionString: process.env.TEST_SEED_DB_URL });
   await c.connect();
@@ -50,43 +49,19 @@ describe('seed → public views', () => {
     got.forEach((b) => expect([b.ward, b.lat, b.lng]).toEqual([undefined, undefined, undefined]));
   });
 
-  it('listings match the handoff field by field (incl. rented, demo flag, dates)', async () => {
-    const rows = await asAnon<PublicListingRow & { legacy_code: string }>('select * from public.public_listings order by legacy_code');
-    // new per-building codes, old ones kept as legacy_code
+  it('every building has its four hidden, empty unit type drafts; nothing is public until filled in', async () => {
+    const r = await c.query(`select b.slug, array_agg(t.code order by t.sort) codes, bool_or(t.is_visible) shown, bool_or(t.price_from is not null) priced
+      from public.buildings b join public.unit_types t on t.building_id = b.id group by b.slug`);
     const PREFIX = Object.fromEntries(BUILDINGS.map((b) => [b.id, b.prefix]));
-    rows.forEach((r) => expect(r.code).toMatch(new RegExp(`^${PREFIX[r.building_slug]}-[0-9]{3}$`)));
-    const got = rows.map((r) => ({ ...toListing(r, SB), code: r.legacy_code }));
-    const strip = (x: Record<string, unknown>) => {
-      const { photos, thumbs, srcsets, photoMeta, desc, floorBand, photoCount, verifiedAt, publishedAt, legacyCode, ...rest } = x;
-      void legacyCode;
-      void photos; void thumbs; void srcsets; void photoMeta; void desc; void floorBand;
-      // set by the import (now()), not part of the handoff data
-      expect(typeof verifiedAt === 'string' || verifiedAt === undefined).toBe(true);
-      expect(typeof publishedAt === 'string' || publishedAt === undefined).toBe(true);
-      return { ...rest, photoCount };
-    };
-    expect(got.map(strip)).toEqual(
-      LISTINGS.map((x) => {
-        // the exact floor is not public any more (migration 28)
-        const { photos, floor, ...rest } = x;
-        void photos; void floor;
-        return rest;
-      }),
-    );
+    for (const row of r.rows.filter((x) => PREFIX[x.slug])) {
+      expect(row.codes).toEqual(['STUDIO', '1PN', '2PN', '3PN'].map((t) => `${PREFIX[row.slug]}-${t}`));
+      expect([row.shown, row.priced]).toEqual([false, false]);
+    }
+    expect(await asAnon('select * from public.public_unit_types')).toEqual([]);
   });
 
-  it('no internal columns in the public view', async () => {
-    const r = await asAnon<Record<string, unknown>>('select * from public.public_listings limit 1');
-    expect(Object.keys(r[0]).filter((k) => /owner|unit|assigned|created_by|updated_by|rejection/.test(k))).toEqual([]);
-  });
-
-  it('demo units carry no owner data', async () => {
-    const r = await c.query(`select count(*)::int n from public.units where owner_name is not null or owner_phone is not null`);
+  it('no listings are imported', async () => {
+    const r = await c.query('select count(*)::int n from public.listings');
     expect(r.rows[0].n).toBe(0);
-  });
-
-  it('per-building counters continue after the imported codes', async () => {
-    const r = await c.query(`select code_prefix, code_seq from public.buildings where slug = 'altara'`);
-    expect(r.rows[0]).toEqual({ code_prefix: 'ALT', code_seq: 2 });
   });
 });

@@ -1,25 +1,18 @@
 'use client';
 
 import { useActionState, useState, useTransition } from 'react';
-import Link from 'next/link';
 import { assignConsign, rejectConsign } from '@/lib/admin/consignActions';
 
 type Opt = { value: string; label: string };
 
-export function ConsignActions({ id, buildingId, floor, staff, buildings }: { id: string; buildingId: string | null; floor: string | null; staff: Opt[]; buildings: Opt[] }) {
+export function ConsignActions({ id, buildingId, staff, buildings }: { id: string; buildingId: string | null; staff: Opt[]; buildings: Opt[] }) {
   const [state, action, pending] = useActionState(assignConsign, {});
   const [mode, setMode] = useState<'idle' | 'assign' | 'reject'>('idle');
   const [reason, setReason] = useState('');
   const [rej, setRej] = useState<string | null>(null);
   const [busy, start] = useTransition();
 
-  if (state.listingId) {
-    return (
-      <div className="a-alert ok">
-        {state.ok} <Link href={`/admin/can-ho/${state.listingId}`} style={{ fontWeight: 700 }}>Mở nháp →</Link>
-      </div>
-    );
-  }
+  if (state.ok) return <div className="a-alert ok">{state.ok}</div>;
   if (mode === 'idle') {
     return (
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -49,15 +42,13 @@ export function ConsignActions({ id, buildingId, floor, staff, buildings }: { id
         <label className="a-field span2">Giao cho
           <select className="input" name="assignee" required defaultValue=""><option value="" disabled>Chọn…</option>{staff.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
         </label>
-        <label className="a-field span2">Toà nhà
-          <select className="input" name="building" required defaultValue={buildingId ?? ''}><option value="" disabled>Chọn…</option>{buildings.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}</select>
+        <label className="a-field span2">Toà nhà <span className="hint">không bắt buộc</span>
+          <select className="input" name="building" defaultValue={buildingId ?? ''}><option value="">Chưa rõ</option>{buildings.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}</select>
         </label>
-        <label className="a-field">Tầng<input className="input" name="floor" inputMode="numeric" required defaultValue={(floor ?? '').replace(/[^\d-]/g, '')} /></label>
-        <label className="a-field">Số căn <span className="hint">không bắt buộc · nội bộ</span><input className="input" name="unit_no" maxLength={20} /></label>
       </div>
       {state.error && <div className="a-alert error">{state.error}</div>}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button className="a-btn a-btn-blue" disabled={pending}>{pending ? 'Đang giao…' : 'Giao & tạo nháp'}</button>
+        <button className="a-btn a-btn-blue" disabled={pending}>{pending ? 'Đang giao…' : 'Giao'}</button>
         <button type="button" className="a-btn a-btn-ghost" onClick={() => setMode('idle')}>Huỷ</button>
       </div>
     </form>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { compressImage } from '@/lib/compressImage';
-import { F, M2 } from '@/lib/format';
+import { M2 } from '@/lib/format';
 import { trackContact } from '@/lib/trackContact';
 import styles from './Forms.module.css';
 
@@ -140,7 +140,7 @@ export function ConsignForm({ buildings }: Props) {
           <span className={styles.plus} aria-hidden>+</span>
           <span className={styles.dropT}>{t('cfDrop')}</span>
           <span className={styles.dropH}>{t('cfDropHint')}</span>
-          {files.length > 0 && <span className={styles.files}>✓ {F.photos(files.length, l)}</span>}
+          {files.length > 0 && <span className={styles.files}>✓ {t('nPhotos', { n: files.length })}</span>}
           {tooMany && <span className={styles.warn}>{t('cfTooMany')}</span>}
           <input className={styles.fileInput} type="file" name="photos" multiple accept="image/jpeg,image/png,image/webp,image/heic,image/*" onChange={(e) => pick(e.target.files)} aria-label={t('cfPhotos')} />
         </label>

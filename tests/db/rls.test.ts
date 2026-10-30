@@ -1,10 +1,15 @@
 /**
  * RLS / RPC / trigger tests per role: anon · sales (assignee / non-assignee) · publisher · inactive · admin.
  * Each `as()` block runs in its own transaction and is rolled back.
+ *
+ * HISTORICAL: the listings era. Runs on the schema of migrations 1–40 (tests/db/globalSetup.ts LISTINGS_ERA), the base
+ * every later migration builds on. Migration 41 archived listings / units — what holds today is in pivot.test.ts.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
-import { as, close, denied, root } from './helpers';
+import { as, close, denied, root, selectLegacySchema } from './helpers';
+
+selectLegacySchema();
 
 const U = {
   admin: 'aaaaaaaa-0000-0000-0000-000000000001',
@@ -608,7 +613,9 @@ describe('consign quick contact (migration 19)', () => {
   it('public_contact exposes only the contact fields; settings stay staff-only', async () => {
     await root(`update public.settings set hotline = '0905 123 456', zalo_phone = null, contact_person_name = 'Minh Anh', contact_person_title = 'Chuyên viên' where id = 1`);
     const v = await as('anon', (q) => q(`select * from public.public_contact`));
-    expect(Object.keys(v.rows[0]).sort()).toEqual(['contact_person_name', 'contact_person_photo', 'contact_person_title', 'hotline', 'telegram_phone', 'telegram_username', 'whatsapp_phone', 'zalo_phone']);
+    // + the "from" prices since migration 40 (public on purpose: the Russian landing page shows them)
+    expect(Object.keys(v.rows[0]).sort()).toEqual(['contact_person_name', 'contact_person_photo', 'contact_person_title', 'hotline',
+      'price_from_1br', 'price_from_2br', 'price_from_studio', 'telegram_phone', 'telegram_username', 'whatsapp_phone', 'zalo_phone']);
     expect(v.rows[0].hotline).toBe('0905 123 456');
     expect(await as('anon', (q) => denied(q(`select hotline from public.settings`)))).toMatch(/permission/);
     expect(await denied(root(`update public.settings set zalo_phone = 'call me' where id = 1`))).toMatch(/check/);

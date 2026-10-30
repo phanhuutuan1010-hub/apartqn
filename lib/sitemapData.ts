@@ -1,28 +1,28 @@
 import 'server-only';
-import { getBuildings, getListings } from '@/lib/repo';
+import { getBuildings, getUnitTypes } from '@/lib/repo';
 import { absUrl } from '@/lib/seo';
-import { listingUrl } from '@/lib/listingUrl';
-import { newest, type Entry, type Single } from '@/lib/sitemapXml';
+import { buildingUrl, unitTypeUrl } from '@/lib/unitTypes';
+import { altOf, newest, type Entry, type Single } from '@/lib/sitemapXml';
 import { ruAlternates } from '@/lib/ruPage';
 
 /**
  * What goes into the sitemaps: only what a visitor can open — the public views already leave out hidden, deleted and
- * unpublished rows; demo listings and demo buildings are left out here. No admin, API, short-link or search-query URLs.
+ * empty rows; demo buildings and their unit types are left out here. No admin, API, short-link or search-query URLs.
  */
-export async function sitemapEntries(): Promise<{ pages: Entry[]; ru: Single[]; buildings: Entry[]; listings: Entry[] }> {
-  const [allListings, allBuildings] = await Promise.all([getListings(), getBuildings()]);
+export async function sitemapEntries(): Promise<{ pages: Entry[]; ru: Single[]; buildings: Entry[]; unitTypes: Entry[] }> {
+  const [allTypes, allBuildings] = await Promise.all([getUnitTypes(), getBuildings()]);
   const buildings = allBuildings.filter((b) => !b.demo);
   const shown = new Set(buildings.map((b) => b.id));
-  const listings = allListings.filter((x) => !x.demo && shown.has(x.buildingId));
-  const latest = newest(listings.map((x) => x.updated));
-  const page = (href: Parameters<typeof absUrl>[1]): Entry => ({ urls: { vi: absUrl('vi', href), en: absUrl('en', href) }, lastmod: latest });
+  const types = allTypes.filter((x) => !x.demo && shown.has(x.buildingId));
+  const latest = newest(types.map((x) => x.updated));
+  const page = (href: Parameters<typeof absUrl>[1]): Entry => ({ urls: altOf((l) => absUrl(l, href)), lastmod: latest });
   return {
     pages: [page('/'), page('/can-ho'), page('/ky-gui')],
     ru: [{ loc: ruAlternates.canonical, lastmod: latest, alts: Object.entries(ruAlternates.languages) }],
     buildings: buildings.map((b) => ({
-      urls: { vi: absUrl('vi', { pathname: '/toa-nha/[id]', params: { id: b.id } }), en: absUrl('en', { pathname: '/toa-nha/[id]', params: { id: b.id } }) },
-      lastmod: newest(listings.filter((x) => x.buildingId === b.id).map((x) => x.updated)) ?? latest,
+      urls: altOf((l) => buildingUrl(b.prefix, l)),
+      lastmod: newest(types.filter((x) => x.buildingId === b.id).map((x) => x.updated)) ?? latest,
     })),
-    listings: listings.map((x) => ({ urls: { vi: listingUrl(x.code, 'vi'), en: listingUrl(x.code, 'en') }, lastmod: x.updated })),
+    unitTypes: types.map((x) => ({ urls: altOf((l) => unitTypeUrl(x.code, l)), lastmod: x.updated })),
   };
 }

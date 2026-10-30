@@ -1,8 +1,8 @@
 /**
- * One-time import of the handoff demo data (data/*.ts) into Supabase. Idempotent: existing rows
- * (matched by building slug / listing code) are left untouched, so admin edits are never overwritten.
+ * One-time import of the handoff buildings (data/buildings.ts) into Supabase. Idempotent: existing rows (matched by
+ * building slug) are left untouched, so admin edits are never overwritten.
  *
- *   npm run db:seed                 buildings + listings + building photos
+ *   npm run db:seed                 buildings (+ their hidden unit type drafts) + building photos
  *   npm run db:seed -- --no-photos  skip the storage upload
  *
  * Needs DATABASE_URL (+ NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY for photos).
@@ -14,7 +14,6 @@ import pg from 'pg';
 import sharp from 'sharp';
 import { createClient } from '@supabase/supabase-js';
 import { BUILDINGS } from '../data/buildings';
-import { LISTINGS } from '../data/listings';
 
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error('DATABASE_URL is not set');
@@ -37,39 +36,9 @@ for (const [i, b] of BUILDINGS.entries()) {
   console.log(`${r.rows[0].inserted ? '+' : '·'} building ${b.id}`);
 }
 
-// ── units + listings (demo units: unit_no "DEMO-<old code>", no owner data) ──
-// The handoff's QN-### codes become legacy_code; the trigger assigns {PREFIX}-{NNN} per building, in publish order.
-for (const x of [...LISTINGS].sort((a, b) => a.updated.localeCompare(b.updated) || a.code.localeCompare(b.code))) {
-  const exists = await db.query('select code from public.listings where legacy_code = $1', [x.code]);
-  if (exists.rowCount) {
-    console.log(`· listing ${x.code} → ${exists.rows[0].code}`);
-    continue;
-  }
-  await db.query('begin');
-  try {
-    const unit = await db.query(
-      `insert into public.units (building_id, floor, unit_no) values ($1, $2, $3)
-       on conflict (building_id, floor, unit_key) do update set unit_no = excluded.unit_no returning id`,
-      [bIds.get(x.buildingId), x.floor, `DEMO-${x.code}`],
-    );
-    await db.query(
-      `insert into public.listings (unit_id, legacy_code, status, area, beds, baths, dir, view, furn, rent, deposit, cycle, mgmt,
-         elec, water, moto, car, net, min_term, max_occ, pets, temp_reg, car_parking, verified, verified_at, video, move_in,
-         placeholder_photos, is_demo, published_at, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25::date,$26,$27,$28,$29,
-               $25::date, $25::date, $25::date)`,
-      [unit.rows[0].id, x.code, x.status, x.area, x.beds, x.baths, x.dir, x.view, x.furn, x.rent, x.deposit, x.cycle, x.mgmt,
-        x.elec, x.water, x.moto, x.car, x.net, x.minTerm, x.maxOcc, x.pets, x.tempReg, x.carParking ?? null, x.verified,
-        x.updated, x.video, x.moveIn, x.photoCount, x.demo],
-    );
-    const { rows } = await db.query('select code from public.listings where legacy_code = $1', [x.code]);
-    await db.query('commit');
-    console.log(`+ listing ${x.code} → ${rows[0]?.code}`);
-  } catch (e) {
-    await db.query('rollback');
-    throw e;
-  }
-}
+// unit types: every new building got its four hidden, empty drafts from the insert trigger (migration 41) — the values
+// (price, area, photos) are entered in admin Loại căn, never seeded or guessed. The handoff's demo listings are not
+// imported any more (data/listings.ts stays as the archive of the design handoff).
 
 // ── building photos → storage bucket listing-public ──
 if (withPhotos) {

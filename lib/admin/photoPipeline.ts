@@ -1,7 +1,6 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { WATERMARK, imageWidth, publicSuffix, renderCleanThumb, renderMaster, renderVariant, variantWidths } from '@/lib/watermark';
-import { refresh } from '@/lib/admin/refresh';
 import { revalidatePublic } from '@/lib/revalidate';
 import { revalidatePath } from 'next/cache';
 
@@ -13,12 +12,12 @@ import { revalidatePath } from 'next/cache';
  * Every storage/DB call goes through the caller's client: the signed-in staff member (RLS) in the app.
  */
 export const BUCKET = { master: 'listing-master', public: 'listing-public', internal: 'listing-internal' } as const;
-export type PhotoOwner = { kind: 'listing'; id: string } | { kind: 'building'; id: string };
+export type PhotoOwner = { kind: 'unit_type'; id: string } | { kind: 'building'; id: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Sb = SupabaseClient<any, any, any>;
 
 export type PhotoRow = {
-  id: string; listing_id: string | null; building_id: string | null; bucket: string; path: string; thumb_path: string | null;
+  id: string; unit_type_id?: string | null; building_id: string | null; bucket: string; path: string; thumb_path: string | null;
   master_path: string | null; watermark: boolean; wm_version: number | null; visibility: 'public' | 'internal'; is_cover: boolean;
   variants?: Variant[] | null;
 };
@@ -27,7 +26,7 @@ export type Variant = { w: number; h: number; path: string };
 export const publicFiles = (p: Pick<PhotoRow, 'path' | 'thumb_path' | 'variants'>) => [...new Set([p.path, p.thumb_path, ...(p.variants ?? []).map((v) => v.path)].filter((x): x is string => !!x))];
 
 const WEBP = { contentType: 'image/webp', cacheControl: '31536000' };
-export const col = (o: PhotoOwner) => (o.kind === 'listing' ? 'listing_id' : 'building_id');
+export const col = (o: PhotoOwner) => (o.kind === 'unit_type' ? 'unit_type_id' : 'building_id');
 const folder = (path: string) => path.slice(0, path.lastIndexOf('/') + 1).replace(/thumbs\/$/, '');
 
 export async function download(sb: Sb, bucket: string, path: string): Promise<Buffer> {
@@ -87,11 +86,20 @@ export async function removeFiles(sb: Sb, bucket: string, paths: (string | null 
   if (error) console.error('[photos] remove', bucket, list, error.message);
 }
 
-/** Public site + admin pages that show this owner's photos. */
+/** Public site + admin pages that show this owner's photos (a building's photos are on every type page of it too). */
 export async function refreshOwner(sb: Sb, owner: PhotoOwner) {
-  if (owner.kind === 'listing') return refresh(owner.id);
-  const { data } = await sb.from('buildings').select('slug').eq('id', owner.id).maybeSingle();
-  if (data) revalidatePublic({ building: data.slug });
+  if (owner.kind === 'unit_type') {
+    const { data } = await sb.from('admin_unit_types').select('code, code_prefix').eq('id', owner.id).maybeSingle();
+    if (data) revalidatePublic({ building: data.code_prefix, codes: [data.code] });
+    revalidatePath(`/admin/loai-can/${owner.id}`);
+    revalidatePath('/admin/loai-can');
+    return;
+  }
+  const [{ data: b }, { data: types }] = await Promise.all([
+    sb.from('buildings').select('code_prefix').eq('id', owner.id).maybeSingle(),
+    sb.from('unit_types').select('code').eq('building_id', owner.id),
+  ]);
+  if (b) revalidatePublic({ building: b.code_prefix, codes: (types ?? []).map((t) => t.code) });
   revalidatePath(`/admin/toa-nha/${owner.id}`);
 }
 

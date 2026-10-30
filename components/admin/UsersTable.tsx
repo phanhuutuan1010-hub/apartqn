@@ -59,7 +59,7 @@ export function UsersTable({ users, meId, backupDays }: { users: StaffRow[]; meI
 
       <div className="a-table-wrap">
         <table className="a-table">
-          <thead><tr><th>Người dùng</th><th>Vai trò</th><th>Đăng tin</th><th className="num">Căn</th><th className="num">Khách mở</th><th>Trạng thái</th><th style={{ textAlign: 'right' }}>Thao tác</th></tr></thead>
+          <thead><tr><th>Người dùng</th><th>Vai trò</th><th>Bật hiển thị loại căn</th><th className="num">Khách mở</th><th>Trạng thái</th><th style={{ textAlign: 'right' }}>Thao tác</th></tr></thead>
           <tbody>
             {users.map((u) => {
               const self = u.id === meId;
@@ -79,11 +79,10 @@ export function UsersTable({ users, meId, backupDays }: { users: StaffRow[]; meI
                     {u.role === 'admin' ? <span className="a-small a-muted">Luôn được</span> : (
                       <label className="a-check" style={{ minHeight: 32 }}>
                         <input type="checkbox" checked={u.can_publish} disabled={busy} onChange={(e) => run(() => updateStaff(u.id, { can_publish: e.target.checked }))} />
-                        <span className="a-small">{u.can_publish ? 'Đăng ngay' : 'Cần duyệt'}</span>
+                        <span className="a-small">{u.can_publish ? 'Được' : 'Không'}</span>
                       </label>
                     )}
                   </td>
-                  <td className="num">{u.units}</td>
                   <td className="num">{u.openLeads}</td>
                   <td>{u.active ? <span className="a-badge dot ok">Hoạt động</span> : <span className="a-badge dot red">Đã khoá</span>}</td>
                   <td>
@@ -132,7 +131,7 @@ export function UsersTable({ users, meId, backupDays }: { users: StaffRow[]; meI
           });
         }}>
         {del && (del.units || del.openLeads) ? (
-          <>{del.full_name || del.email} còn <b>{del.units} căn</b> và <b>{del.openLeads} khách đang mở</b>. Chuyển giao cho người khác rồi mới xoá được.</>
+          <>{del.full_name || del.email} còn <b>{del.openLeads} khách đang mở</b>. Chuyển giao cho người khác rồi mới xoá được.</>
         ) : (
           <>Người này không đăng nhập được nữa và tài khoản đăng nhập bị xoá hẳn. Tên vẫn hiện ở các bản ghi cũ dưới dạng “Người dùng đã xoá”.
             Nếu chỉ cần chặn tạm thời, hãy dùng <b>Khoá</b>.</>

@@ -10,9 +10,8 @@ export const metadata: Metadata = { title: 'Người dùng' };
 export default async function UsersPage() {
   const me = await requireAdmin();
   const sb = await supabaseServer();
-  const [{ data: users }, { data: units }, { data: leads }, { data: settings }] = await Promise.all([
+  const [{ data: users }, { data: leads }, { data: settings }] = await Promise.all([
     sb.from('profiles').select('id, email, full_name, role, can_publish, active, created_at').is('deleted_at', null).order('active', { ascending: false }).order('created_at'),
-    sb.from('units').select('assigned_to'),
     sb.from('leads').select('assigned_to').not('status', 'in', '(won,lost)'),
     sb.from('settings').select('last_backup_at').maybeSingle(),
   ]);
@@ -21,8 +20,9 @@ export default async function UsersPage() {
     (rows ?? []).forEach((r) => r.assigned_to && m.set(r.assigned_to, (m.get(r.assigned_to) ?? 0) + 1));
     return m;
   };
-  const u = tally(units), l = tally(leads);
-  const rows: StaffRow[] = (users ?? []).map((x) => ({ ...x, units: u.get(x.id) ?? 0, openLeads: l.get(x.id) ?? 0 }));
+  // units are archived since the unit-type pivot: nothing to hand over but open leads
+  const l = tally(leads);
+  const rows: StaffRow[] = (users ?? []).map((x) => ({ ...x, units: 0, openLeads: l.get(x.id) ?? 0 }));
 
   return (
     <div className="a-page">

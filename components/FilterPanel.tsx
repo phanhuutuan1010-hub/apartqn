@@ -2,37 +2,37 @@
 
 import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import type { Listing } from '@/lib/types';
-import { hasCarData, match, type Filters } from '@/lib/filters';
-import { F } from '@/lib/format';
+import { LOCALE_CONFIG, type Locale } from '@/i18n/locales';
+import type { Building, UnitType } from '@/lib/types';
+import { BUDGETS, match, type Filters } from '@/lib/filters';
+import { FEATURES, UNIT_TYPE_KINDS, type Feature } from '@/lib/unitTypes';
 import styles from './FilterPanel.module.css';
 
 type Props = {
   variant: 'sheet' | 'sidebar';
   value: Filters;
-  listings: Listing[];
+  types: UnitType[];
+  buildings: Pick<Building, 'id' | 'name'>[];
   /** sidebar: called on every change (applies instantly). sheet: called on Apply. */
   onApply: (f: Filters) => void;
   onClose?: () => void;
   titleId?: string;
 };
 
-/** Bedrooms · rent · furniture chips, pets + car toggles, move-in date. Sheet = local draft; sidebar = instant. */
-export function FilterPanel({ variant, value, listings, onApply, onClose, titleId }: Props) {
+/** Type · budget ("from" price ≤) · building · features. Sheet = local draft; sidebar = instant. */
+export function FilterPanel({ variant, value, types, buildings, onApply, onClose, titleId }: Props) {
   const t = useTranslations();
-  const l = useLocale();
+  const l = useLocale() as Locale;
   const side = variant === 'sidebar';
   const [draft, setDraft] = useState<Filters>(value);
   const st = side ? value : draft;
-  const carEnabled = hasCarData(listings);
 
   const upd = (patch: Partial<Filters>) => {
     const next = { ...st, ...patch };
     if (side) onApply(next);
     else setDraft(next);
   };
-
-  const chip = (key: 'beds' | 'rent' | 'furn' | 'fl', v: string, label: string) => {
+  const chip = (key: 't' | 'pmax', v: string, label: string) => {
     const on = st[key] === v;
     return (
       <button key={v} type="button" aria-pressed={on} className={`${styles.chip} ${on ? styles.chipOn : ''}`} onClick={() => upd({ [key]: on ? '' : v })}>
@@ -40,15 +40,18 @@ export function FilterPanel({ variant, value, listings, onApply, onClose, titleI
       </button>
     );
   };
-  const toggle = (key: 'pets' | 'car', label: string, disabled = false) => (
-    <button type="button" role="switch" aria-checked={st[key]} disabled={disabled} className={styles.toggle} onClick={() => upd({ [key]: !st[key] })}>
-      <span>{label}</span>
-      <span className={`${styles.track} ${st[key] ? styles.trackOn : ''}`}><span className={styles.knob} /></span>
-    </button>
-  );
-
-  const n = listings.filter((x) => match(x, st)).length;
-  const reset = () => upd({ beds: '', rent: '', furn: '', pets: false, car: false, date: '', pmin: '', pmax: '', vw: '', fl: '' });
+  const feature = (k: Feature) => {
+    const on = st.ft.includes(k);
+    return (
+      <button key={k} type="button" aria-pressed={on} className={`${styles.chip} ${on ? styles.chipOn : ''}`} onClick={() => upd({ ft: on ? st.ft.filter((x) => x !== k) : [...st.ft, k] })}>
+        {t(`f_${k}`)}
+      </button>
+    );
+  };
+  // only features some type actually has (a chip that can only empty the list helps nobody)
+  const offered = FEATURES.filter((k) => types.some((x) => x.features.includes(k)) || st.ft.includes(k));
+  const n = types.filter((x) => match(x, st)).length;
+  const reset = () => upd({ t: '', pmax: '', ft: [], b: '' });
 
   return (
     <div className={`${styles.panel} ${side ? styles.side : styles.sheet}`}>
@@ -63,37 +66,33 @@ export function FilterPanel({ variant, value, listings, onApply, onClose, titleI
       </div>
       <div className={styles.scroll}>
         <fieldset className={styles.group}>
-          <legend>{t('sBeds')}</legend>
-          <div className={styles.chips}>{[chip('beds', '0', t('studio')), chip('beds', '1', '1'), chip('beds', '2', '2'), chip('beds', '3', '3+')]}</div>
+          <legend>{t('fType')}</legend>
+          <div className={styles.chips}>{UNIT_TYPE_KINDS.map((k) => chip('t', k, t(`utShort_${k}`)))}</div>
         </fieldset>
         <fieldset className={styles.group}>
-          <legend>{t('sRent')}</legend>
-          <div className={styles.chips}>{[0, 1, 2, 3].map((i) => chip('rent', 'r' + i, t(`rent${i}` as 'rent0')))}</div>
+          <legend>{t('fBudget')}</legend>
+          <div className={styles.chips}>{BUDGETS.map((v) => chip('pmax', v, t('fBudgetN', { n: v.replace('.', LOCALE_CONFIG[l].decimal) })))}</div>
         </fieldset>
-        <fieldset className={styles.group}>
-          <legend>{t('sFurn')}</legend>
-          <div className={styles.chips}>{(['full', 'basic', 'empty'] as const).map((k) => chip('furn', k, t(`furn_${k}`)))}</div>
-        </fieldset>
-        <fieldset className={styles.group}>
-          <legend>{t('sFloor')}</legend>
-          <div className={styles.chips}>{(['low', 'mid', 'high'] as const).map((k) => chip('fl', k, F.floorBand(k, l)))}</div>
-        </fieldset>
-        <div className={styles.toggles}>
-          {toggle('pets', t('pets'))}
-          {toggle('car', t('carPark'), !carEnabled)}
-        </div>
         <label className={styles.dateLabel}>
-          {t('moveIn')}
-          <input type="date" className="input" value={st.date} onChange={(e) => upd({ date: e.target.value })} />
+          {t('fBuilding')}
+          <select className="input" value={st.b} onChange={(e) => upd({ b: e.target.value })}>
+            <option value="">{t('fAllBuildings')}</option>
+            {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
         </label>
+        {offered.length > 0 && (
+          <fieldset className={styles.group}>
+            <legend>{t('fFeatures')}</legend>
+            <div className={styles.chips}>{offered.map(feature)}</div>
+          </fieldset>
+        )}
       </div>
       {!side && (
         <div className={styles.foot}>
           <button type="button" className={styles.resetFoot} onClick={reset}>{t('reset')}</button>
-          <button type="button" className={`btn btn-primary ${styles.apply}`} onClick={() => onApply(draft)}>{F.showN(n, l)}</button>
+          <button type="button" className={`btn btn-primary ${styles.apply}`} onClick={() => onApply(draft)}>{t('showN', { n })}</button>
         </div>
       )}
     </div>
   );
 }
-

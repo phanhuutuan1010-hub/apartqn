@@ -1,21 +1,21 @@
-import type { Building, Listing } from '@/lib/types';
-import { codeSlug } from '@/lib/format';
+import type { Building, UnitType } from '@/lib/types';
 import type { SearchIndex } from './types';
 
-/** Public site data → search index. Only public-view data goes in (no owner fields exist there). */
-export function buildIndex(buildings: Building[], listings: Listing[]): SearchIndex {
-  const avail = new Map<string, number>();
-  for (const x of listings) if (x.status === 'available') avail.set(x.buildingId, (avail.get(x.buildingId) ?? 0) + 1);
+/** Public site data → search index. Only public-view data goes in (reference values; nothing about single units). */
+export function buildIndex(buildings: Building[], types: UnitType[]): SearchIndex {
+  const of = (slug: string) => types.filter((x) => x.buildingId === slug);
   return {
-    v: 1,
-    buildings: buildings.map((b) => ({
-      slug: b.id, name: b.name, aliases: b.aliases, prefix: b.prefix, street: b.street,
-      ward_old: b.wardOld ?? null, ward_new: b.ward ?? null, available_count: avail.get(b.id) ?? 0,
-    })),
-    listings: listings.map((x) => ({
-      code: x.code, slug: codeSlug(x.code), legacy_code: x.legacyCode ?? null, building_slug: x.buildingId, beds: x.beds, rent: x.rent, furniture: x.furn,
-      pets: x.pets, car_parking: x.carParking ?? null, view: x.view, floor_band: x.floorBand ?? null, status: x.status,
-      verified_at: x.verifiedAt ?? null, published_at: x.publishedAt ?? null, cover_thumb: x.thumbs[0] ?? null,
+    v: 2,
+    buildings: buildings.map((b) => {
+      const ts = of(b.id);
+      return {
+        slug: b.id, name: b.name, aliases: b.aliases, prefix: b.prefix, street: b.street, ward_old: b.wardOld ?? null, ward_new: b.ward ?? null,
+        type_count: ts.length, price_from: ts.length ? Math.min(...ts.map((x) => x.priceFrom)) : null,
+      };
+    }),
+    types: types.map((x) => ({
+      code: x.code, building_slug: x.buildingId, type: x.type, price_from: x.priceFrom, area_min: x.areaMin, area_max: x.areaMax,
+      features: x.features, cover_thumb: x.thumbs[0] ?? null,
     })),
   };
 }

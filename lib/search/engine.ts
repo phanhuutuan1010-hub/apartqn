@@ -1,6 +1,6 @@
 'use client';
 /** Everything the search box needs once the visitor interacts — loaded with import() so it stays out of the first paint. */
-export { suggest, buildingList, countResults, resolveCode } from './suggest';
+export { suggest, buildingList, countResults, resolveType } from './suggest';
 export { parseSearch } from './parse';
 export { parsedToQuery } from './url';
 export { highlightParts } from './fuzzy';

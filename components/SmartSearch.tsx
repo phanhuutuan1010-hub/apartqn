@@ -1,6 +1,5 @@
 'use client';
 import { useRouter as useNextRouter } from 'next/navigation';
-import { listingPath } from '@/lib/listingUrl';
 
 import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
@@ -8,11 +7,12 @@ import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowLeft, Building2, Clock, Hash, MapPin, Search, X } from 'lucide-react';
 import { useRouter } from '@/i18n/navigation';
-import type { Locale } from '@/i18n/routing';
-import type { Listing } from '@/lib/types';
+import { localePrefix, type Locale } from '@/i18n/locales';
+import type { Building, UnitType } from '@/lib/types';
 import { EMPTY, toQuery, type Filters } from '@/lib/filters';
-import { F, mil } from '@/lib/format';
-import type { ListingSug, Ranges } from '@/lib/search/suggest';
+import { money } from '@/lib/format';
+import { unitTypePath } from '@/lib/unitTypes';
+import type { TypeSug, Ranges } from '@/lib/search/suggest';
 import { clearRecent, loadIndex, prefetchIndexWhenIdle, pushRecent, readRecent } from '@/lib/search/client';
 import type { SearchIndex } from '@/lib/search/types';
 import styles from './SmartSearch.module.css';
@@ -45,7 +45,7 @@ type Variant = 'hero' | 'bar' | 'header';
  * hero: card with Tìm + Bộ lọc (home) · bar: compact field (results toolbar, its own Bộ lọc) ·
  * header: inline field ≥ 1280, a search icon below — both open the same full-screen sheet on small screens.
  */
-export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: { listings?: Listing[]; variant?: Variant; initial?: string }) {
+export function SmartSearch({ types = [], buildings = [], variant = 'hero', initial = '' }: { /** for the hero's Bộ lọc sheet */ types?: UnitType[]; buildings?: Pick<Building, 'id' | 'name'>[]; variant?: Variant; initial?: string }) {
   const t = useTranslations();
   const l = useLocale() as Locale;
   const router = useRouter();
@@ -83,28 +83,26 @@ export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: {
     else router.push(href);
   };
   const toResults = (q: Record<string, string>) => go({ pathname: '/can-ho', query: q });
-  // listings live at /{CODE} · /en/{CODE}, outside the localized pathnames
-  const toListing = (slug: string) => {
+  // unit types (/{PREFIX}-{TYPE}) and old listing codes (/{CODE}, redirected by proxy.ts) live outside the localized pathnames
+  const toPath = (href: string) => {
     setOpen(false);
     setActive(-1);
     setSheet(false);
-    const href = listingPath(slug, l);
     if (ownsEntry()) nextRouter.replace(href);
     else nextRouter.push(href);
   };
+  const toType = (code: string) => toPath(unitTypePath(code, l));
 
   const submit = async (raw = value) => {
     const q = raw.trim();
     const [index, e] = await Promise.all([idx ?? loadIndex(), eng ?? loadEngine()]);
     const p = e.parseSearch(q, index?.buildings ?? []);
     if (q) setRecent(pushRecent(q));
-    if (p.code || p.legacyCode) {
-      const hit = index ? e.resolveCode(p, index) : undefined;
-      if (hit) return toListing(hit.slug);
-      // no index (offline): try the page — old QN-### URLs redirect there
-      if (!index) return toListing((p.code ?? p.legacyCode)!.toLowerCase());
-      p.text = [(p.code ?? p.legacyCode)!.toLowerCase(), p.text].filter(Boolean).join(' '); // unknown code → "no match"
-    }
+    // an old listing code (ALT-001, QN-001): its URL redirects to the unit type it belongs to
+    if (p.code || p.legacyCode) return toPath(`${localePrefix(l)}/${p.code ?? p.legacyCode}`);
+    // "altara 2pn" / "ALT-2PN": straight to that unit type
+    const hit = index ? e.resolveType(p, index) : undefined;
+    if (hit) return toType(hit.code);
     // s = what was typed: shown in "Nhờ tìm giúp" and logged as unmet demand when nothing matches
     toResults({ ...e.parsedToQuery(p), ...(q ? { s: q.slice(0, 80) } : {}) });
   };
@@ -154,15 +152,15 @@ export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: {
     setActive(-1);
     focusInput();
   };
-  const listingNode = ({ x, building }: ListingSug) => (
+  const typeNode = ({ x, building }: TypeSug) => (
     <>
       <span className={styles.thumb}>{x.cover_thumb && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={x.cover_thumb} alt="" width={56} height={42} loading="lazy" decoding="async" />
       )}</span>
       <span className={styles.main}>
-        <span className={styles.title}>{x.code} · {building?.name ?? ''}</span>
-        <span className={styles.sub}>{x.beds === 0 ? t('studio') : F.beds(x.beds, l)} · {mil(x.rent, l)}{t('perMonth')}</span>
+        <span className={styles.title}>{t(`ut_${x.type}`)} · {building?.name ?? ''}</span>
+        <span className={styles.sub}>{x.code} · {t('priceFrom', { price: money(x.price_from, l) })}{t('perMonth')}</span>
       </span>
     </>
   );
@@ -187,7 +185,7 @@ export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: {
         key: 'all-b', label: t('ssBuildings'),
         items: eng.buildingList(idx).map((b) => ({
           key: 'b:' + b.slug, run: () => toResults({ b: b.slug }),
-          node: <><Building2 size={18} aria-hidden className={styles.ico} /><span className={styles.main}><span className={styles.title}>{b.name}</span><span className={styles.sub}>{F.avail(b.available_count, l)}</span></span></>,
+          node: <><Building2 size={18} aria-hidden className={styles.ico} /><span className={styles.main}><span className={styles.title}>{b.name}</span><span className={styles.sub}>{b.type_count ? t('nTypes', { n: b.type_count }) : t('bldNoUnits')}</span></span></>,
         })),
       });
     }
@@ -198,26 +196,26 @@ export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: {
       key: 'b', label: t('ssBuildings'),
       items: sug.buildings.map(({ b, hl }) => ({
         key: 'b:' + b.slug, run: () => toResults(parsedToQuery({ ...base, building: b.slug })),
-        node: <><Building2 size={18} aria-hidden className={styles.ico} /><span className={styles.main}><span className={styles.title}><Hl text={b.name} r={hl} e={eng} /></span><span className={styles.sub}>{[b.street, F.avail(b.available_count, l)].filter(Boolean).join(' · ')}</span></span></>,
+        node: <><Building2 size={18} aria-hidden className={styles.ico} /><span className={styles.main}><span className={styles.title}><Hl text={b.name} r={hl} e={eng} /></span><span className={styles.sub}>{[b.street, b.type_count ? t('nTypes', { n: b.type_count }) : ''].filter(Boolean).join(' · ')}</span></span></>,
       })),
     });
     if (sug.areas.length) groups.push({
       key: 'a', label: t('ssAreas'),
       items: sug.areas.map((a) => ({
         key: 'a:' + a.label, run: () => toResults(parsedToQuery({ ...base, building: undefined, text: a.label })),
-        node: <><MapPin size={18} aria-hidden className={styles.ico} /><span className={styles.main}><span className={styles.title}><Hl text={a.label} r={a.hl} e={eng} /></span><span className={styles.sub}>{F.avail(a.available, l)}</span></span></>,
+        node: <><MapPin size={18} aria-hidden className={styles.ico} /><span className={styles.main}><span className={styles.title}><Hl text={a.label} r={a.hl} e={eng} /></span><span className={styles.sub}>{t('nTypes', { n: a.types })}</span></span></>,
       })),
     });
     if (sug.codes.length) groups.push({
       key: 'c', label: t('ssCodes'),
       items: sug.codes.map(({ x, building }) => ({
-        key: 'c:' + x.code, run: () => toListing(x.slug),
-        node: <><Hash size={18} aria-hidden className={styles.ico} /><span className={styles.main}><span className={styles.title}>{x.code}</span><span className={styles.sub}>{[building?.name, t(`st_${x.status}`)].filter(Boolean).join(' · ')}</span></span></>,
+        key: 'c:' + x.code, run: () => toType(x.code),
+        node: <><Hash size={18} aria-hidden className={styles.ico} /><span className={styles.main}><span className={styles.title}>{x.code} · {t(`ut_${x.type}`)}</span><span className={styles.sub}>{[building?.name, `${t('priceFrom', { price: money(x.price_from, l) })}${t('perMonth')}`].filter(Boolean).join(' · ')}</span></span></>,
       })),
     });
-    if (sug.listings.length) groups.push({
-      key: 'l', label: t('ssListings'),
-      items: sug.listings.map((s) => ({ key: 'l:' + s.x.code, run: () => toListing(s.x.slug), node: listingNode(s) })),
+    if (sug.types.length) groups.push({
+      key: 'l', label: t('ssTypes'),
+      items: sug.types.map((s) => ({ key: 'l:' + s.x.code, run: () => toType(s.x.code), node: typeNode(s) })),
     });
   }
   const hasQuery = !!value.trim();
@@ -367,7 +365,7 @@ export function SmartSearch({ listings = [], variant = 'hero', initial = '' }: {
         document.body,
       )}
 
-      {filters && <FilterSheet value={{ ...EMPTY }} listings={listings} onClose={() => setFilters(false)} onApply={applyFilters} />}
+      {filters && <FilterSheet value={{ ...EMPTY }} types={types} buildings={buildings} onClose={() => setFilters(false)} onApply={applyFilters} />}
     </>
   );
 }

@@ -4,7 +4,8 @@ import { revalidatePublic } from '@/lib/revalidate';
 
 export const runtime = 'nodejs';
 
-const Body = z.object({ pages: z.array(z.string().regex(/^\/(can-ho\/[a-z]{3}-\d{3,}|toa-nha\/[a-z0-9-]{2,40})$/)).max(500) });
+/** /{PREFIX} (a building) or /{PREFIX}-{TYPE} (a unit type) */
+const Body = z.object({ pages: z.array(z.string().regex(/^\/[A-Za-z]{3}(-(studio|1pn|2pn|3pn))?$/i)).max(500) });
 
 /** Maintenance scripts (photo backfill) → refresh public pages. Auth: `Authorization: Bearer ${CRON_SECRET}`. */
 export async function POST(req: NextRequest) {
@@ -13,8 +14,8 @@ export async function POST(req: NextRequest) {
   const p = Body.safeParse(await req.json().catch(() => null));
   if (!p.success) return NextResponse.json({ ok: false, error: 'INVALID' }, { status: 400 });
   for (const page of p.data.pages) {
-    const [, kind, key] = page.split('/');
-    revalidatePublic(kind === 'can-ho' ? { code: key } : { building: key });
+    const key = page.slice(1).toUpperCase();
+    revalidatePublic(key.includes('-') ? { codes: [key] } : { building: key });
   }
   if (!p.data.pages.length) revalidatePublic({});
   return NextResponse.json({ ok: true, pages: p.data.pages.length });

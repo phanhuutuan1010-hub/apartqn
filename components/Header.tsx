@@ -46,7 +46,7 @@ export async function Header({ active = '', inlineSearch = true }: { active?: Na
           <MobileMenu
             active={active}
             nav={menuNav.map((n) => ({ k: n.k, label: n.label, href: n.href }))}
-            contacts={contacts(contact, locale, t('call'))}
+            contacts={contacts(contact, locale, t('call'), t('msgGeneral'))}
             labels={{ menu: t('menu'), close: t('close'), contact: t('navContact'), hours: t('fHours'), consign: t('navConsign') }}
           />
         </div>

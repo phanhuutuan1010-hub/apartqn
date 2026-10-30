@@ -6,7 +6,7 @@ import { toCsv } from '@/lib/admin/csv';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const TABLES = ['units', 'listings', 'leads', 'profiles', 'buildings'] as const;
+const TABLES = ['buildings', 'unit_types', 'photos', 'leads', 'profiles', 'units', 'listings'] as const;
 
 /**
  * "Xuất dữ liệu": admin-only zip with JSON + CSV (UTF-8 BOM) of the core tables, read through the

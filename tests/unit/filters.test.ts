@@ -1,27 +1,49 @@
 import { describe, expect, it } from 'vitest';
-import { apply, EMPTY, parseQuery } from '@/lib/filters';
+import { apply, EMPTY, match, minPrice, parseQuery, toQuery } from '@/lib/filters';
 import { parsedToQuery } from '@/lib/search/url';
-import type { Listing } from '@/lib/types';
+import { parseSearch } from '@/lib/search/parse';
+import type { UnitType } from '@/lib/types';
 
-const L = (code: string, o: Partial<Listing> = {}) => ({ code, buildingId: 'altara', beds: 2, rent: 10e6, view: 'city', status: 'available', furn: 'full', pets: false,
-  moveIn: '2026-01-01', updated: '2026-10-01', floorBand: null, ...o }) as unknown as Listing;
-const all = [L('ALT-001', { updated: '2026-10-05' }), L('ALT-002', { view: 'sea', updated: '2026-10-01' }), L('FLC-001', { buildingId: 'flc', updated: '2026-10-03' })];
-const codes = (xs: Listing[]) => xs.map((x) => x.code);
+const T = (code: string, o: Partial<UnitType> = {}) => ({ code, buildingId: 'altara', prefix: 'ALT', type: '2pn', areaMin: 68, areaMax: 75, priceFrom: 13e6, features: [], ...o }) as unknown as UnitType;
+const all = [
+  T('ALT-2PN'),
+  T('ALT-STUDIO', { type: 'studio', priceFrom: 8e6, areaMin: 32, areaMax: 32, features: ['sea_view'] }),
+  T('FLC-1PN', { buildingId: 'flc', prefix: 'FLC', type: '1pn', priceFrom: 10e6, areaMin: 45, areaMax: 50, features: ['furnished', 'balcony'] }),
+];
+const codes = (xs: UnitType[]) => xs.map((x) => x.code);
 
-describe('results: soft wishes rank, never exclude', () => {
-  it('free text that fits nothing keeps every listing', () => {
-    expect(codes(apply(all, { ...EMPTY, q: 'abcxyz' }, 'new', () => false))).toEqual(['ALT-001', 'FLC-001', 'ALT-002']);
+describe('results filters over unit types', () => {
+  it('cheapest first by default; largest first on request', () => {
+    expect(codes(apply(all, EMPTY, 'low'))).toEqual(['ALT-STUDIO', 'FLC-1PN', 'ALT-2PN']);
+    expect(codes(apply(all, EMPTY, 'big'))).toEqual(['ALT-2PN', 'FLC-1PN', 'ALT-STUDIO']);
   });
-  it('free text that fits some listings puts them first, keeps the rest', () => {
-    expect(codes(apply(all, { ...EMPTY, q: 'flc' }, 'new', (x) => x.buildingId === 'flc'))).toEqual(['FLC-001', 'ALT-001', 'ALT-002']);
+  it('type · budget (from-price ≤) · building · every feature asked', () => {
+    expect(codes(all.filter((x) => match(x, { ...EMPTY, t: '1pn' })))).toEqual(['FLC-1PN']);
+    expect(codes(all.filter((x) => match(x, { ...EMPTY, t: '01' })))).toEqual(['ALT-STUDIO', 'FLC-1PN']);
+    expect(codes(all.filter((x) => match(x, { ...EMPTY, pmax: '10' })))).toEqual(['ALT-STUDIO', 'FLC-1PN']);
+    expect(codes(all.filter((x) => match(x, { ...EMPTY, b: 'altara' })))).toEqual(['ALT-2PN', 'ALT-STUDIO']);
+    expect(codes(all.filter((x) => match(x, { ...EMPTY, ft: ['furnished', 'balcony'] })))).toEqual(['FLC-1PN']);
+    expect(codes(all.filter((x) => match(x, { ...EMPTY, ft: ['furnished', 'sea_view'] })))).toEqual([]);
   });
-  it('near the sea: sea-view first, nothing excluded; a sea-view filter is strict', () => {
-    expect(codes(apply(all, { ...EMPTY, near: 'sea' }, 'new'))).toEqual(['ALT-002', 'ALT-001', 'FLC-001']);
-    expect(codes(apply(all, { ...EMPTY, vw: 'sea' }, 'new'))).toEqual(['ALT-002']);
+  it('soft wishes rank, never exclude: free text, near the sea', () => {
+    expect(codes(apply(all, { ...EMPTY, q: 'flc' }, 'low', (x) => x.buildingId === 'flc'))).toEqual(['FLC-1PN', 'ALT-STUDIO', 'ALT-2PN']);
+    expect(codes(apply(all, { ...EMPTY, q: 'abcxyz' }, 'low', () => false))).toHaveLength(3);
+    expect(codes(apply(all, { ...EMPTY, near: 'sea' }, 'high'))).toEqual(['ALT-STUDIO', 'ALT-2PN', 'FLC-1PN']);
   });
-  it('the URL carries it: ?near=sea from "gần biển"', () => {
+  it('URL round trip; old ?beds= / ?vw=sea links keep working; junk dropped', () => {
+    const f = { ...EMPTY, b: 'altara', t: '2pn', pmax: '12.5', ft: ['sea_view' as const, 'balcony' as const] };
+    expect(parseQuery(new URLSearchParams(toQuery(f, 'big')))).toEqual({ f, sort: 'big' });
+    expect(parseQuery(new URLSearchParams('beds=0&vw=sea')).f).toMatchObject({ t: 'studio', ft: ['sea_view'] });
+    expect(parseQuery(new URLSearchParams('t=9pn&pmax=abc&ft=wings,balcony&sort=new&near=moon'))).toEqual({ f: { ...EMPTY, ft: ['balcony'] }, sort: 'low' });
+  });
+  it('smart search → filters: building, type, budget (upper end of a range), features', () => {
+    const b = [{ slug: 'altara', name: 'Altara Residences', prefix: 'ALT' }];
+    expect(parsedToQuery(parseSearch('altara 2pn 10-15tr view biển full nội thất', b))).toEqual({ b: 'altara', t: '2pn', pmax: '15', ft: 'sea_view,furnished' });
+    expect(parsedToQuery(parseSearch('однушка до 12 млн', b))).toEqual({ t: '01', pmax: '12' });
     expect(parsedToQuery({ text: '', nearSea: true })).toEqual({ near: 'sea' });
-    expect(parseQuery(new URLSearchParams('near=sea')).f.near).toBe('sea');
-    expect(parseQuery(new URLSearchParams('near=moon')).f.near).toBe('');
+  });
+  it('lowest from-price of a list', () => {
+    expect(minPrice(all)).toBe(8e6);
+    expect(minPrice([])).toBeNull();
   });
 });

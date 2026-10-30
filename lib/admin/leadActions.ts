@@ -45,7 +45,7 @@ export async function reassignLead(id: string, to: string): Promise<Res> {
 const NewLead = z.object({
   name: z.string().trim().min(1, 'Nhập tên khách').max(120),
   phone: z.string().trim().min(6, 'SĐT không hợp lệ').max(30).regex(/^[0-9+()\-.\s]+$/, 'SĐT không hợp lệ'),
-  code: z.string().trim().max(12).optional(),
+  code: z.string().trim().max(12).optional(),  // unit type code, ALT-2PN
   channel: z.enum(['phone', 'zalo', 'telegram', 'whatsapp', 'walk_in', 'other', 'web']),
   locale: z.enum(['vi', 'en']),
   message: z.string().trim().max(2000).optional(),
@@ -57,14 +57,15 @@ export async function createLead(_: Res, fd: FormData): Promise<Res> {
   const p = NewLead.safeParse(Object.fromEntries(fd));
   if (!p.success) return { error: p.error.issues[0].message };
   const sb = await supabaseServer();
-  let listing_id: string | null = null;
+  let unit_type_id: string | null = null, unit_type_code: string | null = null;
   if (p.data.code) {
-    const { data } = await sb.from('listings').select('id').eq('code', p.data.code.toUpperCase()).maybeSingle();
-    if (!data) return { error: `Không tìm thấy căn ${p.data.code.toUpperCase()} trong các căn bạn xem được.` };
-    listing_id = data.id;
+    const { data } = await sb.from('unit_types').select('id, code').eq('code', p.data.code.toUpperCase()).maybeSingle();
+    if (!data) return { error: `Không tìm thấy loại căn ${p.data.code.toUpperCase()} (vd. ALT-2PN).` };
+    unit_type_id = data.id;
+    unit_type_code = data.code;
   }
   const { data, error } = await sb.from('leads')
-    .insert({ name: p.data.name, phone: p.data.phone, channel: p.data.channel, locale: p.data.locale, message: p.data.message || null, listing_id, assigned_to: me.id })
+    .insert({ name: p.data.name, phone: p.data.phone, channel: p.data.channel, locale: p.data.locale, message: p.data.message || null, unit_type_id, unit_type_code, assigned_to: me.id })
     .select('id').single();
   if (error) return { error: vnError(error) };
   revalidatePath('/admin/khach-hang');

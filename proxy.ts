@@ -1,9 +1,11 @@
-import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { createServerClient } from '@supabase/ssr';
 import { routing } from './i18n/routing';
-import { enPath, visitorLocale, LOCALE_COOKIE, LOCALE_COOKIE_AGE } from './lib/localeDetect';
-import { listingEntry, oldListingPath, type Click } from './lib/listingEntry';
+import { DEFAULT_LOCALE, LOCALE_CONFIG, LOCALES, isLocale, localePrefix, type Locale } from './i18n/locales';
+import { localizedPath, pathLocale, visitorLocale, LOCALE_COOKIE, LOCALE_COOKIE_AGE } from './lib/localeDetect';
+import { entry, internalPath, oldBuilding, oldListing } from './lib/entry';
+import { listingTarget, redirectStatus } from './lib/listingRedirect';
 import { FT_COOKIE } from './lib/attribution';
 import { cleanSrc, SRC_COOKIE, SRC_COOKIE_AGE } from './lib/src';
 
@@ -80,56 +82,75 @@ async function admin(req: NextRequest) {
   return done(res);
 }
 
-/** Russian was retired as a locale: /ru/* → 301 to the English page (localized segments mapped, query kept). */
+/** Russian is not a site language (yet): /ru/* → 301 to the English page (localized segments mapped, query kept). */
 const RU_SEGMENTS: Record<string, string> = { kvartiry: 'apartments', zdaniya: 'buildings', 'sdat-kvartiru': 'list-your-apartment' };
 function ruPath(path: string) {
+  if (isLocale('ru')) return null; // the day it becomes one, next-intl serves /ru/* like any other language
   const m = /^\/ru(\/.*)?$/i.exec(path);
   if (!m) return null;
   const rest = (m[1] ?? '').replace(/^\/([^/]+)/, (_, seg: string) => '/' + (RU_SEGMENTS[seg.toLowerCase()] ?? seg));
   return '/en' + rest.replace(/\/$/, '');
 }
 
-/** Old QN-### listing URLs → 301 to the per-building code (looked up once per instance via legacy_code). */
-const LEGACY = /^(\/en)?\/(can-ho|apartments)\/(qn-\d{1,5})\/?$/i;
-const legacyCache = new Map<string, string | null>();
-async function legacyRedirect(req: NextRequest, path = req.nextUrl.pathname) {
-  const m = LEGACY.exec(path);
-  if (!m) return null;
-  const old = m[3].toUpperCase().replace(/^QN-(\d+)$/, (_, n: string) => `QN-${n.padStart(3, '0')}`);
-  if (!legacyCache.has(old)) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-    try {
-      const r = await fetch(`${url}/rest/v1/public_listings?select=code&legacy_code=eq.${encodeURIComponent(old)}&limit=1`, {
-        headers: { apikey: key!, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(3000),
-      });
-      if (!r.ok) return null; // don't cache failures
-      const rows = (await r.json()) as { code: string }[];
-      legacyCache.set(old, rows[0]?.code ?? null);
-    } catch {
-      return null;
-    }
-  }
-  const code = legacyCache.get(old);
-  if (!code) return null; // unknown / no longer public → normal 404
+const SEGMENTS = Object.fromEntries(LOCALES.map((l) => [l, LOCALE_CONFIG[l].segments['can-ho']])) as Record<Locale, string>;
+
+/** Old listing URLs (/{CODE}, /en/{CODE}, /can-ho/{code}, /en/apartments/{code}, QN-###) → the unit type / building. */
+async function listingRedirect(req: NextRequest, path = req.nextUrl.pathname) {
+  const old = oldListing(path, SEGMENTS);
+  if (!old) return null;
+  const target = await listingTarget(old.code);
+  if (!target) return null; // unknown / no visible building → normal 404
   const to = req.nextUrl.clone();
-  to.pathname = `${m[1] ?? ''}/${code.toUpperCase()}`;
-  return NextResponse.redirect(to, 301);
+  to.pathname = `${localePrefix(old.locale)}/${target}`;
+  return NextResponse.redirect(to, redirectStatus(target));
+}
+
+/** Old building URLs /toa-nha/{slug} · /en/buildings/{slug} → /{PREFIX} (looked up once per instance in public_buildings). */
+const slugCache = new Map<string, string | null>();
+async function buildingRedirect(req: NextRequest) {
+  const path = req.nextUrl.pathname;
+  const internal = internalPath(path);
+  const old = internal ? null : oldBuilding(path);
+  if (!internal && !old) return null;
+  let to = internal;
+  if (old) {
+    if (!slugCache.has(old.slug)) {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+      try {
+        const r = await fetch(`${url}/rest/v1/public_buildings?select=code_prefix&slug=eq.${encodeURIComponent(old.slug)}&limit=1`, {
+          headers: { apikey: key!, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(3000),
+        });
+        if (!r.ok) return null; // failures are not cached
+        const rows = (await r.json()) as { code_prefix: string }[];
+        slugCache.set(old.slug, rows[0]?.code_prefix ?? null);
+      } catch {
+        return null;
+      }
+    }
+    const prefix = slugCache.get(old.slug);
+    if (!prefix) return null; // hidden / unknown → the page decides (redirect home or 404)
+    to = `${localePrefix(old.locale)}/${prefix}`;
+  }
+  const u = req.nextUrl.clone();
+  u.pathname = to!;
+  return NextResponse.redirect(u, 301);
 }
 
 /**
- * Vietnamese URLs (everything public outside /en): a visitor without a stored language gets Vietnamese when the browser
- * prefers it, otherwise a 307 to the same page in English (query kept; no English twin → /en). The choice — or the
- * language switcher's — is remembered for a year and always wins. Crawlers and link previews are never redirected.
+ * Default-language URLs (everything public without a /{locale} prefix): a visitor without a stored language gets them
+ * when the browser prefers that language, otherwise a 307 to the same page in their language or the fallback (query
+ * kept; no twin → that language's home). The choice — or the language switcher's — is remembered for a year and always
+ * wins. Crawlers and link previews are never redirected.
  */
 function localized(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  if (path === '/en' || path.startsWith('/en/')) return intl(req);
+  if (pathLocale(path) !== DEFAULT_LOCALE) return intl(req);
   const pick = visitorLocale({ cookie: req.cookies.get(LOCALE_COOKIE)?.value, acceptLanguage: req.headers.get('accept-language'), userAgent: req.headers.get('user-agent') });
   if (!pick) return intl(req);
   let res: NextResponse;
-  if (pick.locale === 'en') {
+  if (pick.locale !== DEFAULT_LOCALE) {
     const to = req.nextUrl.clone();
-    to.pathname = enPath(path);
+    to.pathname = localizedPath(path, pick.locale);
     res = NextResponse.redirect(to, 307);
     res.headers.set('Cache-Control', 'private, no-store');
   } else {
@@ -139,28 +160,16 @@ function localized(req: NextRequest) {
   return res;
 }
 
-/** one anonymous post click (code, source, post form, language pair), recorded after the response is on its way */
-function logClick(c: Click) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return Promise.resolve();
-  return fetch(`${url.replace(/\/$/, '')}/rest/v1/rpc/log_post_click`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ p_code: c.code, p_source: c.source, p_variant: c.variant, p_pair: c.pair }),
-    signal: AbortSignal.timeout(4000),
-  }).then(() => undefined, () => undefined);
-}
-
-/** apartqn.com/{CODE} and /en/{CODE}: language, attribution and the rewrite to the listing page (lib/listingEntry.ts) */
-function listing(req: NextRequest, event: NextFetchEvent) {
-  const d = listingEntry({
+/** apartqn.com/{PREFIX} · /{PREFIX}-{TYPE} (· /{locale}/…): language, attribution and the rewrite to the page (lib/entry.ts) */
+function unitEntry(req: NextRequest) {
+  const d = entry({
     pathname: req.nextUrl.pathname, search: req.nextUrl.searchParams, host: req.headers.get('x-forwarded-host') ?? req.nextUrl.host,
-    cookie: req.cookies.get(LOCALE_COOKIE)?.value, referer: req.headers.get('referer'), userAgent: req.headers.get('user-agent'),
+    cookie: req.cookies.get(LOCALE_COOKIE)?.value, acceptLanguage: req.headers.get('accept-language'), referer: req.headers.get('referer'),
+    userAgent: req.headers.get('user-agent'),
     rsc: req.headers.has('rsc') || req.headers.has('next-router-prefetch') || req.headers.get('purpose') === 'prefetch',
     hasFirstTouch: req.cookies.has(FT_COOKIE),
   });
   if (!d) return null;
-  if (d.click) event.waitUntil(logClick(d.click));
   let res: NextResponse;
   if (d.kind === 'redirect') {
     res = NextResponse.redirect(new URL(d.location, req.url), d.status);
@@ -168,7 +177,7 @@ function listing(req: NextRequest, event: NextFetchEvent) {
   } else {
     // the locale header next-intl's own middleware would set (read by getLocale / NextIntlClientProvider)
     const h = new Headers(req.headers);
-    h.set('X-NEXT-INTL-LOCALE', d.target.startsWith('/en/') ? 'en' : 'vi');
+    h.set('X-NEXT-INTL-LOCALE', d.locale);
     res = NextResponse.rewrite(new URL(d.target, req.url), { request: { headers: h } });
   }
   if (d.firstTouch) res.cookies.set(FT_COOKIE, d.firstTouch, { maxAge: 30 * 86400, path: '/', sameSite: 'lax', httpOnly: true, secure: req.nextUrl.protocol === 'https:' });
@@ -182,37 +191,28 @@ function withSrc(req: NextRequest, res: NextResponse) {
   return res;
 }
 
-export default async function proxy(req: NextRequest, event: NextFetchEvent) {
+export default async function proxy(req: NextRequest) {
   if (req.nextUrl.pathname === '/admin' || req.nextUrl.pathname.startsWith('/admin/')) return admin(req);
-  return withSrc(req, await site(req, event));
+  return withSrc(req, await site(req));
 }
 
-async function site(req: NextRequest, event: NextFetchEvent): Promise<NextResponse> {
+async function site(req: NextRequest): Promise<NextResponse> {
   // the Russian landing page: its own root layout (lang="ru"), never language-detected or redirected
   if (/^\/ru\/?$/.test(req.nextUrl.pathname)) return NextResponse.next();
   const en = ruPath(req.nextUrl.pathname);
   if (en) {
-    // an old QN-### code goes straight to its new code (one hop)
-    const legacy = await legacyRedirect(req, en);
-    if (legacy) return legacy;
+    // an old listing code goes straight to its unit type (one hop)
+    const moved = await listingRedirect(req, en);
+    if (moved) return moved;
     const to = req.nextUrl.clone();
     to.pathname = en;
     return NextResponse.redirect(to, 301);
   }
-  const legacy = await legacyRedirect(req);
-  if (legacy) return legacy;
-  // old listing URLs → /{CODE}
-  const moved = oldListingPath(req.nextUrl.pathname);
-  if (moved) {
-    const to = req.nextUrl.clone();
-    to.pathname = moved;
-    return NextResponse.redirect(to, 301);
-  }
-  return listing(req, event) ?? localized(req);
+  return (await listingRedirect(req)) ?? (await buildingRedirect(req)) ?? unitEntry(req) ?? localized(req);
 }
 
 export const config = {
   // Skip API, Next internals, and any path with a file extension (images, manifest, sitemap.xml…)
-  // … and the post short link (/c/…) and social cards (/og/…), which are route handlers, not localized pages
+  // … and the old post short link (/c/…) and social cards (/og/…), which are route handlers, not localized pages
   matcher: '/((?!api|_next|_vercel|c/|og/|.*\\..*).*)',
 };

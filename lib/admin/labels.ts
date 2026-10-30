@@ -55,3 +55,19 @@ export const daysSince = (iso: string | null | undefined) =>
 
 /** ISO timestamp N days ago */
 export const daysAgoIso = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+
+/** unit types (same text as i18n/vi.json ut_* / f_*) */
+export const UT_LABEL: Record<string, string> = { studio: 'Studio', '1pn': '1 phòng ngủ', '2pn': '2 phòng ngủ', '3pn': '3 phòng ngủ' };
+export const UT_SHORT: Record<string, string> = { studio: 'Studio', '1pn': '1PN', '2pn': '2PN', '3pn': '3PN' };
+export const FEATURE_LABEL: Record<string, string> = {
+  sea_view: 'View biển', city_view: 'View thành phố', river_view: 'View sông', lagoon_view: 'View đầm', balcony: 'Ban công', workspace: 'Góc làm việc',
+  bathtub: 'Bồn tắm', washer: 'Máy giặt riêng', kitchen: 'Bếp nấu', furnished: 'Đầy đủ nội thất', pets_ok: 'Cho nuôi thú cưng',
+};
+
+/** what a unit type still lacks before / while it is on the website (Loại căn list, Hôm nay) */
+export const missingOf = (r: { photo_count: number; price_from: number | null; area_min: number | null; en_status: string }) => [
+  !r.photo_count && 'ảnh', r.price_from == null && 'giá', r.area_min == null && 'diện tích', (r.en_status === 'none' || r.en_status === 'stale') && 'EN',
+].filter(Boolean) as string[];
+
+/** "Liên hệ tôi qua" chips of the "Kiểm tra căn trống" form */
+export const CHANNEL_VI: Record<string, string> = { zalo: 'Zalo', whatsapp: 'WhatsApp', telegram: 'Telegram', phone: 'Gọi điện' };
